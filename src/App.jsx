@@ -6779,10 +6779,6 @@ if (
                           equipo.orden_revelacion
                         }
                       >
-                        <strong>
-                          #{equipo.orden_revelacion}
-                        </strong>
-
                         <span>
                           {equipo.nombre_equipo}
                         </span>
