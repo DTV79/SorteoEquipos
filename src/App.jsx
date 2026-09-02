@@ -7800,7 +7800,18 @@ if (
               </div>
 
               {estadoActualMovil === 'finalizada' && (
-                <div className="acciones-final-control-movil">
+                <>
+                  <div className="estado-finalizado-control-movil">
+                    <span>✓</span>
+                    <div>
+                      <strong>Sorteo finalizado</strong>
+                      <small>
+                        Ya no quedan equipos por revelar.
+                      </small>
+                    </div>
+                  </div>
+
+                  <div className="acciones-final-control-movil">
                   <button
                     type="button"
                     disabled={
@@ -7831,11 +7842,13 @@ if (
                       ? '✓ Resumen mostrado'
                       : '📊 Mostrar resumen final'}
                   </button>
-                </div>
+                  </div>
+                </>
               )}
 
-              <div className="zona-boton-principal-control-movil">
-                {estadoActualMovil === 'generada' ? (
+              {estadoActualMovil !== 'finalizada' && (
+                <div className="zona-boton-principal-control-movil">
+                  {estadoActualMovil === 'generada' ? (
                   <button
                     type="button"
                     className="boton-grande-control-movil boton-iniciar-control-movil"
@@ -7867,16 +7880,9 @@ if (
                           ? '▶ REVELAR SIGUIENTE EQUIPO'
                           : '✓ TODOS REVELADOS'}
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="boton-grande-control-movil boton-finalizado-control-movil"
-                    disabled
-                  >
-                    ✓ SORTEO FINALIZADO
-                  </button>
-                )}
-              </div>
+                  ) : null}
+                </div>
+              )}
             </>
           )}
 

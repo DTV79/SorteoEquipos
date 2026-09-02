@@ -6514,10 +6514,44 @@ las fotos ni el símbolo + respecto a las demás filas.
   background: #22c55e;
 }
 
-.boton-finalizado-control-movil {
-  border-color: #334155;
-  background: #15202b;
+.estado-finalizado-control-movil {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 13px;
+  background: rgba(34, 197, 94, 0.045);
+}
+
+.estado-finalizado-control-movil > span {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.10);
+  color: #86efac;
+  font-weight: 950;
+}
+
+.estado-finalizado-control-movil strong,
+.estado-finalizado-control-movil small {
+  display: block;
+}
+
+.estado-finalizado-control-movil strong {
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+.estado-finalizado-control-movil small {
+  margin-top: 2px;
   color: #94a3b8;
+  font-size: 10px;
 }
 
 @media (min-width: 700px) {
