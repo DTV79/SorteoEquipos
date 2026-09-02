@@ -6121,3 +6121,422 @@ las fotos ni el símbolo + respecto a las demás filas.
 .huella-control-alerta em {
   color: #fecaca;
 }
+
+
+/* ==========================================================
+   CONTROL MÓVIL
+   ========================================================== */
+
+.app-control-movil {
+  min-height: 100dvh;
+  padding: 0;
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(34, 197, 94, 0.08),
+      transparent 34%
+    ),
+    #070c11;
+}
+
+.control-movil {
+  width: min(100%, 560px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    16px
+    calc(118px + env(safe-area-inset-bottom));
+}
+
+.control-movil-cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 40px;
+  text-align: center;
+}
+
+.logo-control-movil {
+  margin-bottom: 12px;
+  font-size: 42px;
+}
+
+.control-movil-cargando h1 {
+  margin: 6px 0;
+}
+
+.control-movil-cargando > p:last-child {
+  opacity: 0.6;
+}
+
+.cabecera-control-movil {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cabecera-control-movil .etiqueta {
+  margin-bottom: 4px;
+}
+
+.cabecera-control-movil h1 {
+  margin: 0;
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1.05;
+}
+
+.salir-control-movil {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #2a3440;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #cbd5e1;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.estado-control-movil {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 14px;
+  border: 1px solid #25303c;
+  border-radius: 14px;
+  background: rgba(12, 18, 24, 0.92);
+}
+
+.estado-control-movil > div small,
+.estado-control-movil > div strong {
+  display: block;
+}
+
+.estado-control-movil > div small {
+  margin-bottom: 2px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  opacity: 0.52;
+}
+
+.estado-control-movil > div strong {
+  font-size: 14px;
+}
+
+.estado-control-movil > em {
+  padding: 5px 8px;
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.07);
+  color: #fde68a;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.progreso-control-movil {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid #25303c;
+  border-radius: 14px;
+  background: rgba(12, 18, 24, 0.76);
+}
+
+.numeros-control-movil {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.numeros-control-movil > div {
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.numeros-control-movil span,
+.numeros-control-movil strong {
+  display: block;
+}
+
+.numeros-control-movil span {
+  margin-bottom: 3px;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.numeros-control-movil strong {
+  font-size: 26px;
+}
+
+.numeros-control-movil strong small {
+  margin-left: 2px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.barra-control-movil {
+  height: 7px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #17202a;
+}
+
+.barra-control-movil span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #22c55e;
+  transition: width 240ms ease;
+}
+
+.ultimo-control-movil {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid #25303c;
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(34, 197, 94, 0.055),
+      rgba(12, 18, 24, 0.9)
+    );
+}
+
+.titulo-bloque-control-movil {
+  display: block;
+  margin-bottom: 10px;
+  color: #86efac;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.cabecera-ultimo-control-movil {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cabecera-ultimo-control-movil > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cabecera-ultimo-control-movil > small {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.09);
+  color: #86efac;
+  font-size: 9px;
+}
+
+.miembros-ultimo-control-movil {
+  display: grid;
+  gap: 7px;
+}
+
+.miembro-control-movil {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.avatar-control-movil {
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 197, 94, 0.24);
+  border-radius: 50%;
+  background: #172236;
+  color: #d1fae5;
+  font-weight: 900;
+}
+
+.avatar-control-movil img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miembro-control-movil > div:last-child strong,
+.miembro-control-movil > div:last-child small {
+  display: block;
+}
+
+.miembro-control-movil > div:last-child strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.miembro-control-movil > div:last-child small {
+  margin-top: 2px;
+  color: #86efac;
+  font-size: 9px;
+}
+
+.sin-equipo-control-movil {
+  margin: 0;
+  padding: 14px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.mensaje-control-movil,
+.error-control-movil {
+  margin-top: 10px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.mensaje-control-movil {
+  border: 1px solid rgba(34, 197, 94, 0.17);
+  background: rgba(34, 197, 94, 0.045);
+  color: #bbf7d0;
+}
+
+.error-control-movil {
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  background: rgba(248, 113, 113, 0.06);
+  color: #fecaca;
+}
+
+.acciones-secundarias-control-movil,
+.acciones-final-control-movil {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.acciones-secundarias-control-movil {
+  grid-template-columns: 1fr 1fr;
+}
+
+.acciones-final-control-movil {
+  grid-template-columns: 1fr;
+}
+
+.acciones-secundarias-control-movil button,
+.acciones-final-control-movil button {
+  min-height: 46px;
+  padding: 9px 10px;
+  border: 1px solid #2a3440;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #e5e7eb;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.acciones-secundarias-control-movil button:disabled,
+.acciones-final-control-movil button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.zona-boton-principal-control-movil {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding:
+    12px
+    max(
+      16px,
+      calc((100vw - 528px) / 2)
+    )
+    calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      to top,
+      rgba(7, 12, 17, 0.99),
+      rgba(7, 12, 17, 0.94)
+    );
+  backdrop-filter: blur(14px);
+}
+
+.boton-grande-control-movil {
+  width: 100%;
+  min-height: 74px;
+  padding: 14px 18px;
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  border-radius: 17px;
+  background: #22c55e;
+  color: #04120a;
+  font-size: clamp(15px, 4.5vw, 19px);
+  font-weight: 950;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  box-shadow:
+    0 12px 34px rgba(34, 197, 94, 0.14);
+}
+
+.boton-grande-control-movil:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.boton-grande-control-movil:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.boton-iniciar-control-movil {
+  background: #22c55e;
+}
+
+.boton-finalizado-control-movil {
+  border-color: #334155;
+  background: #15202b;
+  color: #94a3b8;
+}
+
+@media (min-width: 700px) {
+  .control-movil {
+    padding-top: 26px;
+  }
+
+  .app-control-movil {
+    background:
+      radial-gradient(
+        circle at top,
+        rgba(34, 197, 94, 0.08),
+        transparent 30%
+      ),
+      #05090d;
+  }
+
+  .control-movil {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.025);
+  }
+}

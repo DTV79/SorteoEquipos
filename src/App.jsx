@@ -145,7 +145,14 @@ function App() {
   ============================================================
   */
 
-  const [pantalla, setPantalla] = useState('inicio')
+  const [pantalla, setPantalla] = useState(() => {
+    const parametros =
+      new URLSearchParams(window.location.search)
+
+    return parametros.get('control') === '1'
+      ? 'control-movil-cargando'
+      : 'inicio'
+  })
 
   const [conexion, setConexion] = useState(
     'Comprobando conexión...'
@@ -591,6 +598,42 @@ const [
 
 /*
 ============================================================
+CONTROL MÓVIL
+============================================================
+*/
+
+const [modoControlMovil] = useState(() => {
+  const parametros =
+    new URLSearchParams(window.location.search)
+
+  return parametros.get('control') === '1'
+})
+
+const [sorteoControlMovilId] = useState(() => {
+  const parametros =
+    new URLSearchParams(window.location.search)
+
+  return parametros.get('sorteo') ?? ''
+})
+
+const [ejecucionControlMovilId] = useState(() => {
+  const parametros =
+    new URLSearchParams(window.location.search)
+
+  return parametros.get('ejecucion') ?? ''
+})
+
+const [cargandoControlMovil, setCargandoControlMovil] =
+  useState(false)
+
+const [errorControlMovil, setErrorControlMovil] =
+  useState('')
+
+const [enlaceControlMovilCopiado, setEnlaceControlMovilCopiado] =
+  useState(false)
+
+/*
+============================================================
 PANTALLA PÚBLICA / TV
 ============================================================
 */
@@ -863,6 +906,138 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
   /*
   ============================================================
+  ACCESO DIRECTO AL CONTROL MÓVIL
+  ============================================================
+  */
+
+  useEffect(() => {
+    if (!modoControlMovil) {
+      return
+    }
+
+    let cancelado = false
+
+    async function prepararControlMovil() {
+      setCargandoControlMovil(true)
+      setErrorControlMovil('')
+
+      try {
+        const {
+          data: sesionData,
+          error: errorSesion,
+        } = await supabase.auth.getSession()
+
+        if (errorSesion) {
+          throw errorSesion
+        }
+
+        if (
+          !sesionData?.session
+        ) {
+          if (!cancelado) {
+            setPantalla('login')
+          }
+
+          return
+        }
+
+        const {
+          data: esAdmin,
+          error: errorAdmin,
+        } = await supabase.rpc(
+          'es_administrador'
+        )
+
+        if (errorAdmin) {
+          throw errorAdmin
+        }
+
+        if (esAdmin !== true) {
+          await supabase.auth.signOut()
+
+          if (!cancelado) {
+            setMensajeLogin(
+              'La sesión abierta no tiene permisos de administrador.'
+            )
+            setPantalla('login')
+          }
+
+          return
+        }
+
+        if (!cancelado) {
+          await cargarControlMovilDesdeUrl()
+        }
+      } catch (error) {
+        console.error(
+          'Error preparando el acceso móvil:',
+          error
+        )
+
+        if (!cancelado) {
+          setErrorControlMovil(
+            error.message
+          )
+          setPantalla('login')
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoControlMovil(false)
+        }
+      }
+    }
+
+    prepararControlMovil()
+
+    return () => {
+      cancelado = true
+    }
+  }, [
+    modoControlMovil,
+    sorteoControlMovilId,
+    ejecucionControlMovilId,
+  ])
+
+
+  /*
+  Cuando el control móvil ya está abierto, refrescamos el estado
+  cada pocos segundos. Así sigue sincronizado aunque otra persona
+  pulse un botón desde otro dispositivo.
+  */
+  useEffect(() => {
+    if (
+      pantalla !== 'control-movil' ||
+      !sorteoSeleccionado ||
+      !ejecucionControlMovilId ||
+      accionPresentacion
+    ) {
+      return
+    }
+
+    const intervalo =
+      window.setInterval(
+        () => {
+          cargarEstadoControlPresentacion(
+            ejecucionControlMovilId
+          )
+        },
+        5000
+      )
+
+    return () =>
+      window.clearInterval(
+        intervalo
+      )
+  }, [
+    pantalla,
+    sorteoSeleccionado?.id,
+    ejecucionControlMovilId,
+    accionPresentacion,
+  ])
+
+
+  /*
+  ============================================================
   LOGIN ADMINISTRADOR
   ============================================================
   */
@@ -950,7 +1125,13 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
       setMensajeLogin('')
       setPassword('')
-      setPantalla('admin')
+
+      if (modoControlMovil) {
+        await cargarControlMovilDesdeUrl()
+      } else {
+        setPantalla('admin')
+      }
+
       setCargandoLogin(false)
     } catch (error) {
       console.error(
@@ -6194,6 +6375,300 @@ async function cargarPresentacionPublica() {
   }
 }
 
+
+function obtenerUrlControlMovil() {
+  if (
+    !sorteoSeleccionado?.id ||
+    !estadoPresentacion?.ejecucion_id
+  ) {
+    return ''
+  }
+
+  const url =
+    new URL(window.location.href)
+
+  url.search = ''
+  url.searchParams.set(
+    'control',
+    '1'
+  )
+  url.searchParams.set(
+    'sorteo',
+    sorteoSeleccionado.id
+  )
+  url.searchParams.set(
+    'ejecucion',
+    estadoPresentacion.ejecucion_id
+  )
+
+  return url.toString()
+}
+
+
+function abrirModoControlMovil() {
+  const url =
+    obtenerUrlControlMovil()
+
+  if (!url) {
+    setMensajePresentacion(
+      'No se ha podido preparar el enlace del control móvil.'
+    )
+    return
+  }
+
+  window.location.href =
+    url
+}
+
+
+async function copiarEnlaceControlMovil() {
+  const url =
+    obtenerUrlControlMovil()
+
+  if (!url) {
+    setMensajePresentacion(
+      'No se ha podido preparar el enlace del control móvil.'
+    )
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(
+      url
+    )
+
+    setEnlaceControlMovilCopiado(
+      true
+    )
+
+    window.setTimeout(
+      () =>
+        setEnlaceControlMovilCopiado(
+          false
+        ),
+      1800
+    )
+  } catch (error) {
+    console.warn(
+      'No se pudo copiar el enlace del control móvil:',
+      error
+    )
+
+    setMensajePresentacion(
+      'No se pudo copiar automáticamente. Abre “Modo móvil” desde el propio teléfono.'
+    )
+  }
+}
+
+
+async function cargarControlMovilDesdeUrl() {
+  if (
+    !sorteoControlMovilId ||
+    !ejecucionControlMovilId
+  ) {
+    setErrorControlMovil(
+      'El enlace del control móvil está incompleto.'
+    )
+    setPantalla(
+      'control-movil'
+    )
+    return false
+  }
+
+  setCargandoControlMovil(
+    true
+  )
+  setErrorControlMovil('')
+  setMensajePresentacion('')
+
+  try {
+    const {
+      data: sorteo,
+      error: errorSorteo,
+    } = await supabase
+      .from('sorteos')
+      .select(`
+        id,
+        nombre,
+        descripcion,
+        fecha_evento,
+        numero_grupos,
+        estado,
+        formato_sorteo,
+        jugadores_por_equipo,
+        distribucion_grupos,
+        presentacion_retraso_primer_ms,
+        presentacion_intervalo_jugador_ms,
+        presentacion_pausa_entre_equipos_ms,
+        presentacion_pausa_resumen_ms
+      `)
+      .eq(
+        'id',
+        sorteoControlMovilId
+      )
+      .maybeSingle()
+
+    if (errorSorteo) {
+      throw errorSorteo
+    }
+
+    if (!sorteo) {
+      throw new Error(
+        'No existe el sorteo indicado.'
+      )
+    }
+
+    const {
+      data: ejecucion,
+      error: errorEjecucion,
+    } = await supabase
+      .from('ejecuciones_sorteo')
+      .select(`
+        id,
+        sorteo_id
+      `)
+      .eq(
+        'id',
+        ejecucionControlMovilId
+      )
+      .eq(
+        'sorteo_id',
+        sorteoControlMovilId
+      )
+      .maybeSingle()
+
+    if (errorEjecucion) {
+      throw errorEjecucion
+    }
+
+    if (!ejecucion) {
+      throw new Error(
+        'La ejecución indicada no pertenece a este sorteo.'
+      )
+    }
+
+    const {
+      data: estado,
+      error: errorEstado,
+    } = await supabase.rpc(
+      'obtener_estado_presentacion',
+      {
+        p_ejecucion_id:
+          ejecucionControlMovilId,
+      }
+    )
+
+    if (errorEstado) {
+      throw errorEstado
+    }
+
+    const {
+      data: revelados,
+      error: errorRevelados,
+    } = await supabase
+      .from('v_equipos_sorteados')
+      .select(`
+        equipo_id,
+        numero_equipo,
+        orden_revelacion,
+        regla,
+        codigo_grupo,
+        grupo,
+        miembros,
+        nombre_equipo,
+        estado_revelacion,
+        revelado_en
+      `)
+      .eq(
+        'ejecucion_id',
+        ejecucionControlMovilId
+      )
+      .eq(
+        'estado_revelacion',
+        'revelado'
+      )
+      .order(
+        'orden_revelacion',
+        { ascending: true }
+      )
+
+    if (errorRevelados) {
+      throw errorRevelados
+    }
+
+    const {
+      data: estadoPublico,
+    } = await supabase.rpc(
+      'obtener_presentacion_publica_v3',
+      {
+        p_sorteo_id:
+          sorteoControlMovilId,
+
+        p_ejecucion_id:
+          ejecucionControlMovilId,
+      }
+    )
+
+    const listaRevelados =
+      revelados ?? []
+
+    setSorteoSeleccionado(
+      sorteo
+    )
+    setEstadoPresentacion(
+      estado
+    )
+    setEquiposReveladosControl(
+      listaRevelados
+    )
+    setResumenFinalEnviado(
+      Boolean(
+        estadoPublico?.mostrar_resumen_final
+      )
+    )
+
+    await cargarFotosControlPresentacion(
+      listaRevelados
+    )
+
+    setPantalla(
+      'control-movil'
+    )
+
+    return true
+  } catch (error) {
+    console.error(
+      'Error cargando el control móvil:',
+      error
+    )
+
+    setErrorControlMovil(
+      error.message
+    )
+    setPantalla(
+      'control-movil'
+    )
+
+    return false
+  } finally {
+    setCargandoControlMovil(
+      false
+    )
+  }
+}
+
+
+function salirDelControlMovil() {
+  const url =
+    new URL(window.location.href)
+
+  url.search = ''
+
+  window.location.href =
+    url.toString()
+}
+
+
 function abrirPantallaPublica() {
   if (!sorteoSeleccionado) {
     return
@@ -6301,6 +6776,8 @@ async function activarPantallaCompletaPublica() {
     setResumenFinalEnviado(false)
     setRepeticionEnCursoControl(false)
     setMostrarConfirmacionInicioPresentacion(false)
+    setErrorControlMovil('')
+    setEnlaceControlMovilCopiado(false)
 
     setPantalla('inicio')
   }
@@ -7028,6 +7505,456 @@ if (
 
   /*
   ============================================================
+  PANTALLA CONTROL MÓVIL
+  ============================================================
+  */
+
+  if (
+    modoControlMovil &&
+    (
+      pantalla === 'control-movil-cargando' ||
+      cargandoControlMovil
+    ) &&
+    pantalla !== 'login'
+  ) {
+    return (
+      <main className="app app-control-movil">
+        <section className="control-movil control-movil-cargando">
+          <div className="logo-control-movil">
+            📱
+          </div>
+
+          <p className="etiqueta">
+            CONTROL MÓVIL
+          </p>
+
+          <h1>
+            Conectando…
+          </h1>
+
+          <p>
+            Recuperando el estado de la presentación.
+          </p>
+        </section>
+      </main>
+    )
+  }
+
+
+  if (
+    pantalla === 'control-movil'
+  ) {
+    const estadoActualMovil =
+      String(
+        estadoPresentacion?.estado ?? ''
+      ).toLowerCase()
+
+    const totalEquiposMovil =
+      Number(
+        estadoPresentacion?.total_equipos ?? 0
+      )
+
+    const reveladosMovil =
+      Number(
+        estadoPresentacion?.equipos_revelados ?? 0
+      )
+
+    const pendientesMovil =
+      Number(
+        estadoPresentacion?.equipos_pendientes ?? 0
+      )
+
+    const porcentajeMovil =
+      totalEquiposMovil > 0
+        ? Math.round(
+            (
+              reveladosMovil /
+              totalEquiposMovil
+            ) * 100
+          )
+        : 0
+
+    const ultimoEquipoMovil =
+      equiposReveladosControl.length > 0
+        ? equiposReveladosControl[
+            equiposReveladosControl.length - 1
+          ]
+        : null
+
+    const miembrosUltimoMovil =
+      ultimoEquipoMovil
+        ? obtenerMiembrosEquipoPublico(
+            ultimoEquipoMovil
+          )
+        : []
+
+    const esLigaUnicaMovil =
+      String(
+        sorteoSeleccionado?.formato_sorteo ??
+        'grupos'
+      ).toLowerCase() ===
+      'liga_unica'
+
+    const puedeRevelarMovil =
+      estadoActualMovil === 'en_curso' &&
+      pendientesMovil > 0 &&
+      !accionPresentacion &&
+      !bloqueoSecuenciaPresentacion &&
+      !repeticionEnCursoControl
+
+    return (
+      <main className="app app-control-movil">
+        <section className="control-movil">
+          <header className="cabecera-control-movil">
+            <div>
+              <p className="etiqueta">
+                📱 CONTROL MÓVIL
+              </p>
+
+              <h1>
+                {sorteoSeleccionado?.nombre ??
+                  'Presentación'}
+              </h1>
+            </div>
+
+            <button
+              type="button"
+              className="salir-control-movil"
+              onClick={salirDelControlMovil}
+              aria-label="Salir del control móvil"
+            >
+              ×
+            </button>
+          </header>
+
+          {errorControlMovil && (
+            <div className="error-control-movil">
+              {errorControlMovil}
+            </div>
+          )}
+
+          {estadoPresentacion && (
+            <>
+              <div className="estado-control-movil">
+                <span
+                  className={`punto-directo estado-directo-${estadoActualMovil || 'desconocido'}`}
+                />
+
+                <div>
+                  <small>
+                    ESTADO
+                  </small>
+
+                  <strong>
+                    {estadoActualMovil === 'generada'
+                      ? 'Preparada'
+                      : estadoActualMovil === 'en_curso'
+                        ? 'En directo'
+                        : estadoActualMovil === 'finalizada'
+                          ? 'Finalizada'
+                          : estadoPresentacion.estado}
+                  </strong>
+                </div>
+
+                {estadoPresentacion.es_oficial && (
+                  <em>
+                    🏆 OFICIAL
+                  </em>
+                )}
+              </div>
+
+              <div className="progreso-control-movil">
+                <div className="numeros-control-movil">
+                  <div>
+                    <span>Revelados</span>
+                    <strong>
+                      {reveladosMovil}
+                      <small>
+                        /{totalEquiposMovil}
+                      </small>
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Pendientes</span>
+                    <strong>
+                      {pendientesMovil}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="barra-control-movil">
+                  <span
+                    style={{
+                      width: `${porcentajeMovil}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <section className="ultimo-control-movil">
+                <span className="titulo-bloque-control-movil">
+                  ÚLTIMO EQUIPO
+                </span>
+
+                {ultimoEquipoMovil ? (
+                  <>
+                    <div className="cabecera-ultimo-control-movil">
+                      <strong>
+                        {ultimoEquipoMovil.nombre_equipo}
+                      </strong>
+
+                      {!esLigaUnicaMovil &&
+                        ultimoEquipoMovil.grupo && (
+                          <small>
+                            {ultimoEquipoMovil.grupo}
+                          </small>
+                        )}
+                    </div>
+
+                    <div className="miembros-ultimo-control-movil">
+                      {miembrosUltimoMovil.map(
+                        (miembro, indice) => (
+                          <div
+                            className="miembro-control-movil"
+                            key={
+                              miembro.codigo_jugador ||
+                              `${miembro.nombre}-${indice}`
+                            }
+                          >
+                            <div className="avatar-control-movil">
+                              {(
+                                miembro.foto_path ||
+                                fotosControlPresentacion[
+                                  miembro.codigo_jugador
+                                ]
+                              ) ? (
+                                <img
+                                  src={obtenerUrlFoto(
+                                    miembro.foto_path ||
+                                    fotosControlPresentacion[
+                                      miembro.codigo_jugador
+                                    ]
+                                  )}
+                                  alt={miembro.nombre}
+                                />
+                              ) : (
+                                <span>
+                                  {obtenerIniciales(
+                                    miembro.nombre
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <strong>
+                                {miembro.nombre}
+                              </strong>
+
+                              <small>
+                                {miembro.bombo ??
+                                  'Jugador'}
+                              </small>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="sin-equipo-control-movil">
+                    Todavía no se ha revelado ningún equipo.
+                  </p>
+                )}
+              </section>
+
+              {mensajePresentacion && (
+                <div className="mensaje-control-movil">
+                  {mensajePresentacion}
+                </div>
+              )}
+
+              <div className="acciones-secundarias-control-movil">
+                <button
+                  type="button"
+                  onClick={abrirPantallaPublica}
+                >
+                  🖥 TV
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    cargandoControlPresentacion ||
+                    accionPresentacion
+                  }
+                  onClick={() =>
+                    cargarEstadoControlPresentacion(
+                      ejecucionControlMovilId
+                    )
+                  }
+                >
+                  ↻ Actualizar
+                </button>
+              </div>
+
+              {estadoActualMovil === 'finalizada' && (
+                <div className="acciones-final-control-movil">
+                  <button
+                    type="button"
+                    disabled={
+                      accionPresentacion ||
+                      repeticionEnCursoControl
+                    }
+                    onClick={
+                      repetirPresentacionEnTv
+                    }
+                  >
+                    {repeticionEnCursoControl
+                      ? '⏳ Reproduciendo…'
+                      : '🔁 Repetir presentación'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      accionPresentacion ||
+                      repeticionEnCursoControl ||
+                      resumenFinalEnviado
+                    }
+                    onClick={
+                      mostrarResumenFinalEnTv
+                    }
+                  >
+                    {resumenFinalEnviado
+                      ? '✓ Resumen mostrado'
+                      : '📊 Mostrar resumen final'}
+                  </button>
+                </div>
+              )}
+
+              <div className="zona-boton-principal-control-movil">
+                {estadoActualMovil === 'generada' ? (
+                  <button
+                    type="button"
+                    className="boton-grande-control-movil boton-iniciar-control-movil"
+                    disabled={
+                      accionPresentacion
+                    }
+                    onClick={
+                      solicitarInicioPresentacion
+                    }
+                  >
+                    ▶ INICIAR PRESENTACIÓN
+                  </button>
+                ) : estadoActualMovil === 'en_curso' ? (
+                  <button
+                    type="button"
+                    className="boton-grande-control-movil"
+                    disabled={
+                      !puedeRevelarMovil
+                    }
+                    onClick={
+                      revelarSiguienteEquipo
+                    }
+                  >
+                    {accionPresentacion
+                      ? 'ENVIANDO…'
+                      : bloqueoSecuenciaPresentacion
+                        ? '⏳ ESPERANDO ANIMACIÓN…'
+                        : pendientesMovil > 0
+                          ? '▶ REVELAR SIGUIENTE EQUIPO'
+                          : '✓ TODOS REVELADOS'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="boton-grande-control-movil boton-finalizado-control-movil"
+                    disabled
+                  >
+                    ✓ SORTEO FINALIZADO
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {!estadoPresentacion &&
+            !cargandoControlMovil && (
+              <div className="sin-equipo-control-movil">
+                No se ha podido cargar la presentación.
+              </div>
+            )}
+
+          {mostrarConfirmacionInicioPresentacion && (
+            <div
+              className="modal-fondo"
+              onClick={() =>
+                setMostrarConfirmacionInicioPresentacion(
+                  false
+                )
+              }
+            >
+              <div
+                className="modal-confirmacion"
+                role="dialog"
+                aria-modal="true"
+                onClick={(evento) =>
+                  evento.stopPropagation()
+                }
+              >
+                <div className="modal-icono">
+                  ▶
+                </div>
+
+                <h3>
+                  ¿Iniciar la presentación?
+                </h3>
+
+                <p>
+                  La TV quedará preparada y ningún equipo
+                  se mostrará hasta que pulses
+                  «Revelar siguiente equipo».
+                </p>
+
+                <div className="modal-acciones">
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    onClick={() =>
+                      setMostrarConfirmacionInicioPresentacion(
+                        false
+                      )
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="boton boton-principal"
+                    onClick={
+                      confirmarInicioPresentacion
+                    }
+                    disabled={
+                      accionPresentacion
+                    }
+                  >
+                    ▶ Iniciar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+    )
+  }
+
+
+  /*
+  ============================================================
   PANTALLA DE LOGIN
   ============================================================
   */
@@ -7042,7 +7969,9 @@ if (
           </div>
 
           <p className="etiqueta">
-            ADMINISTRACIÓN
+            {modoControlMovil
+              ? 'CONTROL MÓVIL'
+              : 'ADMINISTRACIÓN'}
           </p>
 
           <h1>
@@ -7050,7 +7979,9 @@ if (
           </h1>
 
           <p className="descripcion">
-            Identifícate para gestionar y controlar los sorteos.
+            {modoControlMovil
+              ? 'Identifícate para controlar esta presentación desde el móvil.'
+              : 'Identifícate para gestionar y controlar los sorteos.'}
           </p>
 
           <form
@@ -7102,7 +8033,12 @@ if (
             className="boton-volver"
             onClick={() => {
               setMensajeLogin('')
-              setPantalla('inicio')
+
+              if (modoControlMovil) {
+                salirDelControlMovil()
+              } else {
+                setPantalla('inicio')
+              }
             }}
           >
             ← Volver
@@ -11794,6 +12730,28 @@ if (
             >
               🖥 Abrir pantalla pública
             </button>
+
+            {estadoPresentacion && (
+              <>
+                <button
+                  type="button"
+                  className="boton boton-principal"
+                  onClick={abrirModoControlMovil}
+                >
+                  📱 Modo móvil
+                </button>
+
+                <button
+                  type="button"
+                  className="boton boton-secundario"
+                  onClick={copiarEnlaceControlMovil}
+                >
+                  {enlaceControlMovilCopiado
+                    ? '✓ Enlace copiado'
+                    : '🔗 Copiar enlace móvil'}
+                </button>
+              </>
+            )}
 
             <button
               type="button"
