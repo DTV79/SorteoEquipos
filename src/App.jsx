@@ -12722,6 +12722,19 @@ if (
 
         </header>
 
+        <div className="total-jugadores-sorteo">
+          <div>
+            <span>JUGADORES SELECCIONADOS</span>
+            <strong>
+              {participantes.length}
+            </strong>
+          </div>
+
+          <small>
+            Total de jugadores añadidos a este sorteo
+          </small>
+        </div>
+
         {cargandoJugadores && (
           <p className="estado">
             Cargando jugadores...
