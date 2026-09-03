@@ -9910,19 +9910,6 @@ if (
               </div>
             )}
 
-            <div className="pie-resumen-final-tv">
-              <span>
-                🎾
-              </span>
-
-              <strong>
-                {presentacionPublica.sorteo}
-              </strong>
-
-              <small>
-                Sorteo finalizado
-              </small>
-            </div>
           </section>
         )}
 
