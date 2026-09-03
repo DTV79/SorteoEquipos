@@ -1732,6 +1732,18 @@ const ejecucionPublicaRef = useRef(null)
 const audioContextPublicoRef = useRef(null)
 const sonidoPublicoActivoRef = useRef(false)
 
+/*
+La presentación pública se actualiza mediante un intervalo creado
+cuando abre la TV. Ese intervalo puede conservar un cierre de React
+anterior a la carga de la configuración de sonido.
+
+Guardamos por ello la configuración audiovisual también en una ref:
+los efectos siempre consultarán el valor MÁS RECIENTE recibido de
+Supabase, independientemente del render desde el que se haya iniciado
+la revelación.
+*/
+const musicaPublicaRef = useRef(null)
+
 const audioEsperaPublicoRef = useRef(null)
 const audioSorteoPublicoRef = useRef(null)
 const blobUrlEsperaPublicoRef = useRef(null)
@@ -7399,6 +7411,9 @@ function efectoSonidoPublicoActivo(tipo) {
       'efecto_resumen_activo',
   }
 
+  const configActual =
+    musicaPublicaRef.current
+
   if (tipo === 'inicio') {
     /*
     El pequeño sonido de arranque que ya existía se conserva
@@ -7411,7 +7426,7 @@ function efectoSonidoPublicoActivo(tipo) {
       'resumen',
     ].some(
       (nombre) =>
-        musicaPublica?.[
+        configActual?.[
           campos[nombre]
         ] !== false
     )
@@ -7429,7 +7444,7 @@ function efectoSonidoPublicoActivo(tipo) {
   existiera en la respuesta, consideramos el efecto activo.
   */
   return (
-    musicaPublica?.[campo] !== false
+    configActual?.[campo] !== false
   )
 }
 
@@ -7960,6 +7975,9 @@ async function cargarConfiguracionMusicaPublica() {
     const config =
       data ?? {}
 
+    musicaPublicaRef.current =
+      config
+
     setMusicaPublica(
       config
     )
@@ -8007,6 +8025,69 @@ async function cargarConfiguracionMusicaPublica() {
       sorteo:
         'Error de configuración',
     })
+  }
+}
+
+
+async function refrescarActivacionEfectosPublicos() {
+  if (!sorteoPublicoId) {
+    return
+  }
+
+  try {
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      'obtener_musica_presentacion_publica',
+      {
+        p_sorteo_id:
+          sorteoPublicoId,
+      }
+    )
+
+    if (error) {
+      throw error
+    }
+
+    const config =
+      data ?? {}
+
+    const interruptores = {
+      efecto_jugador_activo:
+        config.efecto_jugador_activo !== false,
+
+      efecto_equipo_activo:
+        config.efecto_equipo_activo !== false,
+
+      efecto_resumen_activo:
+        config.efecto_resumen_activo !== false,
+    }
+
+    /*
+    Actualizamos primero la ref porque las revelaciones pueden
+    arrancar en este mismo ciclo de consulta.
+    */
+    musicaPublicaRef.current = {
+      ...(musicaPublicaRef.current ?? {}),
+      ...interruptores,
+    }
+
+    setMusicaPublica(
+      (actual) => ({
+        ...(actual ?? {}),
+        ...interruptores,
+      })
+    )
+  } catch (error) {
+    /*
+    Un fallo puntual al refrescar estos tres interruptores no debe
+    detener el sorteo ni volver a descargar las canciones.
+    */
+    console.warn(
+      'No se pudo refrescar la activación de los efectos:',
+      error
+    )
   }
 }
 
@@ -8567,6 +8648,14 @@ async function cargarPresentacionPublica() {
     }
 
     setErrorPublico('')
+
+    /*
+    La TV puede permanecer abierta mientras el administrador cambia
+    Jugador / Equipo / Resumen entre Sí y No. Refrescamos esos tres
+    interruptores antes de procesar una nueva revelación para que el
+    cambio tenga efecto sin recargar la pantalla pública.
+    */
+    await refrescarActivacionEfectosPublicos()
 
     if (!data) {
       limpiarTemporizadoresPublicos()
