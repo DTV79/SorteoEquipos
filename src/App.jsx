@@ -13737,9 +13737,47 @@ if (
                   {url && (
                     <audio
                       className="preview-audio-musica"
+                      data-tipo-musica={pista.tipo}
                       controls
                       preload="metadata"
                       src={url}
+                      onLoadedMetadata={(e) => {
+                        e.currentTarget.volume =
+                          Math.max(
+                            0,
+                            Math.min(
+                              1,
+                              Number(pista.volumen) / 100
+                            )
+                          )
+                      }}
+                      onVolumeChange={(e) => {
+                        /*
+                        El botón de silencio del reproductor nativo es
+                        independiente del volumen. Mientras esté silenciado
+                        conservamos el porcentaje elegido para recuperarlo
+                        al volver a activar el sonido.
+                        */
+                        if (e.currentTarget.muted) {
+                          return
+                        }
+
+                        const nuevoVolumen =
+                          Math.round(
+                            e.currentTarget.volume * 100
+                          )
+
+                        setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+
+                            [pista.tipo === 'espera'
+                              ? 'esperaVolumen'
+                              : 'sorteoVolumen']:
+                              nuevoVolumen,
+                          })
+                        )
+                      }}
                     />
                   )}
 
@@ -13811,7 +13849,10 @@ if (
                       max="100"
                       step="1"
                       value={pista.volumen}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const nuevoVolumen =
+                          Number(e.target.value)
+
                         setMusicaPresentacion(
                           (actual) => ({
                             ...actual,
@@ -13819,12 +13860,31 @@ if (
                             [pista.tipo === 'espera'
                               ? 'esperaVolumen'
                               : 'sorteoVolumen']:
-                              Number(
-                                e.target.value
-                              ),
+                              nuevoVolumen,
                           })
                         )
-                      }
+
+                        /*
+                        Sincronizamos inmediatamente el reproductor nativo
+                        para que el control superior y el deslizador inferior
+                        representen siempre el mismo volumen.
+                        */
+                        const reproductor =
+                          document.querySelector(
+                            `audio[data-tipo-musica="${pista.tipo}"]`
+                          )
+
+                        if (reproductor) {
+                          reproductor.volume =
+                            Math.max(
+                              0,
+                              Math.min(
+                                1,
+                                nuevoVolumen / 100
+                              )
+                            )
+                        }
+                      }}
                     />
                   </div>
                 </article>
