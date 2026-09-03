@@ -437,6 +437,54 @@ function obtenerConfigMusicaPresentacion(origen = null) {
         100,
         55
       ),
+
+    jugadorPath:
+      datos.efecto_jugador_path ??
+      null,
+
+    jugadorNombre:
+      datos.efecto_jugador_nombre ??
+      null,
+
+    jugadorVolumen:
+      limitarNumero(
+        datos.efecto_jugador_volumen,
+        0,
+        100,
+        88
+      ),
+
+    equipoPath:
+      datos.efecto_equipo_path ??
+      null,
+
+    equipoNombre:
+      datos.efecto_equipo_nombre ??
+      null,
+
+    equipoVolumen:
+      limitarNumero(
+        datos.efecto_equipo_volumen,
+        0,
+        100,
+        96
+      ),
+
+    resumenPath:
+      datos.efecto_resumen_path ??
+      null,
+
+    resumenNombre:
+      datos.efecto_resumen_nombre ??
+      null,
+
+    resumenVolumen:
+      limitarNumero(
+        datos.efecto_resumen_volumen,
+        0,
+        100,
+        92
+      ),
   }
 }
 
@@ -786,6 +834,366 @@ async function eliminarMusicaPresentacion(
 }
 
 
+
+function configEfectoPresentacion(tipo) {
+  const configuraciones = {
+    jugador: {
+      etiqueta: 'efecto de jugador',
+      statePath: 'jugadorPath',
+      stateNombre: 'jugadorNombre',
+      stateVolumen: 'jugadorVolumen',
+      dbPath: 'efecto_jugador_path',
+      dbNombre: 'efecto_jugador_nombre',
+      dbVolumen: 'efecto_jugador_volumen',
+      volumenDefecto: 88,
+    },
+
+    equipo: {
+      etiqueta: 'efecto de equipo completo',
+      statePath: 'equipoPath',
+      stateNombre: 'equipoNombre',
+      stateVolumen: 'equipoVolumen',
+      dbPath: 'efecto_equipo_path',
+      dbNombre: 'efecto_equipo_nombre',
+      dbVolumen: 'efecto_equipo_volumen',
+      volumenDefecto: 96,
+    },
+
+    resumen: {
+      etiqueta: 'efecto de resumen final',
+      statePath: 'resumenPath',
+      stateNombre: 'resumenNombre',
+      stateVolumen: 'resumenVolumen',
+      dbPath: 'efecto_resumen_path',
+      dbNombre: 'efecto_resumen_nombre',
+      dbVolumen: 'efecto_resumen_volumen',
+      volumenDefecto: 92,
+    },
+  }
+
+  return configuraciones[tipo] ?? null
+}
+
+
+async function subirEfectoPresentacion(
+  evento,
+  tipo
+) {
+  const archivo =
+    evento.target.files?.[0]
+
+  evento.target.value = ''
+
+  if (
+    !archivo ||
+    !sorteoSeleccionado
+  ) {
+    return
+  }
+
+  const config =
+    configEfectoPresentacion(tipo)
+
+  if (!config) {
+    return
+  }
+
+  const nombreMinusculas =
+    String(archivo.name ?? '')
+      .toLowerCase()
+
+  const extensionCorrecta =
+    nombreMinusculas.endsWith('.mp3') ||
+    nombreMinusculas.endsWith('.wav')
+
+  const mime =
+    String(archivo.type ?? '')
+      .toLowerCase()
+
+  const mimeCorrecto = [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/x-mpeg',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/vnd.wave',
+  ].includes(mime)
+
+  if (
+    !extensionCorrecta &&
+    !mimeCorrecto
+  ) {
+    setMensajeMusicaPresentacion(
+      'Para los efectos selecciona un archivo MP3 o WAV.'
+    )
+    return
+  }
+
+  const limiteBytes =
+    5 * 1024 * 1024
+
+  if (
+    Number(archivo.size) >
+    limiteBytes
+  ) {
+    setMensajeMusicaPresentacion(
+      'El efecto supera 5 MB. Para un sonido corto conviene usar un archivo más pequeño.'
+    )
+    return
+  }
+
+  const pathAnterior =
+    musicaPresentacion[
+      config.statePath
+    ]
+
+  const nombreLimpio =
+    limpiarNombreArchivoMusica(
+      archivo.name
+    )
+
+  const nuevoPath =
+    `${sorteoSeleccionado.id}/efecto-${tipo}-${Date.now()}-${nombreLimpio}`
+
+  setSubiendoMusicaPresentacion(
+    `efecto-${tipo}`
+  )
+
+  setMensajeMusicaPresentacion(
+    `Subiendo ${config.etiqueta}...`
+  )
+
+  try {
+    const {
+      error: errorSubida,
+    } = await supabase
+      .storage
+      .from('musica-sorteos')
+      .upload(
+        nuevoPath,
+        archivo,
+        {
+          cacheControl: '3600',
+          contentType:
+            archivo.type ||
+            (
+              nombreMinusculas.endsWith('.wav')
+                ? 'audio/wav'
+                : 'audio/mpeg'
+            ),
+          upsert: false,
+        }
+      )
+
+    if (errorSubida) {
+      throw errorSubida
+    }
+
+    const cambios = {
+      [config.dbPath]:
+        nuevoPath,
+      [config.dbNombre]:
+        archivo.name,
+    }
+
+    const {
+      error: errorGuardado,
+    } = await supabase
+      .from('sorteos')
+      .update(cambios)
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (errorGuardado) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([nuevoPath])
+
+      throw errorGuardado
+    }
+
+    actualizarSorteoLocal(
+      cambios
+    )
+
+    setMusicaPresentacion(
+      (actual) => ({
+        ...actual,
+        [config.statePath]:
+          nuevoPath,
+        [config.stateNombre]:
+          archivo.name,
+      })
+    )
+
+    if (
+      pathAnterior &&
+      pathAnterior !== nuevoPath
+    ) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([pathAnterior])
+    }
+
+    setMensajeMusicaPresentacion(
+      `✓ ${config.etiqueta} actualizado.`
+    )
+  } catch (error) {
+    console.error(
+      'Error subiendo efecto:',
+      error
+    )
+
+    setMensajeMusicaPresentacion(
+      `Error: ${error.message}`
+    )
+  } finally {
+    setSubiendoMusicaPresentacion(
+      ''
+    )
+  }
+}
+
+
+async function restaurarEfectoPredeterminado(
+  tipo
+) {
+  if (!sorteoSeleccionado) {
+    return
+  }
+
+  const config =
+    configEfectoPresentacion(tipo)
+
+  if (!config) {
+    return
+  }
+
+  const pathActual =
+    musicaPresentacion[
+      config.statePath
+    ]
+
+  setSubiendoMusicaPresentacion(
+    `efecto-${tipo}`
+  )
+
+  setMensajeMusicaPresentacion(
+    'Restaurando efecto predeterminado...'
+  )
+
+  try {
+    const cambios = {
+      [config.dbPath]: null,
+      [config.dbNombre]: null,
+    }
+
+    const {
+      error,
+    } = await supabase
+      .from('sorteos')
+      .update(cambios)
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (error) {
+      throw error
+    }
+
+    if (pathActual) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([pathActual])
+    }
+
+    actualizarSorteoLocal(
+      cambios
+    )
+
+    setMusicaPresentacion(
+      (actual) => ({
+        ...actual,
+        [config.statePath]: null,
+        [config.stateNombre]: null,
+      })
+    )
+
+    setMensajeMusicaPresentacion(
+      '✓ Efecto predeterminado restaurado.'
+    )
+  } catch (error) {
+    console.error(
+      'Error restaurando efecto:',
+      error
+    )
+
+    setMensajeMusicaPresentacion(
+      `Error: ${error.message}`
+    )
+  } finally {
+    setSubiendoMusicaPresentacion(
+      ''
+    )
+  }
+}
+
+
+async function probarEfectoPredeterminado(
+  tipo
+) {
+  try {
+    const ConstructorAudio =
+      window.AudioContext ||
+      window.webkitAudioContext
+
+    if (!ConstructorAudio) {
+      return
+    }
+
+    if (!audioContextPublicoRef.current) {
+      audioContextPublicoRef.current =
+        new ConstructorAudio()
+    }
+
+    await audioContextPublicoRef.current.resume()
+
+    const config =
+      configEfectoPresentacion(tipo)
+
+    const volumen =
+      config
+        ? limitarNumero(
+            musicaPresentacion[
+              config.stateVolumen
+            ],
+            0,
+            100,
+            config.volumenDefecto
+          ) / 100
+        : 1
+
+    reproducirEfectoSintetico(
+      tipo,
+      volumen,
+      true
+    )
+  } catch (error) {
+    console.warn(
+      'No se pudo probar el efecto:',
+      error
+    )
+  }
+}
+
+
 async function guardarVolumenesMusicaPresentacion() {
   if (!sorteoSeleccionado) {
     return
@@ -806,6 +1214,30 @@ async function guardarVolumenesMusicaPresentacion() {
         0,
         100,
         55
+      ),
+
+    efecto_jugador_volumen:
+      limitarNumero(
+        musicaPresentacion.jugadorVolumen,
+        0,
+        100,
+        88
+      ),
+
+    efecto_equipo_volumen:
+      limitarNumero(
+        musicaPresentacion.equipoVolumen,
+        0,
+        100,
+        96
+      ),
+
+    efecto_resumen_volumen:
+      limitarNumero(
+        musicaPresentacion.resumenVolumen,
+        0,
+        100,
+        92
       ),
   }
 
@@ -843,6 +1275,12 @@ async function guardarVolumenesMusicaPresentacion() {
           cambios.musica_espera_volumen,
         sorteoVolumen:
           cambios.musica_sorteo_volumen,
+        jugadorVolumen:
+          cambios.efecto_jugador_volumen,
+        equipoVolumen:
+          cambios.efecto_equipo_volumen,
+        resumenVolumen:
+          cambios.efecto_resumen_volumen,
       })
     )
 
@@ -1028,6 +1466,18 @@ const [
   sorteoPath: null,
   sorteoNombre: null,
   sorteoVolumen: 55,
+
+  jugadorPath: null,
+  jugadorNombre: null,
+  jugadorVolumen: 88,
+
+  equipoPath: null,
+  equipoNombre: null,
+  equipoVolumen: 96,
+
+  resumenPath: null,
+  resumenNombre: null,
+  resumenVolumen: 92,
 })
 
 const [
@@ -1254,6 +1704,20 @@ const pistaMusicaActivaPublicoRef = useRef(null)
 const temporizadorFadeMusicaPublicoRef = useRef(null)
 const temporizadorDuckingMusicaPublicoRef = useRef(null)
 
+const audioEfectosPublicosRef = useRef({
+  jugador: null,
+  equipo: null,
+  resumen: null,
+})
+
+const blobUrlsEfectosPublicosRef = useRef({
+  jugador: null,
+  equipo: null,
+  resumen: null,
+})
+
+const resumenSonidoPublicoRef = useRef(false)
+
 const temporizadoresPublicosRef = useRef([])
 const temporizadoresRepeticionPublicaRef = useRef([])
 const temporizadorBloqueoAdminRef = useRef(null)
@@ -1471,6 +1935,33 @@ const temporizadorRepeticionAdminRef = useRef(null)
     equipoCompletoPublico,
   ])
 
+
+  useEffect(() => {
+    if (!modoPublico) {
+      return
+    }
+
+    if (
+      mostrarResumenFinalPublico &&
+      !resumenSonidoPublicoRef.current
+    ) {
+      resumenSonidoPublicoRef.current =
+        true
+
+      reproducirEfectoPublico(
+        'resumen'
+      )
+    }
+
+    if (!mostrarResumenFinalPublico) {
+      resumenSonidoPublicoRef.current =
+        false
+    }
+  }, [
+    modoPublico,
+    mostrarResumenFinalPublico,
+  ])
+
   /*
   Limpieza de temporizadores y del AudioContext al desmontar.
   */
@@ -1498,6 +1989,16 @@ const temporizadorRepeticionAdminRef = useRef(null)
       )
       limpiarPistaMusicaPublica(
         'sorteo'
+      )
+
+      limpiarEfectoPersonalizadoPublico(
+        'jugador'
+      )
+      limpiarEfectoPersonalizadoPublico(
+        'equipo'
+      )
+      limpiarEfectoPersonalizadoPublico(
+        'resumen'
       )
 
       if (audioContextPublicoRef.current) {
@@ -1836,6 +2337,15 @@ const temporizadorRepeticionAdminRef = useRef(null)
           musica_sorteo_path,
           musica_sorteo_nombre,
           musica_sorteo_volumen,
+          efecto_jugador_path,
+          efecto_jugador_nombre,
+          efecto_jugador_volumen,
+          efecto_equipo_path,
+          efecto_equipo_nombre,
+          efecto_equipo_volumen,
+          efecto_resumen_path,
+          efecto_resumen_nombre,
+          efecto_resumen_volumen,
           estado,
           creado_en
         `)
@@ -6442,12 +6952,17 @@ function limpiarTemporizadoresPublicos() {
 
 function crearTonoPublico({
   frecuencia,
+  frecuenciaFinal = null,
   inicio = 0,
   duracion = 0.18,
   volumen = 0.045,
   tipo = 'sine',
+  forzar = false,
 }) {
-  if (!sonidoPublicoActivoRef.current) {
+  if (
+    !forzar &&
+    !sonidoPublicoActivoRef.current
+  ) {
     return
   }
 
@@ -6469,18 +6984,32 @@ function crearTonoPublico({
 
   oscilador.type = tipo
   oscilador.frequency.setValueAtTime(
-    frecuencia,
+    Math.max(1, frecuencia),
     ahora
   )
+
+  if (
+    frecuenciaFinal !== null
+  ) {
+    oscilador.frequency.exponentialRampToValueAtTime(
+      Math.max(1, frecuenciaFinal),
+      ahora + duracion
+    )
+  }
 
   ganancia.gain.setValueAtTime(
     0.0001,
     ahora
   )
+
   ganancia.gain.exponentialRampToValueAtTime(
-    volumen,
-    ahora + 0.025
+    Math.max(
+      0.0001,
+      volumen
+    ),
+    ahora + Math.min(0.018, duracion / 4)
   )
+
   ganancia.gain.exponentialRampToValueAtTime(
     0.0001,
     ahora + duracion
@@ -6490,8 +7019,306 @@ function crearTonoPublico({
   ganancia.connect(contexto.destination)
 
   oscilador.start(ahora)
-  oscilador.stop(ahora + duracion + 0.03)
+  oscilador.stop(
+    ahora + duracion + 0.03
+  )
 }
+
+
+function crearRuidoPublico({
+  inicio = 0,
+  duracion = 0.35,
+  volumen = 0.12,
+  filtro = 'highpass',
+  frecuenciaFiltro = 1200,
+  forzar = false,
+}) {
+  if (
+    !forzar &&
+    !sonidoPublicoActivoRef.current
+  ) {
+    return
+  }
+
+  const contexto =
+    audioContextPublicoRef.current
+
+  if (!contexto) {
+    return
+  }
+
+  const cantidadMuestras =
+    Math.max(
+      1,
+      Math.floor(
+        contexto.sampleRate *
+        duracion
+      )
+    )
+
+  const buffer =
+    contexto.createBuffer(
+      1,
+      cantidadMuestras,
+      contexto.sampleRate
+    )
+
+  const datos =
+    buffer.getChannelData(0)
+
+  for (
+    let indice = 0;
+    indice < datos.length;
+    indice += 1
+  ) {
+    /*
+    Ruido con caída natural para evitar un chasquido demasiado seco.
+    */
+    const envolvente =
+      1 - indice / datos.length
+
+    datos[indice] =
+      (Math.random() * 2 - 1) *
+      envolvente
+  }
+
+  const fuente =
+    contexto.createBufferSource()
+
+  fuente.buffer = buffer
+
+  const filtroAudio =
+    contexto.createBiquadFilter()
+
+  filtroAudio.type =
+    filtro
+
+  filtroAudio.frequency.setValueAtTime(
+    frecuenciaFiltro,
+    contexto.currentTime + inicio
+  )
+
+  const ganancia =
+    contexto.createGain()
+
+  const ahora =
+    contexto.currentTime + inicio
+
+  ganancia.gain.setValueAtTime(
+    Math.max(
+      0.0001,
+      volumen
+    ),
+    ahora
+  )
+
+  ganancia.gain.exponentialRampToValueAtTime(
+    0.0001,
+    ahora + duracion
+  )
+
+  fuente.connect(filtroAudio)
+  filtroAudio.connect(ganancia)
+  ganancia.connect(contexto.destination)
+
+  fuente.start(ahora)
+  fuente.stop(
+    ahora + duracion + 0.03
+  )
+}
+
+
+function reproducirEfectoSintetico(
+  tipo,
+  volumenGeneral = 1,
+  forzar = false
+) {
+  const volumen =
+    Math.max(
+      0,
+      Math.min(
+        1.25,
+        Number(volumenGeneral) || 0
+      )
+    )
+
+  if (tipo === 'inicio') {
+    crearTonoPublico({
+      frecuencia: 165,
+      frecuenciaFinal: 230,
+      duracion: 0.22,
+      volumen: 0.04 * volumen,
+      tipo: 'triangle',
+      forzar,
+    })
+
+    return
+  }
+
+  if (tipo === 'jugador') {
+    /*
+    RAYO:
+    un crack corto de ruido + dos barridos agudos.
+    */
+    crearRuidoPublico({
+      duracion: 0.24,
+      volumen: 0.24 * volumen,
+      filtro: 'highpass',
+      frecuenciaFiltro: 1500,
+      forzar,
+    })
+
+    crearRuidoPublico({
+      inicio: 0.045,
+      duracion: 0.19,
+      volumen: 0.15 * volumen,
+      filtro: 'bandpass',
+      frecuenciaFiltro: 3200,
+      forzar,
+    })
+
+    crearTonoPublico({
+      frecuencia: 1700,
+      frecuenciaFinal: 520,
+      duracion: 0.18,
+      volumen: 0.075 * volumen,
+      tipo: 'sawtooth',
+      forzar,
+    })
+
+    crearTonoPublico({
+      frecuencia: 1150,
+      frecuenciaFinal: 310,
+      inicio: 0.055,
+      duracion: 0.24,
+      volumen: 0.06 * volumen,
+      tipo: 'triangle',
+      forzar,
+    })
+
+    return
+  }
+
+  if (tipo === 'equipo') {
+    /*
+    BOMBA / IMPACTO:
+    grave descendente + explosión de ruido filtrado.
+    */
+    crearTonoPublico({
+      frecuencia: 115,
+      frecuenciaFinal: 34,
+      duracion: 0.72,
+      volumen: 0.28 * volumen,
+      tipo: 'sine',
+      forzar,
+    })
+
+    crearTonoPublico({
+      frecuencia: 78,
+      frecuenciaFinal: 28,
+      inicio: 0.025,
+      duracion: 0.82,
+      volumen: 0.20 * volumen,
+      tipo: 'triangle',
+      forzar,
+    })
+
+    crearRuidoPublico({
+      duracion: 0.48,
+      volumen: 0.24 * volumen,
+      filtro: 'lowpass',
+      frecuenciaFiltro: 650,
+      forzar,
+    })
+
+    return
+  }
+
+  if (
+    tipo === 'resumen' ||
+    tipo === 'final'
+  ) {
+    /*
+    FANFARRIA CORTA:
+    acorde ascendente de victoria para abrir el resumen final.
+    */
+    ;[
+      [523.25, 0.00],
+      [659.25, 0.10],
+      [783.99, 0.20],
+      [1046.50, 0.34],
+    ].forEach(
+      ([frecuencia, inicio]) => {
+        crearTonoPublico({
+          frecuencia,
+          inicio,
+          duracion: 0.72,
+          volumen: 0.075 * volumen,
+          tipo: 'triangle',
+          forzar,
+        })
+
+        crearTonoPublico({
+          frecuencia:
+            frecuencia / 2,
+          inicio,
+          duracion: 0.78,
+          volumen: 0.032 * volumen,
+          tipo: 'sine',
+          forzar,
+        })
+      }
+    )
+  }
+}
+
+
+function volumenEfectoPublico(tipo) {
+  const configuracion = {
+    jugador: {
+      campo:
+        'efecto_jugador_volumen',
+      defecto: 88,
+    },
+    equipo: {
+      campo:
+        'efecto_equipo_volumen',
+      defecto: 96,
+    },
+    resumen: {
+      campo:
+        'efecto_resumen_volumen',
+      defecto: 92,
+    },
+  }[tipo]
+
+  if (!configuracion) {
+    return 1
+  }
+
+  return (
+    limitarNumero(
+      musicaPublica?.[
+        configuracion.campo
+      ],
+      0,
+      100,
+      configuracion.defecto
+    ) / 100
+  )
+}
+
+
+function obtenerAudioEfectoPublico(
+  tipo
+) {
+  return (
+    audioEfectosPublicosRef
+      .current?.[tipo] ??
+    null
+  )
+}
+
 
 function reproducirEfectoPublico(tipo) {
   if (!sonidoPublicoActivoRef.current) {
@@ -6499,72 +7326,82 @@ function reproducirEfectoPublico(tipo) {
   }
 
   if (tipo === 'inicio') {
-    crearTonoPublico({
-      frecuencia: 170,
-      duracion: 0.28,
-      volumen: 0.035,
-      tipo: 'triangle',
-    })
-
-    crearTonoPublico({
-      frecuencia: 255,
-      inicio: 0.12,
-      duracion: 0.25,
-      volumen: 0.028,
-      tipo: 'triangle',
-    })
-
+    reproducirEfectoSintetico(
+      'inicio',
+      0.8
+    )
     return
   }
 
-  if (tipo === 'jugador') {
-    crearTonoPublico({
-      frecuencia: 520,
-      duracion: 0.15,
-      volumen: 0.042,
-      tipo: 'sine',
-    })
+  const tipoNormalizado =
+    tipo === 'final'
+      ? 'resumen'
+      : tipo
 
-    crearTonoPublico({
-      frecuencia: 780,
-      inicio: 0.08,
-      duracion: 0.18,
-      volumen: 0.035,
-      tipo: 'sine',
-    })
-
+  if (
+    ![
+      'jugador',
+      'equipo',
+      'resumen',
+    ].includes(tipoNormalizado)
+  ) {
     return
   }
 
-  if (tipo === 'equipo') {
-    ;[392, 523.25, 659.25].forEach(
-      (frecuencia, indice) => {
-        crearTonoPublico({
-          frecuencia,
-          inicio: indice * 0.055,
-          duracion: 0.34,
-          volumen: 0.034,
-          tipo: 'sine',
-        })
-      }
+  const volumen =
+    volumenEfectoPublico(
+      tipoNormalizado
     )
 
-    return
+  const audioPersonalizado =
+    obtenerAudioEfectoPublico(
+      tipoNormalizado
+    )
+
+  if (audioPersonalizado) {
+    try {
+      audioPersonalizado.pause()
+      audioPersonalizado.currentTime = 0
+      audioPersonalizado.volume =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            volumen
+          )
+        )
+
+      const promesa =
+        audioPersonalizado.play()
+
+      if (
+        promesa &&
+        typeof promesa.catch ===
+          'function'
+      ) {
+        promesa.catch(
+          (error) => {
+            console.warn(
+              'No se pudo reproducir el efecto personalizado:',
+              error
+            )
+          }
+        )
+      }
+
+      return
+    } catch (error) {
+      console.warn(
+        'Error reproduciendo efecto personalizado:',
+        error
+      )
+    }
   }
 
-  if (tipo === 'final') {
-    ;[392, 523.25, 659.25, 783.99].forEach(
-      (frecuencia, indice) => {
-        crearTonoPublico({
-          frecuencia,
-          inicio: indice * 0.11,
-          duracion: 0.48,
-          volumen: 0.038,
-          tipo: 'sine',
-        })
-      }
-    )
-  }
+  reproducirEfectoSintetico(
+    tipoNormalizado,
+    volumen
+  )
 }
 
 
@@ -6869,6 +7706,107 @@ async function precargarPistaMusicaPublica(
 }
 
 
+
+function limpiarEfectoPersonalizadoPublico(
+  tipo
+) {
+  const audio =
+    audioEfectosPublicosRef
+      .current?.[tipo]
+
+  if (audio) {
+    audio.pause()
+    audio.src = ''
+  }
+
+  audioEfectosPublicosRef.current[
+    tipo
+  ] = null
+
+  const blobUrl =
+    blobUrlsEfectosPublicosRef
+      .current?.[tipo]
+
+  if (blobUrl) {
+    URL.revokeObjectURL(
+      blobUrl
+    )
+  }
+
+  blobUrlsEfectosPublicosRef.current[
+    tipo
+  ] = null
+}
+
+
+async function precargarEfectoPersonalizadoPublico(
+  tipo,
+  path
+) {
+  limpiarEfectoPersonalizadoPublico(
+    tipo
+  )
+
+  if (!path) {
+    return
+  }
+
+  try {
+    const url =
+      obtenerUrlMusica(
+        path
+      )
+
+    const respuesta =
+      await fetch(
+        url,
+        {
+          cache: 'force-cache',
+        }
+      )
+
+    if (!respuesta.ok) {
+      throw new Error(
+        `HTTP ${respuesta.status}`
+      )
+    }
+
+    const blob =
+      await respuesta.blob()
+
+    const blobUrl =
+      URL.createObjectURL(
+        blob
+      )
+
+    const audio =
+      new Audio(
+        blobUrl
+      )
+
+    audio.preload = 'auto'
+    audio.loop = false
+
+    audioEfectosPublicosRef.current[
+      tipo
+    ] = audio
+
+    blobUrlsEfectosPublicosRef.current[
+      tipo
+    ] = blobUrl
+  } catch (error) {
+    console.warn(
+      `No se pudo precargar el efecto ${tipo}; se usará el predeterminado:`,
+      error
+    )
+
+    limpiarEfectoPersonalizadoPublico(
+      tipo
+    )
+  }
+}
+
+
 async function cargarConfiguracionMusicaPublica() {
   if (!sorteoPublicoId) {
     return
@@ -6906,6 +7844,21 @@ async function cargarConfiguracionMusicaPublica() {
       precargarPistaMusicaPublica(
         'sorteo',
         config.musica_sorteo_path
+      ),
+
+      precargarEfectoPersonalizadoPublico(
+        'jugador',
+        config.efecto_jugador_path
+      ),
+
+      precargarEfectoPersonalizadoPublico(
+        'equipo',
+        config.efecto_equipo_path
+      ),
+
+      precargarEfectoPersonalizadoPublico(
+        'resumen',
+        config.efecto_resumen_path
       ),
     ])
   } catch (error) {
@@ -7210,6 +8163,15 @@ async function alternarSonidoPublico() {
       desbloquearAudioPublico(
         audioSorteoPublicoRef.current
       ),
+      desbloquearAudioPublico(
+        audioEfectosPublicosRef.current.jugador
+      ),
+      desbloquearAudioPublico(
+        audioEfectosPublicosRef.current.equipo
+      ),
+      desbloquearAudioPublico(
+        audioEfectosPublicosRef.current.resumen
+      ),
     ])
 
     sonidoPublicoActivoRef.current = true
@@ -7333,9 +8295,7 @@ function iniciarSecuenciaEquipoPublico(
       )
 
       reproducirEfectoPublico(
-        esUltimoEquipo
-          ? 'final'
-          : 'equipo'
+        'equipo'
       )
     },
     duracionHastaUltimo +
@@ -8569,8 +9529,12 @@ if (
               {miembrosMostradosPublico.length > 0 &&
                 !equipoCompletoPublico && (
                   <div
-                    key={`flash-jugador-${miembrosMostradosPublico.length}`}
-                    className="flash-jugador-publico"
+                    key={`flash-jugador-${animacionPublica}-${miembrosVisiblesPublico}`}
+                    className={`flash-jugador-publico ${
+                      miembrosVisiblesPublico % 2 === 0
+                        ? 'flash-jugador-derecha'
+                        : 'flash-jugador-izquierda'
+                    }`}
                     aria-hidden="true"
                   />
                 )}
@@ -8621,7 +9585,14 @@ if (
                             ? 'pieza-miembro-publico-nueva'
                             : 'pieza-miembro-publico-estable'
                         } ${
-                          indiceMiembro % 2 === 0
+                          (
+                            equipoCompletoPublico
+                              ? indiceMiembro
+                              : Math.max(
+                                  0,
+                                  miembrosVisiblesPublico - 1
+                                )
+                          ) % 2 === 0
                             ? 'pieza-desde-izquierda'
                             : 'pieza-desde-derecha'
                         }`}
@@ -8645,7 +9616,13 @@ if (
                               : 'jugador-publico-estable'
                           }`}
                           style={{
-                            '--indice-miembro': indiceMiembro,
+                            '--indice-miembro':
+                              equipoCompletoPublico
+                                ? indiceMiembro
+                                : Math.max(
+                                    0,
+                                    miembrosVisiblesPublico - 1
+                                  ),
                           }}
                         >
                           <div className="foto-publica-tv">
@@ -13560,6 +14537,57 @@ if (
     },
   ]
 
+  const efectosPresentacion = [
+    {
+      tipo: 'jugador',
+      titulo: 'Al revelar cada jugador',
+      nombreDefecto: 'Rayo',
+      descripcion:
+        'Un rayo corto y potente acompaña la entrada de cada jugador.',
+      icono: '⚡',
+      path:
+        musicaPresentacion.jugadorPath,
+      nombre:
+        musicaPresentacion.jugadorNombre,
+      volumen:
+        musicaPresentacion.jugadorVolumen,
+      stateVolumen:
+        'jugadorVolumen',
+    },
+    {
+      tipo: 'equipo',
+      titulo: 'Al completar el equipo',
+      nombreDefecto: 'Bomba / impacto',
+      descripcion:
+        'Un impacto grave refuerza el momento en que aparece el equipo completo.',
+      icono: '💣',
+      path:
+        musicaPresentacion.equipoPath,
+      nombre:
+        musicaPresentacion.equipoNombre,
+      volumen:
+        musicaPresentacion.equipoVolumen,
+      stateVolumen:
+        'equipoVolumen',
+    },
+    {
+      tipo: 'resumen',
+      titulo: 'Al mostrar el resumen final',
+      nombreDefecto: 'Fanfarria de victoria',
+      descripcion:
+        'Una fanfarria corta abre el resultado final del sorteo.',
+      icono: '🏆',
+      path:
+        musicaPresentacion.resumenPath,
+      nombre:
+        musicaPresentacion.resumenNombre,
+      volumen:
+        musicaPresentacion.resumenVolumen,
+      stateVolumen:
+        'resumenVolumen',
+    },
+  ]
+
   return (
     <main className="app app-admin">
       <section className="panel-admin">
@@ -14043,6 +15071,240 @@ if (
           )}
         </div>
 
+        <div className="cabecera-seccion-efectos">
+          <div>
+            <span>EFECTOS DE SONIDO</span>
+            <h3>Sonidos de la revelación</h3>
+            <p>
+              Si no configuras ningún archivo, se usan automáticamente
+              los efectos predeterminados: rayo, bomba y fanfarria final.
+              Puedes sustituir cualquiera por tu propio MP3 o WAV.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid-efectos-presentacion">
+          {efectosPresentacion.map(
+            (efecto) => {
+              const estaSubiendo =
+                subiendoMusicaPresentacion ===
+                `efecto-${efecto.tipo}`
+
+              const url =
+                efecto.path
+                  ? obtenerUrlMusica(
+                      efecto.path
+                    )
+                  : null
+
+              return (
+                <article
+                  className="tarjeta-efecto-presentacion"
+                  key={efecto.tipo}
+                >
+                  <header>
+                    <div className="icono-efecto-presentacion">
+                      {efecto.icono}
+                    </div>
+
+                    <div>
+                      <span>
+                        {efecto.titulo}
+                      </span>
+
+                      <h3>
+                        {efecto.path
+                          ? 'Efecto personalizado'
+                          : efecto.nombreDefecto}
+                      </h3>
+
+                      <p>
+                        {efecto.descripcion}
+                      </p>
+                    </div>
+                  </header>
+
+                  <div
+                    className={`archivo-musica-actual ${
+                      efecto.path
+                        ? 'archivo-musica-configurado'
+                        : ''
+                    }`}
+                  >
+                    <span>
+                      {efecto.path
+                        ? '✓'
+                        : efecto.icono}
+                    </span>
+
+                    <div>
+                      <small>
+                        SONIDO ACTUAL
+                      </small>
+
+                      <strong>
+                        {efecto.nombre ??
+                          `${efecto.nombreDefecto} · predeterminado`}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {url ? (
+                    <audio
+                      className="preview-audio-musica"
+                      data-tipo-efecto={efecto.tipo}
+                      controls
+                      preload="metadata"
+                      src={url}
+                      onLoadedMetadata={(e) => {
+                        e.currentTarget.volume =
+                          Math.max(
+                            0,
+                            Math.min(
+                              1,
+                              Number(efecto.volumen) / 100
+                            )
+                          )
+                      }}
+                      onVolumeChange={(e) => {
+                        if (e.currentTarget.muted) {
+                          return
+                        }
+
+                        const nuevoVolumen =
+                          Math.round(
+                            e.currentTarget.volume * 100
+                          )
+
+                        setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+                            [efecto.stateVolumen]:
+                              nuevoVolumen,
+                          })
+                        )
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="boton-probar-efecto"
+                      onClick={() =>
+                        probarEfectoPredeterminado(
+                          efecto.tipo
+                        )
+                      }
+                    >
+                      ▶ Probar {efecto.nombreDefecto}
+                    </button>
+                  )}
+
+                  <div className="acciones-pista-musica">
+                    <label
+                      className={`boton boton-principal selector-mp3 ${
+                        estaSubiendo
+                          ? 'selector-mp3-bloqueado'
+                          : ''
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav"
+                        disabled={
+                          Boolean(
+                            subiendoMusicaPresentacion
+                          )
+                        }
+                        onChange={(e) =>
+                          subirEfectoPresentacion(
+                            e,
+                            efecto.tipo
+                          )
+                        }
+                      />
+
+                      {estaSubiendo
+                        ? 'Subiendo...'
+                        : efecto.path
+                          ? 'Cambiar efecto'
+                          : 'Usar mi sonido'}
+                    </label>
+
+                    {efecto.path && (
+                      <button
+                        type="button"
+                        className="boton boton-secundario"
+                        disabled={
+                          Boolean(
+                            subiendoMusicaPresentacion
+                          )
+                        }
+                        onClick={() =>
+                          restaurarEfectoPredeterminado(
+                            efecto.tipo
+                          )
+                        }
+                      >
+                        Restaurar predeterminado
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="volumen-pista-musica">
+                    <div>
+                      <span>
+                        Volumen
+                      </span>
+
+                      <strong>
+                        {efecto.volumen}%
+                      </strong>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={efecto.volumen}
+                      onChange={(e) => {
+                        const nuevoVolumen =
+                          Number(
+                            e.target.value
+                          )
+
+                        setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+                            [efecto.stateVolumen]:
+                              nuevoVolumen,
+                          })
+                        )
+
+                        const reproductor =
+                          document.querySelector(
+                            `audio[data-tipo-efecto="${efecto.tipo}"]`
+                          )
+
+                        if (reproductor) {
+                          reproductor.volume =
+                            Math.max(
+                              0,
+                              Math.min(
+                                1,
+                                nuevoVolumen / 100
+                              )
+                            )
+                        }
+                      }}
+                    />
+                  </div>
+                </article>
+              )
+            }
+          )}
+        </div>
+
         <div className="nota-precarga-musica">
           <span>⚡</span>
 
@@ -14052,9 +15314,9 @@ if (
             </strong>
 
             <p>
-              Al abrir la TV, las dos canciones se descargan completas
-              en segundo plano. El audio nunca bloquea el sorteo:
-              si una pista fallase, la presentación continuaría sin música.
+              Al abrir la TV, las canciones y cualquier efecto personalizado
+              se descargan en segundo plano. Si un efecto personalizado fallase,
+              la TV utilizará automáticamente el efecto predeterminado.
             </p>
           </div>
         </div>
@@ -14075,7 +15337,7 @@ if (
           >
             {guardandoMusicaPresentacion
               ? 'Guardando...'
-              : 'Guardar volúmenes'}
+              : 'Guardar volúmenes de música y efectos'}
           </button>
         </div>
 

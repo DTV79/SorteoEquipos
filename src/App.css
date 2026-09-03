@@ -7453,3 +7453,146 @@ las fotos ni el símbolo + respecto a las demás filas.
   }
 }
 
+
+
+/* ==========================================================
+   EFECTOS DE SONIDO CONFIGURABLES
+   ========================================================== */
+
+.cabecera-seccion-efectos {
+  margin: 28px 0 14px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cabecera-seccion-efectos span {
+  display: block;
+  margin-bottom: 5px;
+  color: #86efac;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.cabecera-seccion-efectos h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.cabecera-seccion-efectos p {
+  max-width: 760px;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.grid-efectos-presentacion {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.tarjeta-efecto-presentacion {
+  padding: 16px;
+  border: 1px solid #27313d;
+  border-radius: 16px;
+  background: #0d131a;
+}
+
+.tarjeta-efecto-presentacion > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 96px;
+}
+
+.tarjeta-efecto-presentacion > header > div:last-child {
+  min-width: 0;
+}
+
+.tarjeta-efecto-presentacion > header span {
+  display: block;
+  margin-bottom: 3px;
+  color: #86efac;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tarjeta-efecto-presentacion h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+}
+
+.tarjeta-efecto-presentacion p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.icono-efecto-presentacion {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 11px;
+  background: rgba(34, 197, 94, 0.07);
+  font-size: 20px;
+}
+
+.boton-probar-efecto {
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.065);
+  color: #bbf7d0;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.boton-probar-efecto:hover {
+  background: rgba(34, 197, 94, 0.11);
+}
+
+/*
+El destello del jugador 2 aparece desde el lado contrario.
+Así cada jugador tiene una entrada visual claramente diferenciada.
+*/
+.flash-jugador-izquierda::before {
+  transform-origin: left center;
+}
+
+.flash-jugador-derecha::before {
+  transform-origin: right center;
+  animation-direction: reverse;
+}
+
+.flash-jugador-derecha::after {
+  left: 67%;
+}
+
+.flash-jugador-izquierda::after {
+  left: 33%;
+}
+
+@media (max-width: 900px) {
+  .grid-efectos-presentacion {
+    grid-template-columns: 1fr;
+  }
+
+  .tarjeta-efecto-presentacion > header {
+    min-height: auto;
+  }
+}
