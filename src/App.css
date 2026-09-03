@@ -6914,3 +6914,562 @@ las fotos ni el símbolo + respecto a las demás filas.
 .aviso-activar-sonido-tv:disabled:hover {
   transform: none;
 }
+
+
+/* ==========================================================
+   MODO ESPECTÁCULO · REVELACIÓN DE JUGADORES
+   ========================================================== */
+
+.escenario-publico-tv::before,
+.escenario-publico-tv::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0.42;
+}
+
+.escenario-publico-tv::before {
+  width: min(54vw, 780px);
+  height: min(54vw, 780px);
+  left: -18%;
+  top: -28%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(34, 197, 94, 0.12),
+      rgba(34, 197, 94, 0.025) 38%,
+      transparent 68%
+    );
+  animation: orbita-luz-espectaculo 10s ease-in-out infinite alternate;
+}
+
+.escenario-publico-tv::after {
+  width: min(46vw, 680px);
+  height: min(46vw, 680px);
+  right: -14%;
+  bottom: -34%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.09),
+      rgba(34, 197, 94, 0.025) 42%,
+      transparent 70%
+    );
+  animation: orbita-luz-espectaculo 12s ease-in-out infinite alternate-reverse;
+}
+
+.equipo-principal-publico > *:not(.flash-jugador-publico):not(.flash-equipo-completo-publico) {
+  position: relative;
+  z-index: 2;
+}
+
+.equipo-principal-publico-formando {
+  transition:
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.equipo-principal-publico-completo {
+  border-color: rgba(74, 222, 128, 0.82);
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.50),
+    0 0 0 1px rgba(74, 222, 128, 0.16),
+    0 0 52px rgba(34, 197, 94, 0.17);
+  animation:
+    impacto-equipo-completo 0.78s
+      cubic-bezier(0.18, 0.88, 0.22, 1),
+    respiracion-equipo-completo 3.4s 0.8s ease-in-out infinite;
+}
+
+.flash-jugador-publico,
+.flash-equipo-completo-publico {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.flash-jugador-publico::before {
+  content: "";
+  position: absolute;
+  width: 34%;
+  height: 180%;
+  left: 50%;
+  top: 50%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(220, 252, 231, 0.32),
+      rgba(134, 239, 172, 0.16),
+      transparent
+    );
+  filter: blur(12px);
+  transform:
+    translate(-50%, -50%)
+    rotate(18deg)
+    scaleX(0.15);
+  animation:
+    barrido-jugador-espectaculo 0.72s ease-out both;
+}
+
+.flash-jugador-publico::after {
+  content: "";
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(134, 239, 172, 0.30),
+      rgba(34, 197, 94, 0.08) 35%,
+      transparent 70%
+    );
+  transform: translate(-50%, -50%);
+  animation:
+    pulso-flash-jugador 0.7s ease-out both;
+}
+
+.flash-equipo-completo-publico::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(74, 222, 128, 0.24),
+      rgba(34, 197, 94, 0.06) 28%,
+      transparent 58%
+    );
+  animation:
+    explosion-equipo-completo 0.88s ease-out both;
+}
+
+.flash-equipo-completo-publico::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 90px rgba(74, 222, 128, 0.14);
+  animation:
+    borde-equipo-completo 1.15s ease-out both;
+}
+
+.pieza-miembro-publico-nueva {
+  position: relative;
+  z-index: 4;
+}
+
+.pieza-miembro-publico-estable {
+  opacity: 1;
+  transform: none;
+}
+
+.pieza-miembro-publico-nueva.pieza-desde-izquierda
+  .jugador-publico-entrada-espectaculo {
+  --entrada-x-espectaculo: -72px;
+}
+
+.pieza-miembro-publico-nueva.pieza-desde-derecha
+  .jugador-publico-entrada-espectaculo {
+  --entrada-x-espectaculo: 72px;
+}
+
+.jugador-publico-entrada-espectaculo {
+  animation:
+    entrada-jugador-espectaculo 0.82s
+      cubic-bezier(0.16, 0.92, 0.22, 1)
+      both;
+}
+
+.jugador-publico-entrada-espectaculo .foto-publica-tv {
+  position: relative;
+  border-color: rgba(134, 239, 172, 0.72);
+  animation:
+    foto-jugador-espectaculo 1.05s
+      cubic-bezier(0.16, 0.86, 0.22, 1)
+      both;
+  box-shadow:
+    0 0 0 10px rgba(34, 197, 94, 0.035),
+    0 0 36px rgba(34, 197, 94, 0.20);
+}
+
+.jugador-publico-entrada-espectaculo .foto-publica-tv img {
+  animation:
+    enfocar-foto-jugador 0.9s ease-out both;
+}
+
+.jugador-publico-entrada-espectaculo small {
+  animation:
+    etiqueta-jugador-espectaculo 0.46s 0.28s ease-out both;
+}
+
+.jugador-publico-entrada-espectaculo h2 {
+  animation:
+    nombre-jugador-espectaculo 0.62s 0.34s
+      cubic-bezier(0.16, 0.88, 0.22, 1)
+      both;
+}
+
+.equipo-principal-publico-completo
+  .pieza-miembro-publico {
+  animation:
+    reunir-equipo-espectaculo 0.62s
+      cubic-bezier(0.18, 0.88, 0.24, 1)
+      both;
+}
+
+.equipo-principal-publico-completo
+  .grupo-equipo-publico {
+  animation:
+    sello-grupo-espectaculo 0.58s 0.18s
+      cubic-bezier(0.16, 0.9, 0.2, 1)
+      both;
+}
+
+.equipo-principal-publico-completo
+  .nombre-equipo-completo {
+  text-shadow:
+    0 0 20px rgba(134, 239, 172, 0.18);
+  animation:
+    nombre-equipo-espectaculo 0.72s 0.22s
+      cubic-bezier(0.16, 0.9, 0.2, 1)
+      both;
+}
+
+.equipo-principal-publico-completo
+  .mas-publico-tv {
+  animation:
+    union-equipo-espectaculo 0.5s 0.1s ease-out both;
+}
+
+@keyframes entrada-jugador-espectaculo {
+  0% {
+    opacity: 0;
+    filter: blur(13px);
+    transform:
+      translate3d(
+        var(--entrada-x-espectaculo, 0),
+        24px,
+        0
+      )
+      scale(0.78);
+  }
+
+  55% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      translate3d(0, -5px, 0)
+      scale(1.045);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      translate3d(0, 0, 0)
+      scale(1);
+  }
+}
+
+@keyframes foto-jugador-espectaculo {
+  0% {
+    box-shadow:
+      0 0 0 2px rgba(134, 239, 172, 0),
+      0 0 0 rgba(34, 197, 94, 0);
+  }
+
+  45% {
+    box-shadow:
+      0 0 0 14px rgba(134, 239, 172, 0.055),
+      0 0 52px rgba(34, 197, 94, 0.30);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px rgba(34, 197, 94, 0.035),
+      0 0 36px rgba(34, 197, 94, 0.20);
+  }
+}
+
+@keyframes enfocar-foto-jugador {
+  0% {
+    filter:
+      blur(9px)
+      brightness(1.35);
+    transform: scale(1.12);
+  }
+
+  100% {
+    filter:
+      blur(0)
+      brightness(1);
+    transform: scale(1);
+  }
+}
+
+@keyframes etiqueta-jugador-espectaculo {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nombre-jugador-espectaculo {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.10em;
+    transform:
+      translateY(18px)
+      scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    letter-spacing: normal;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes barrido-jugador-espectaculo {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-160%, -50%)
+      rotate(18deg)
+      scaleX(0.15);
+  }
+
+  28% {
+    opacity: 0.95;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(120%, -50%)
+      rotate(18deg)
+      scaleX(1.05);
+  }
+}
+
+@keyframes pulso-flash-jugador {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(0.25);
+  }
+
+  42% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(2.2);
+  }
+}
+
+@keyframes impacto-equipo-completo {
+  0% {
+    transform: scale(0.985);
+  }
+
+  36% {
+    transform: scale(1.016);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes explosion-equipo-completo {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+
+  38% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes borde-equipo-completo {
+  0% {
+    opacity: 0;
+    box-shadow:
+      inset 0 0 0 rgba(74, 222, 128, 0);
+  }
+
+  40% {
+    opacity: 1;
+    box-shadow:
+      inset 0 0 110px rgba(74, 222, 128, 0.20);
+  }
+
+  100% {
+    opacity: 0.35;
+    box-shadow:
+      inset 0 0 55px rgba(74, 222, 128, 0.08);
+  }
+}
+
+@keyframes reunir-equipo-espectaculo {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.035);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes sello-grupo-espectaculo {
+  0% {
+    opacity: 0;
+    transform:
+      translateY(-14px)
+      scale(0.7);
+  }
+
+  70% {
+    opacity: 1;
+    transform:
+      translateY(2px)
+      scale(1.06);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes nombre-equipo-espectaculo {
+  0% {
+    opacity: 0;
+    transform:
+      translateY(20px)
+      scale(0.92);
+  }
+
+  70% {
+    opacity: 1;
+    transform:
+      translateY(-2px)
+      scale(1.025);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes union-equipo-espectaculo {
+  0% {
+    opacity: 0;
+    transform:
+      rotate(-18deg)
+      scale(0.3);
+  }
+
+  75% {
+    opacity: 1;
+    transform:
+      rotate(3deg)
+      scale(1.22);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      rotate(0)
+      scale(1);
+  }
+}
+
+@keyframes respiracion-equipo-completo {
+  0%,
+  100% {
+    box-shadow:
+      0 34px 110px rgba(0, 0, 0, 0.50),
+      0 0 0 1px rgba(74, 222, 128, 0.12),
+      0 0 34px rgba(34, 197, 94, 0.10);
+  }
+
+  50% {
+    box-shadow:
+      0 34px 110px rgba(0, 0, 0, 0.50),
+      0 0 0 1px rgba(74, 222, 128, 0.20),
+      0 0 58px rgba(34, 197, 94, 0.18);
+  }
+}
+
+@keyframes orbita-luz-espectaculo {
+  0% {
+    transform:
+      translate3d(-3%, -2%, 0)
+      scale(0.95);
+  }
+
+  100% {
+    transform:
+      translate3d(7%, 5%, 0)
+      scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .escenario-publico-tv::before,
+  .escenario-publico-tv::after,
+  .equipo-principal-publico-completo,
+  .jugador-publico-entrada-espectaculo,
+  .jugador-publico-entrada-espectaculo .foto-publica-tv,
+  .jugador-publico-entrada-espectaculo .foto-publica-tv img,
+  .jugador-publico-entrada-espectaculo small,
+  .jugador-publico-entrada-espectaculo h2,
+  .equipo-principal-publico-completo .pieza-miembro-publico,
+  .equipo-principal-publico-completo .grupo-equipo-publico,
+  .equipo-principal-publico-completo .nombre-equipo-completo,
+  .equipo-principal-publico-completo .mas-publico-tv,
+  .flash-jugador-publico::before,
+  .flash-jugador-publico::after,
+  .flash-equipo-completo-publico::before,
+  .flash-equipo-completo-publico::after {
+    animation: none !important;
+  }
+}

@@ -1252,6 +1252,7 @@ const blobUrlEsperaPublicoRef = useRef(null)
 const blobUrlSorteoPublicoRef = useRef(null)
 const pistaMusicaActivaPublicoRef = useRef(null)
 const temporizadorFadeMusicaPublicoRef = useRef(null)
+const temporizadorDuckingMusicaPublicoRef = useRef(null)
 
 const temporizadoresPublicosRef = useRef([])
 const temporizadoresRepeticionPublicaRef = useRef([])
@@ -6611,8 +6612,101 @@ function limpiarPistaMusicaPublica(tipo) {
 }
 
 
+function detenerDuckingMusicaPublica() {
+  if (
+    temporizadorDuckingMusicaPublicoRef.current
+  ) {
+    window.clearInterval(
+      temporizadorDuckingMusicaPublicoRef.current
+    )
+
+    temporizadorDuckingMusicaPublicoRef.current =
+      null
+  }
+}
+
+
+function ajustarVolumenMusicaPublica(
+  factor = 1,
+  duracionMs = 320
+) {
+  if (
+    !sonidoPublicoActivoRef.current ||
+    pistaMusicaActivaPublicoRef.current !== 'sorteo'
+  ) {
+    return
+  }
+
+  const audio =
+    audioSorteoPublicoRef.current
+
+  if (!audio) {
+    return
+  }
+
+  detenerDuckingMusicaPublica()
+
+  const volumenBase =
+    volumenObjetivoMusicaPublica(
+      'sorteo'
+    )
+
+  const objetivo =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        volumenBase * factor
+      )
+    )
+
+  const inicial =
+    Number(audio.volume) || 0
+
+  const pasos = 18
+  const intervaloMs =
+    Math.max(
+      12,
+      duracionMs / pasos
+    )
+
+  let paso = 0
+
+  temporizadorDuckingMusicaPublicoRef.current =
+    window.setInterval(
+      () => {
+        paso += 1
+
+        const progreso =
+          Math.min(
+            1,
+            paso / pasos
+          )
+
+        const suavizado =
+          1 -
+          Math.pow(
+            1 - progreso,
+            3
+          )
+
+        audio.volume =
+          inicial +
+          (objetivo - inicial) *
+            suavizado
+
+        if (progreso >= 1) {
+          detenerDuckingMusicaPublica()
+        }
+      },
+      intervaloMs
+    )
+}
+
+
 function detenerMusicaPublica() {
   detenerFadeMusicaPublica()
+  detenerDuckingMusicaPublica()
 
   for (
     const audio of [
@@ -6950,6 +7044,7 @@ async function cambiarPistaMusicaPublica(
   }
 
   detenerFadeMusicaPublica()
+  detenerDuckingMusicaPublica()
 
   if (reiniciar) {
     try {
@@ -7193,6 +7288,17 @@ function iniciarSecuenciaEquipoPublico(
           indice + 1
         )
 
+        if (indice === 0) {
+          /*
+          La música principal baja durante la revelación del equipo
+          para que los nombres y los efectos tengan más presencia.
+          */
+          ajustarVolumenMusicaPublica(
+            0.48,
+            360
+          )
+        }
+
         reproducirEfectoPublico('jugador')
       },
       retrasoPrimerJugador +
@@ -7216,6 +7322,15 @@ function iniciarSecuenciaEquipoPublico(
   const temporizadorCierre = window.setTimeout(
     () => {
       setEquipoCompletoPublico(true)
+
+      /*
+      Al formarse el equipo completo, la música recupera suavemente
+      el volumen configurado por el administrador.
+      */
+      ajustarVolumenMusicaPublica(
+        1,
+        720
+      )
 
       reproducirEfectoPublico(
         esUltimoEquipo
@@ -8444,9 +8559,28 @@ if (
           <section className="escenario-publico-tv">
 
             <div
-              className="equipo-principal-publico"
+              className={`equipo-principal-publico ${
+                equipoCompletoPublico
+                  ? 'equipo-principal-publico-completo'
+                  : 'equipo-principal-publico-formando'
+              }`}
               key={`${equipoActual.orden_revelacion}-${animacionPublica}`}
             >
+              {miembrosMostradosPublico.length > 0 &&
+                !equipoCompletoPublico && (
+                  <div
+                    key={`flash-jugador-${miembrosMostradosPublico.length}`}
+                    className="flash-jugador-publico"
+                    aria-hidden="true"
+                  />
+                )}
+
+              {equipoCompletoPublico && (
+                <div
+                  className="flash-equipo-completo-publico"
+                  aria-hidden="true"
+                />
+              )}
               <div className="cabecera-equipo-publico">
                 <span>
                   {equipoCompletoPublico
@@ -8480,7 +8614,17 @@ if (
                   {miembrosMostradosPublico.map(
                     (miembro, indiceMiembro) => (
                       <div
-                        className="pieza-miembro-publico"
+                        className={`pieza-miembro-publico ${
+                          !equipoCompletoPublico &&
+                          indiceMiembro ===
+                            miembrosMostradosPublico.length - 1
+                            ? 'pieza-miembro-publico-nueva'
+                            : 'pieza-miembro-publico-estable'
+                        } ${
+                          indiceMiembro % 2 === 0
+                            ? 'pieza-desde-izquierda'
+                            : 'pieza-desde-derecha'
+                        }`}
                         key={
                           miembro.codigo_jugador ||
                           `${miembro.nombre}-${indiceMiembro}`
@@ -8493,7 +8637,13 @@ if (
                         )}
 
                         <article
-                          className="jugador-publico-tv jugador-publico-entrada"
+                          className={`jugador-publico-tv ${
+                            !equipoCompletoPublico &&
+                            indiceMiembro ===
+                              miembrosMostradosPublico.length - 1
+                              ? 'jugador-publico-entrada-espectaculo'
+                              : 'jugador-publico-estable'
+                          }`}
                           style={{
                             '--indice-miembro': indiceMiembro,
                           }}
