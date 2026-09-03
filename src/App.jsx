@@ -14537,57 +14537,6 @@ if (
     },
   ]
 
-  const efectosPresentacion = [
-    {
-      tipo: 'jugador',
-      titulo: 'Al revelar cada jugador',
-      nombreDefecto: 'Rayo',
-      descripcion:
-        'Un rayo corto y potente acompaña la entrada de cada jugador.',
-      icono: '⚡',
-      path:
-        musicaPresentacion.jugadorPath,
-      nombre:
-        musicaPresentacion.jugadorNombre,
-      volumen:
-        musicaPresentacion.jugadorVolumen,
-      stateVolumen:
-        'jugadorVolumen',
-    },
-    {
-      tipo: 'equipo',
-      titulo: 'Al completar el equipo',
-      nombreDefecto: 'Bomba / impacto',
-      descripcion:
-        'Un impacto grave refuerza el momento en que aparece el equipo completo.',
-      icono: '💣',
-      path:
-        musicaPresentacion.equipoPath,
-      nombre:
-        musicaPresentacion.equipoNombre,
-      volumen:
-        musicaPresentacion.equipoVolumen,
-      stateVolumen:
-        'equipoVolumen',
-    },
-    {
-      tipo: 'resumen',
-      titulo: 'Al mostrar el resumen final',
-      nombreDefecto: 'Fanfarria de victoria',
-      descripcion:
-        'Una fanfarria corta abre el resultado final del sorteo.',
-      icono: '🏆',
-      path:
-        musicaPresentacion.resumenPath,
-      nombre:
-        musicaPresentacion.resumenNombre,
-      volumen:
-        musicaPresentacion.resumenVolumen,
-      stateVolumen:
-        'resumenVolumen',
-    },
-  ]
-
   return (
     <main className="app app-admin">
       <section className="panel-admin">
@@ -14770,6 +14719,57 @@ if (
   pantalla === 'musica-presentacion' &&
   sorteoSeleccionado
 ) {
+  const efectosPresentacion = [
+    {
+      tipo: 'jugador',
+      titulo: 'Al revelar cada jugador',
+      nombreDefecto: 'Rayo',
+      descripcion:
+        'Un rayo corto y potente acompaña la entrada de cada jugador.',
+      icono: '⚡',
+      path:
+        musicaPresentacion.jugadorPath,
+      nombre:
+        musicaPresentacion.jugadorNombre,
+      volumen:
+        musicaPresentacion.jugadorVolumen,
+      stateVolumen:
+        'jugadorVolumen',
+    },
+    {
+      tipo: 'equipo',
+      titulo: 'Al completar el equipo',
+      nombreDefecto: 'Bomba / impacto',
+      descripcion:
+        'Un impacto grave refuerza el momento en que aparece el equipo completo.',
+      icono: '💣',
+      path:
+        musicaPresentacion.equipoPath,
+      nombre:
+        musicaPresentacion.equipoNombre,
+      volumen:
+        musicaPresentacion.equipoVolumen,
+      stateVolumen:
+        'equipoVolumen',
+    },
+    {
+      tipo: 'resumen',
+      titulo: 'Al mostrar el resumen final',
+      nombreDefecto: 'Fanfarria de victoria',
+      descripcion:
+        'Una fanfarria corta abre el resultado final del sorteo.',
+      icono: '🏆',
+      path:
+        musicaPresentacion.resumenPath,
+      nombre:
+        musicaPresentacion.resumenNombre,
+      volumen:
+        musicaPresentacion.resumenVolumen,
+      stateVolumen:
+        'resumenVolumen',
+    },
+  ]
+
   const pistasMusica = [
     {
       tipo: 'espera',
