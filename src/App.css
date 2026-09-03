@@ -9044,3 +9044,167 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
     font-size: 8px;
   }
 }
+
+
+/* ==========================================================
+   SONIDOS DE EFECTO · ACTIVACIÓN INDEPENDIENTE
+   ========================================================== */
+
+.control-sonidos-revelacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin: 18px 0 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      100deg,
+      rgba(34, 197, 94, 0.07),
+      rgba(13, 19, 26, 0.98) 48%
+    );
+}
+
+.control-sonidos-revelacion > div:first-child {
+  min-width: 0;
+}
+
+.control-sonidos-revelacion span {
+  display: block;
+  margin-bottom: 5px;
+  color: #86efac;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.control-sonidos-revelacion strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.control-sonidos-revelacion p {
+  margin: 6px 0 0;
+  color: #7c8798;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.acciones-control-sonidos {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.acciones-control-sonidos .boton {
+  min-width: 0;
+  padding: 10px 13px;
+  font-size: 12px;
+}
+
+.control-efecto-individual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.control-efecto-individual small,
+.control-efecto-individual strong {
+  display: block;
+}
+
+.control-efecto-individual small {
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.control-efecto-individual strong {
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.interruptor-sonido-efecto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 74px;
+  padding: 7px 10px;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #111827;
+  color: #94a3b8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.interruptor-sonido-efecto > span {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #475569;
+  box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.14);
+  transition: 0.18s ease;
+}
+
+.interruptor-sonido-activo {
+  border-color: rgba(34, 197, 94, 0.42);
+  background: rgba(34, 197, 94, 0.10);
+  color: #bbf7d0;
+}
+
+.interruptor-sonido-activo > span {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
+}
+
+.tarjeta-efecto-presentacion {
+  transition:
+    opacity 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.tarjeta-efecto-silenciada {
+  border-color: rgba(100, 116, 139, 0.16);
+}
+
+.tarjeta-efecto-silenciada > header,
+.tarjeta-efecto-silenciada .archivo-musica-actual,
+.tarjeta-efecto-silenciada .volumen-pista-musica {
+  opacity: 0.58;
+}
+
+.tarjeta-efecto-silenciada .control-efecto-individual {
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .control-sonidos-revelacion {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .acciones-control-sonidos {
+    width: 100%;
+  }
+
+  .acciones-control-sonidos .boton {
+    flex: 1;
+  }
+}

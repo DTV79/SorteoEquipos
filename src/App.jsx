@@ -446,6 +446,9 @@ function obtenerConfigMusicaPresentacion(origen = null) {
       datos.efecto_jugador_nombre ??
       null,
 
+    jugadorActivo:
+      datos.efecto_jugador_activo !== false,
+
     jugadorVolumen:
       limitarNumero(
         datos.efecto_jugador_volumen,
@@ -462,6 +465,9 @@ function obtenerConfigMusicaPresentacion(origen = null) {
       datos.efecto_equipo_nombre ??
       null,
 
+    equipoActivo:
+      datos.efecto_equipo_activo !== false,
+
     equipoVolumen:
       limitarNumero(
         datos.efecto_equipo_volumen,
@@ -477,6 +483,9 @@ function obtenerConfigMusicaPresentacion(origen = null) {
     resumenNombre:
       datos.efecto_resumen_nombre ??
       null,
+
+    resumenActivo:
+      datos.efecto_resumen_activo !== false,
 
     resumenVolumen:
       limitarNumero(
@@ -1224,12 +1233,22 @@ async function guardarVolumenesMusicaPresentacion() {
         88
       ),
 
+    efecto_jugador_activo:
+      Boolean(
+        musicaPresentacion.jugadorActivo
+      ),
+
     efecto_equipo_volumen:
       limitarNumero(
         musicaPresentacion.equipoVolumen,
         0,
         100,
         96
+      ),
+
+    efecto_equipo_activo:
+      Boolean(
+        musicaPresentacion.equipoActivo
       ),
 
     efecto_resumen_volumen:
@@ -1239,6 +1258,11 @@ async function guardarVolumenesMusicaPresentacion() {
         100,
         92
       ),
+
+    efecto_resumen_activo:
+      Boolean(
+        musicaPresentacion.resumenActivo
+      ),
   }
 
   setGuardandoMusicaPresentacion(
@@ -1246,7 +1270,7 @@ async function guardarVolumenesMusicaPresentacion() {
   )
 
   setMensajeMusicaPresentacion(
-    'Guardando volúmenes...'
+    'Guardando música y sonidos...'
   )
 
   try {
@@ -1277,15 +1301,21 @@ async function guardarVolumenesMusicaPresentacion() {
           cambios.musica_sorteo_volumen,
         jugadorVolumen:
           cambios.efecto_jugador_volumen,
+        jugadorActivo:
+          cambios.efecto_jugador_activo,
         equipoVolumen:
           cambios.efecto_equipo_volumen,
+        equipoActivo:
+          cambios.efecto_equipo_activo,
         resumenVolumen:
           cambios.efecto_resumen_volumen,
+        resumenActivo:
+          cambios.efecto_resumen_activo,
       })
     )
 
     setMensajeMusicaPresentacion(
-      '✓ Volúmenes guardados.'
+      '✓ Configuración de música y sonidos guardada.'
     )
   } catch (error) {
     console.error(
@@ -1472,14 +1502,17 @@ const [
 
   jugadorPath: null,
   jugadorNombre: null,
+  jugadorActivo: true,
   jugadorVolumen: 88,
 
   equipoPath: null,
   equipoNombre: null,
+  equipoActivo: true,
   equipoVolumen: 96,
 
   resumenPath: null,
   resumenNombre: null,
+  resumenActivo: true,
   resumenVolumen: 92,
 })
 
@@ -2344,12 +2377,15 @@ const temporizadorRepeticionAdminRef = useRef(null)
           efecto_jugador_path,
           efecto_jugador_nombre,
           efecto_jugador_volumen,
+          efecto_jugador_activo,
           efecto_equipo_path,
           efecto_equipo_nombre,
           efecto_equipo_volumen,
+          efecto_equipo_activo,
           efecto_resumen_path,
           efecto_resumen_nombre,
           efecto_resumen_volumen,
+          efecto_resumen_activo,
           estado,
           creado_en
         `)
@@ -7353,12 +7389,64 @@ function obtenerAudioEfectoPublico(
 }
 
 
+function efectoSonidoPublicoActivo(tipo) {
+  const campos = {
+    jugador:
+      'efecto_jugador_activo',
+    equipo:
+      'efecto_equipo_activo',
+    resumen:
+      'efecto_resumen_activo',
+  }
+
+  if (tipo === 'inicio') {
+    /*
+    El pequeño sonido de arranque que ya existía se conserva
+    mientras haya algún efecto de revelación activo. Si el
+    usuario silencia los tres, queda exclusivamente la música.
+    */
+    return [
+      'jugador',
+      'equipo',
+      'resumen',
+    ].some(
+      (nombre) =>
+        musicaPublica?.[
+          campos[nombre]
+        ] !== false
+    )
+  }
+
+  const campo =
+    campos[tipo]
+
+  if (!campo) {
+    return true
+  }
+
+  /*
+  Compatibilidad con sorteos antiguos: si el campo aún no
+  existiera en la respuesta, consideramos el efecto activo.
+  */
+  return (
+    musicaPublica?.[campo] !== false
+  )
+}
+
+
 function reproducirEfectoPublico(tipo) {
   if (!sonidoPublicoActivoRef.current) {
     return
   }
 
   if (tipo === 'inicio') {
+    if (
+      !efectoSonidoPublicoActivo(
+        'inicio'
+      )
+    ) {
+      return
+    }
     reproducirEfectoSintetico(
       'inicio',
       0.8
@@ -7377,6 +7465,14 @@ function reproducirEfectoPublico(tipo) {
       'equipo',
       'resumen',
     ].includes(tipoNormalizado)
+  ) {
+    return
+  }
+
+  if (
+    !efectoSonidoPublicoActivo(
+      tipoNormalizado
+    )
   ) {
     return
   }
@@ -14866,8 +14962,12 @@ if (
         musicaPresentacion.jugadorNombre,
       volumen:
         musicaPresentacion.jugadorVolumen,
+      activo:
+        musicaPresentacion.jugadorActivo,
       stateVolumen:
         'jugadorVolumen',
+      stateActivo:
+        'jugadorActivo',
     },
     {
       tipo: 'equipo',
@@ -14882,8 +14982,12 @@ if (
         musicaPresentacion.equipoNombre,
       volumen:
         musicaPresentacion.equipoVolumen,
+      activo:
+        musicaPresentacion.equipoActivo,
       stateVolumen:
         'equipoVolumen',
+      stateActivo:
+        'equipoActivo',
     },
     {
       tipo: 'resumen',
@@ -14898,8 +15002,12 @@ if (
         musicaPresentacion.resumenNombre,
       volumen:
         musicaPresentacion.resumenVolumen,
+      activo:
+        musicaPresentacion.resumenActivo,
       stateVolumen:
         'resumenVolumen',
+      stateActivo:
+        'resumenActivo',
     },
   ]
 
@@ -15216,6 +15324,62 @@ if (
           </div>
         </div>
 
+        <div className="control-sonidos-revelacion">
+          <div>
+            <span>SONIDOS DE EFECTO EN LA TV</span>
+
+            <strong>
+              {[
+                musicaPresentacion.jugadorActivo,
+                musicaPresentacion.equipoActivo,
+                musicaPresentacion.resumenActivo,
+              ].filter(Boolean).length}
+              {' de 3 activos'}
+            </strong>
+
+            <p>
+              La música de espera y la música principal seguirán sonando
+              aunque desactives todos los efectos.
+            </p>
+          </div>
+
+          <div className="acciones-control-sonidos">
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={() =>
+                setMusicaPresentacion(
+                  (actual) => ({
+                    ...actual,
+                    jugadorActivo: false,
+                    equipoActivo: false,
+                    resumenActivo: false,
+                  })
+                )
+              }
+            >
+              🔇 Silenciar todos
+            </button>
+
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={() =>
+                setMusicaPresentacion(
+                  (actual) => ({
+                    ...actual,
+                    jugadorActivo: true,
+                    equipoActivo: true,
+                    resumenActivo: true,
+                  })
+                )
+              }
+            >
+              🔊 Activar todos
+            </button>
+          </div>
+        </div>
+
         <div className="grid-efectos-presentacion">
           {efectosPresentacion.map(
             (efecto) => {
@@ -15232,7 +15396,11 @@ if (
 
               return (
                 <article
-                  className="tarjeta-efecto-presentacion"
+                  className={`tarjeta-efecto-presentacion ${
+                    efecto.activo
+                      ? ''
+                      : 'tarjeta-efecto-silenciada'
+                  }`}
                   key={efecto.tipo}
                 >
                   <header>
@@ -15256,6 +15424,44 @@ if (
                       </p>
                     </div>
                   </header>
+
+                  <div className="control-efecto-individual">
+                    <div>
+                      <small>
+                        SONIDO DURANTE EL SORTEO
+                      </small>
+
+                      <strong>
+                        {efecto.activo
+                          ? 'Activado'
+                          : 'Sin sonido'}
+                      </strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`interruptor-sonido-efecto ${
+                        efecto.activo
+                          ? 'interruptor-sonido-activo'
+                          : ''
+                      }`}
+                      aria-pressed={efecto.activo}
+                      onClick={() =>
+                        setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+                            [efecto.stateActivo]:
+                              !actual[efecto.stateActivo],
+                          })
+                        )
+                      }
+                    >
+                      <span />
+                      {efecto.activo
+                        ? 'Sí'
+                        : 'No'}
+                    </button>
+                  </div>
 
                   <div
                     className={`archivo-musica-actual ${
@@ -15470,7 +15676,7 @@ if (
           >
             {guardandoMusicaPresentacion
               ? 'Guardando...'
-              : 'Guardar volúmenes de música y efectos'}
+              : 'Guardar música y sonidos'}
           </button>
         </div>
 
