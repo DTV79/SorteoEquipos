@@ -9363,84 +9363,40 @@ if (
       {!cargandoPublico &&
         !errorPublico &&
         !presentacionPublica && (
-          <section className="espera-publica-tv">
-            <div className="logo-publico-tv logo-publico-espera">
-              🎲
-            </div>
+          <section className="espera-publica-tv espera-invitados-tv">
+            <div
+              className="escena-inicio-sorteo"
+              aria-label="El sorteo comenzará en breve"
+            >
+              <div className="orbita-inicio-sorteo" aria-hidden="true">
+                <span className="anillo-inicio anillo-inicio-1" />
+                <span className="anillo-inicio anillo-inicio-2" />
+                <span className="punto-orbita punto-orbita-1">🎾</span>
+                <span className="punto-orbita punto-orbita-2">🎾</span>
 
-            <p className="sobre-espera-publica">
-              TODO PREPARADO
-            </p>
+                <div className="nucleo-inicio-sorteo">
+                  <span>🎲</span>
+                </div>
+              </div>
 
-            <h2>
-              Esperando el inicio del sorteo
-            </h2>
+              <p className="sobre-espera-publica">
+                TODO LISTO
+              </p>
 
-            <p>
-              La presentación comenzará en breve.
-            </p>
+              <h2>
+                El sorteo comienza en breve
+              </h2>
 
-            <div className="estado-precarga-musica-tv">
-              {[
-                {
-                  tipo: 'espera',
-                  titulo: 'Música de espera',
-                  nombre:
-                    musicaPublica?.musica_espera_nombre,
-                },
-                {
-                  tipo: 'sorteo',
-                  titulo: 'Música del sorteo',
-                  nombre:
-                    musicaPublica?.musica_sorteo_nombre,
-                },
-              ].map(
-                (pista) => {
-                  const estado =
-                    estadoPrecargaMusicaPublica[
-                      pista.tipo
-                    ]
+              <p className="mensaje-invitados-inicio">
+                Prepárate. Los equipos están a punto de decidirse.
+              </p>
 
-                  return (
-                    <div
-                      key={pista.tipo}
-                      className={`estado-pista-precarga estado-pista-${estado}`}
-                    >
-                      <span>
-                        {estado === 'lista'
-                          ? '✓'
-                          : estado === 'cargando'
-                            ? '↻'
-                            : estado === 'error'
-                              ? '!'
-                              : '—'}
-                      </span>
-
-                      <div>
-                        <strong>
-                          {pista.titulo}
-                        </strong>
-
-                        <small>
-                          {pista.nombre ??
-                            'Sin canción configurada'}
-                          {' · '}
-                          {detallePrecargaMusicaPublica[
-                            pista.tipo
-                          ] ||
-                            'Pendiente'}
-                        </small>
-                      </div>
-                    </div>
-                  )
-                }
-              )}
-            </div>
-
-            <div className="puntos-espera-publica">
-              <span />
-              <span />
-              <span />
+              <div className="linea-inicio-sorteo">
+                <span>EN UNOS INSTANTES</span>
+                <div>
+                  <i />
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -9448,84 +9404,65 @@ if (
       {presentacionPublica &&
         preparada &&
         equiposPublicos.length === 0 && (
-          <section className="espera-publica-tv">
-            <div className="logo-publico-tv logo-publico-espera">
-              🎲
-            </div>
+          <section className="espera-publica-tv espera-invitados-tv">
+            <div
+              className="escena-inicio-sorteo"
+              aria-label="El sorteo comenzará en breve"
+            >
+              <div className="orbita-inicio-sorteo" aria-hidden="true">
+                <span className="anillo-inicio anillo-inicio-1" />
+                <span className="anillo-inicio anillo-inicio-2" />
+                <span className="punto-orbita punto-orbita-1">🎾</span>
+                <span className="punto-orbita punto-orbita-2">🎾</span>
 
-            <p className="sobre-espera-publica">
-              TODO PREPARADO
-            </p>
+                <div className="nucleo-inicio-sorteo">
+                  <span>🎲</span>
+                </div>
+              </div>
 
-            <h2>
-              Esperando el inicio del sorteo
-            </h2>
+              <p className="sobre-espera-publica">
+                TODO LISTO
+              </p>
 
-            <p>
-              La presentación comenzará en breve.
-            </p>
+              <h2>
+                El sorteo comienza en breve
+              </h2>
 
-            <div className="estado-precarga-musica-tv">
-              {[
-                {
-                  tipo: 'espera',
-                  titulo: 'Música de espera',
-                  nombre:
-                    musicaPublica?.musica_espera_nombre,
-                },
-                {
-                  tipo: 'sorteo',
-                  titulo: 'Música del sorteo',
-                  nombre:
-                    musicaPublica?.musica_sorteo_nombre,
-                },
-              ].map(
-                (pista) => {
-                  const estado =
-                    estadoPrecargaMusicaPublica[
-                      pista.tipo
-                    ]
+              <p className="mensaje-invitados-inicio">
+                Prepárate. Los equipos están a punto de decidirse.
+              </p>
 
-                  return (
-                    <div
-                      key={pista.tipo}
-                      className={`estado-pista-precarga estado-pista-${estado}`}
-                    >
-                      <span>
-                        {estado === 'lista'
-                          ? '✓'
-                          : estado === 'cargando'
-                            ? '↻'
-                            : estado === 'error'
-                              ? '!'
-                              : '—'}
-                      </span>
+              <div className="datos-inicio-sorteo">
+                <div>
+                  <span>EQUIPOS</span>
+                  <strong>
+                    {presentacionPublica.total_equipos ?? '—'}
+                  </strong>
+                </div>
 
-                      <div>
-                        <strong>
-                          {pista.titulo}
-                        </strong>
+                <div>
+                  <span>FORMATO</span>
+                  <strong>
+                    {esLigaUnicaPublica
+                      ? 'Liga única'
+                      : 'Por grupos'}
+                  </strong>
+                </div>
 
-                        <small>
-                          {pista.nombre ??
-                            'Sin canción configurada'}
-                          {' · '}
-                          {detallePrecargaMusicaPublica[
-                            pista.tipo
-                          ] ||
-                            'Pendiente'}
-                        </small>
-                      </div>
-                    </div>
-                  )
-                }
-              )}
-            </div>
+                <div>
+                  <span>JUGADORES / EQUIPO</span>
+                  <strong>
+                    {presentacionPublica.jugadores_por_equipo ?? '—'}
+                  </strong>
+                </div>
+              </div>
 
-            <div className="puntos-espera-publica">
-              <span />
-              <span />
-              <span />
+              <div className="linea-inicio-sorteo">
+                <span>EN UNOS INSTANTES</span>
+                <div>
+                  <i />
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -9533,21 +9470,22 @@ if (
       {presentacionPublica &&
         enCurso &&
         equiposPublicos.length === 0 && (
-          <section className="espera-publica-tv">
-            <div className="logo-publico-tv logo-publico-directo">
-              ▶
+          <section className="espera-publica-tv espera-primer-equipo-tv">
+            <div className="cuenta-atras-primer-equipo" aria-hidden="true">
+              <span />
+              <strong>1</strong>
             </div>
 
             <p className="sobre-espera-publica">
-              PRESENTACIÓN INICIADA
+              EL SORTEO ESTÁ EN MARCHA
             </p>
 
             <h2>
-              Esperando el primer equipo
+              Primer equipo en unos instantes
             </h2>
 
             <p>
-              El sorteo ya está en directo.
+              La primera combinación está a punto de aparecer.
             </p>
 
             <div className="puntos-espera-publica">
@@ -9790,9 +9728,6 @@ if (
                   Resultado final
                 </h2>
 
-                <span>
-                  Todos los equipos han sido revelados
-                </span>
               </div>
             </div>
 

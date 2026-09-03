@@ -7720,16 +7720,6 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
    GIRO + ZOOM · SEGUNDA OPCIÓN DE ENTRADA
    ========================================================== */
 
-/*
-Durante esta animación permitimos que el jugador crezca fuera
-del panel central, para que el zoom pueda ocupar prácticamente
-toda la pantalla de TV.
-*/
-.equipo-principal-publico-formando:has(
-  .jugador-publico-entrada-giro-zoom
-) {
-  overflow: visible;
-}
 
 .jugador-publico-entrada-giro-zoom {
   position: relative;
@@ -7784,7 +7774,7 @@ toda la pantalla de TV.
     filter: blur(0);
     transform:
       rotate(-110deg)
-      scale(1.65);
+      scale(1.28);
   }
 
   72% {
@@ -7792,7 +7782,7 @@ toda la pantalla de TV.
     filter: blur(0);
     transform:
       rotate(18deg)
-      scale(3.45);
+      scale(1.82);
   }
 
   86% {
@@ -7880,5 +7870,416 @@ toda la pantalla de TV.
   .tarjeta-estilo-entrada em {
     grid-column: 2;
     justify-self: start;
+  }
+}
+
+
+/* ==========================================================
+   GIRO + ZOOM · CONTENIDO DENTRO DEL PANEL
+   ========================================================== */
+
+.equipo-principal-publico-formando:has(
+  .jugador-publico-entrada-giro-zoom
+) {
+  overflow: hidden;
+  min-height: clamp(430px, 58vh, 680px);
+  padding-top: clamp(30px, 4vh, 52px);
+  padding-bottom: clamp(30px, 4vh, 52px);
+}
+
+.equipo-principal-publico-formando:has(
+  .jugador-publico-entrada-giro-zoom
+) .miembros-publico-tv {
+  min-height: clamp(320px, 42vh, 510px);
+}
+
+.jugador-publico-entrada-giro-zoom {
+  max-width: min(360px, 31vw);
+}
+
+/*
+En pantallas más pequeñas reducimos un poco más el pico del zoom.
+Así la animación sigue siendo clara sin tocar los bordes del panel.
+*/
+@media (max-width: 1100px), (max-height: 760px) {
+  @keyframes entrada-jugador-giro-zoom {
+    0% {
+      opacity: 0;
+      filter: blur(12px);
+      transform:
+        rotate(-720deg)
+        scale(0.08);
+    }
+
+    24% {
+      opacity: 1;
+      filter: blur(2px);
+      transform:
+        rotate(-390deg)
+        scale(0.56);
+    }
+
+    55% {
+      opacity: 1;
+      filter: blur(0);
+      transform:
+        rotate(-110deg)
+        scale(1.12);
+    }
+
+    72% {
+      opacity: 1;
+      filter: blur(0);
+      transform:
+        rotate(18deg)
+        scale(1.52);
+    }
+
+    86% {
+      transform:
+        rotate(-5deg)
+        scale(0.92);
+    }
+
+    94% {
+      transform:
+        rotate(2deg)
+        scale(1.06);
+    }
+
+    100% {
+      opacity: 1;
+      filter: blur(0);
+      transform:
+        rotate(0deg)
+        scale(1);
+    }
+  }
+}
+
+
+/* ==========================================================
+   PANTALLA DE INICIO · VISTA PARA INVITADOS
+   ========================================================== */
+
+.espera-invitados-tv {
+  min-height: calc(100vh - 145px);
+  overflow: hidden;
+}
+
+.escena-inicio-sorteo {
+  position: relative;
+  width: min(1060px, 94vw);
+  padding: clamp(24px, 3.2vw, 48px);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: clamp(24px, 2.3vw, 38px);
+  background:
+    radial-gradient(
+      circle at 50% 26%,
+      rgba(34, 197, 94, 0.13),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(13, 23, 17, 0.96),
+      rgba(8, 13, 18, 0.96)
+    );
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.escena-inicio-sorteo::before,
+.escena-inicio-sorteo::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(4px);
+}
+
+.escena-inicio-sorteo::before {
+  width: 380px;
+  height: 380px;
+  left: -180px;
+  bottom: -230px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(34, 197, 94, 0.12),
+      transparent 68%
+    );
+}
+
+.escena-inicio-sorteo::after {
+  width: 320px;
+  height: 320px;
+  right: -150px;
+  top: -190px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.07),
+      transparent 68%
+    );
+}
+
+.orbita-inicio-sorteo {
+  position: relative;
+  width: clamp(150px, 16vw, 230px);
+  height: clamp(150px, 16vw, 230px);
+  margin: 0 auto clamp(20px, 2.5vh, 30px);
+}
+
+.anillo-inicio {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(134, 239, 172, 0.22);
+}
+
+.anillo-inicio-1 {
+  animation: giro-anillo-inicio 8s linear infinite;
+}
+
+.anillo-inicio-2 {
+  inset: 14%;
+  border-style: dashed;
+  border-color: rgba(134, 239, 172, 0.13);
+  animation: giro-anillo-inicio 5.5s linear infinite reverse;
+}
+
+.nucleo-inicio-sorteo {
+  position: absolute;
+  inset: 27%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(74, 222, 128, 0.38);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 38% 30%,
+      rgba(74, 222, 128, 0.18),
+      rgba(9, 24, 16, 0.98) 68%
+    );
+  box-shadow:
+    0 0 0 13px rgba(34, 197, 94, 0.028),
+    0 0 58px rgba(34, 197, 94, 0.13);
+}
+
+.nucleo-inicio-sorteo > span {
+  font-size: clamp(38px, 5vw, 72px);
+  animation: pulso-nucleo-inicio 2.2s ease-in-out infinite;
+}
+
+.punto-orbita {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(28px, 2.8vw, 42px);
+  height: clamp(28px, 2.8vw, 42px);
+  border-radius: 50%;
+  background: #0b1510;
+  box-shadow:
+    0 0 24px rgba(34, 197, 94, 0.15);
+  font-size: clamp(15px, 1.6vw, 24px);
+}
+
+.punto-orbita-1 {
+  left: 50%;
+  top: -4%;
+  transform: translateX(-50%);
+  animation: flotar-bola-inicio 2.4s ease-in-out infinite;
+}
+
+.punto-orbita-2 {
+  right: -2%;
+  bottom: 19%;
+  animation: flotar-bola-inicio 2.4s 0.7s ease-in-out infinite;
+}
+
+.espera-invitados-tv .sobre-espera-publica {
+  margin-bottom: 9px;
+}
+
+.espera-invitados-tv h2 {
+  max-width: 930px;
+  margin: 0 auto;
+  font-size: clamp(40px, 5.2vw, 82px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.mensaje-invitados-inicio {
+  max-width: 700px;
+  margin: 18px auto 0 !important;
+  color: #a7b0bd !important;
+  font-size: clamp(15px, 1.35vw, 21px) !important;
+  line-height: 1.5;
+}
+
+.datos-inicio-sorteo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: min(720px, 100%);
+  margin: 26px auto 0;
+}
+
+.datos-inicio-sorteo > div {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.datos-inicio-sorteo span,
+.datos-inicio-sorteo strong {
+  display: block;
+}
+
+.datos-inicio-sorteo span {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: clamp(8px, 0.7vw, 10px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.datos-inicio-sorteo strong {
+  color: #e5e7eb;
+  font-size: clamp(14px, 1.2vw, 18px);
+}
+
+.linea-inicio-sorteo {
+  width: min(560px, 100%);
+  margin: 28px auto 0;
+}
+
+.linea-inicio-sorteo > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #6ee7a0;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+}
+
+.linea-inicio-sorteo > div {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.linea-inicio-sorteo i {
+  display: block;
+  width: 34%;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #22c55e,
+      #86efac,
+      transparent
+    );
+  animation: barrido-linea-inicio 2.2s ease-in-out infinite;
+}
+
+.espera-primer-equipo-tv {
+  min-height: calc(100vh - 150px);
+}
+
+.cuenta-atras-primer-equipo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(120px, 13vw, 190px);
+  height: clamp(120px, 13vw, 190px);
+  margin-bottom: 26px;
+  border-radius: 50%;
+}
+
+.cuenta-atras-primer-equipo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(34, 197, 94, 0.16);
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: giro-anillo-inicio 1.7s linear infinite;
+}
+
+.cuenta-atras-primer-equipo > span {
+  position: absolute;
+  inset: 16%;
+  border: 1px solid rgba(134, 239, 172, 0.14);
+  border-radius: 50%;
+  box-shadow:
+    0 0 52px rgba(34, 197, 94, 0.09);
+}
+
+.cuenta-atras-primer-equipo strong {
+  color: #bbf7d0;
+  font-size: clamp(48px, 6vw, 84px);
+  line-height: 1;
+}
+
+@keyframes giro-anillo-inicio {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulso-nucleo-inicio {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes flotar-bola-inicio {
+  0%,
+  100% {
+    transform: translateY(-3px);
+  }
+
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+.punto-orbita-1 {
+  animation-name: flotar-bola-inicio;
+}
+
+@keyframes barrido-linea-inicio {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@media (max-width: 720px) {
+  .datos-inicio-sorteo {
+    grid-template-columns: 1fr;
+    width: min(360px, 100%);
+  }
+
+  .escena-inicio-sorteo {
+    padding: 22px 18px 26px;
   }
 }
