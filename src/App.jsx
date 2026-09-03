@@ -9527,10 +9527,29 @@ if (
                 )}
 
               {equipoCompletoPublico && (
-                <div
-                  className="flash-equipo-completo-publico"
-                  aria-hidden="true"
-                />
+                <>
+                  <div
+                    className="flash-equipo-completo-publico"
+                    aria-hidden="true"
+                  />
+
+                  <div
+                    className="efectos-extra-equipo-publico"
+                    aria-hidden="true"
+                  >
+                    <span className="onda-equipo-publico onda-equipo-publico-1" />
+                    <span className="onda-equipo-publico onda-equipo-publico-2" />
+
+                    <span className="chispa-equipo-publico chispa-equipo-1" />
+                    <span className="chispa-equipo-publico chispa-equipo-2" />
+                    <span className="chispa-equipo-publico chispa-equipo-3" />
+                    <span className="chispa-equipo-publico chispa-equipo-4" />
+                    <span className="chispa-equipo-publico chispa-equipo-5" />
+                    <span className="chispa-equipo-publico chispa-equipo-6" />
+                    <span className="chispa-equipo-publico chispa-equipo-7" />
+                    <span className="chispa-equipo-publico chispa-equipo-8" />
+                  </div>
+                </>
               )}
               <div className="cabecera-equipo-publico">
                 <span>
@@ -9718,6 +9737,42 @@ if (
             className="resumen-final-publico-tv"
             key={`resumen-${presentacionPublica.ejecucion_id}`}
           >
+            <div
+              className="apertura-resumen-final-tv"
+              aria-hidden="true"
+            >
+              <span className="halo-apertura-resumen halo-apertura-resumen-1" />
+              <span className="halo-apertura-resumen halo-apertura-resumen-2" />
+              <span className="destello-apertura-resumen" />
+            </div>
+
+            <div
+              className="confeti-resumen-final-tv"
+              aria-hidden="true"
+            >
+              {Array.from(
+                { length: 18 },
+                (_, indice) => (
+                  <i
+                    key={indice}
+                    style={{
+                      '--confeti-i': indice,
+                      '--confeti-delay':
+                        `${450 + (indice % 6) * 80}ms`,
+                      '--confeti-duracion':
+                        `${1600 + (indice % 4) * 180}ms`,
+                      '--confeti-deriva':
+                        `${((indice % 5) - 2) * 18}px`,
+                      '--confeti-rotacion':
+                        `${indice * 31}deg`,
+                      '--confeti-rotacion-final':
+                        `${720 + indice * 23}deg`,
+                    }}
+                  />
+                )
+              )}
+            </div>
+
             <div className="cabecera-resumen-final-tv">
               <div className="sello-resumen-final">
                 ✓
@@ -9733,6 +9788,10 @@ if (
                 </h2>
 
               </div>
+            </div>
+
+            <div className="separador-resumen-final-tv" aria-hidden="true">
+              <span />
             </div>
 
             <div className="metricas-resumen-final-tv">
@@ -14547,7 +14606,7 @@ if (
             </p>
 
             <h2>
-              Tiempos y transiciones
+              Tiempos, transiciones y efectos
             </h2>
 
             <p className="descripcion-admin">
@@ -14566,9 +14625,9 @@ if (
           </div>
 
           <p>
-            Estos tiempos son propios de este sorteo. Puedes cambiarlos
-            incluso antes de la presentación; la TV leerá siempre la
-            configuración guardada.
+            Estos tiempos y el estilo de entrada son propios de este
+            sorteo. Los efectos visuales de equipo y del resumen final se
+            aplican automáticamente durante la presentación.
           </p>
         </div>
 
@@ -16685,11 +16744,11 @@ if (
 
               <span>
                 <strong>
-                  Tiempos de presentación
+                  Tiempos y efectos de presentación
                 </strong>
 
                 <small>
-                  Ajustar pausas y transiciones de la TV
+                  Ajustar pausas, transiciones y estilo visual de la TV
                 </small>
               </span>
             </button>

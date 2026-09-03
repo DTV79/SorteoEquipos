@@ -8411,3 +8411,636 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
     gap: 6px;
   }
 }
+
+
+/* ==========================================================
+   EQUIPO COMPLETO · EFECTOS VISUALES EXTRA
+   Se suman a los efectos existentes; no sustituyen ninguno.
+   ========================================================== */
+
+.equipo-principal-publico > .efectos-extra-equipo-publico {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.onda-equipo-publico {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(42vw, 620px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(134, 239, 172, 0.58);
+  border-radius: 50%;
+  box-shadow:
+    0 0 28px rgba(34, 197, 94, 0.16),
+    inset 0 0 28px rgba(34, 197, 94, 0.08);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.08);
+}
+
+.onda-equipo-publico-1 {
+  animation:
+    onda-expansiva-equipo 1.05s 0.04s ease-out both;
+}
+
+.onda-equipo-publico-2 {
+  border-color: rgba(220, 252, 231, 0.32);
+  animation:
+    onda-expansiva-equipo 1.18s 0.18s ease-out both;
+}
+
+.chispa-equipo-publico {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(3px, 0.35vw, 6px);
+  height: clamp(22px, 3.4vw, 52px);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(240, 253, 244, 0.96),
+      rgba(74, 222, 128, 0.82),
+      transparent
+    );
+  box-shadow:
+    0 0 14px rgba(134, 239, 172, 0.48);
+  opacity: 0;
+  transform-origin: 50% 0%;
+  animation:
+    chispa-impacto-equipo 0.9s 0.08s
+    cubic-bezier(0.12, 0.75, 0.22, 1) both;
+}
+
+.chispa-equipo-1 { --angulo-chispa: 0deg; }
+.chispa-equipo-2 { --angulo-chispa: 45deg; }
+.chispa-equipo-3 { --angulo-chispa: 90deg; }
+.chispa-equipo-4 { --angulo-chispa: 135deg; }
+.chispa-equipo-5 { --angulo-chispa: 180deg; }
+.chispa-equipo-6 { --angulo-chispa: 225deg; }
+.chispa-equipo-7 { --angulo-chispa: 270deg; }
+.chispa-equipo-8 { --angulo-chispa: 315deg; }
+
+.equipo-principal-publico-completo
+  .nombre-equipo-completo {
+  position: relative;
+  isolation: isolate;
+}
+
+.equipo-principal-publico-completo
+  .nombre-equipo-completo::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: -7px;
+  width: min(360px, 72%);
+  height: 3px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(134, 239, 172, 0.92),
+      transparent
+    );
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  animation:
+    sello-luminoso-equipo 0.75s 0.46s ease-out both;
+}
+
+.equipo-principal-publico-completo
+  .nombre-equipo-completo::after {
+  content: "EQUIPO FORMADO";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 13px);
+  color: rgba(134, 239, 172, 0.72);
+  font-size: clamp(8px, 0.65vw, 11px);
+  font-weight: 950;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  opacity: 0;
+  transform:
+    translate(-50%, -5px)
+    scale(0.92);
+  animation:
+    sello-texto-equipo 0.55s 0.58s ease-out both;
+}
+
+@keyframes onda-expansiva-equipo {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(0.08);
+  }
+
+  18% {
+    opacity: 0.78;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(1.7);
+  }
+}
+
+@keyframes chispa-impacto-equipo {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--angulo-chispa))
+      translateY(0)
+      scaleY(0.25);
+  }
+
+  18% {
+    opacity: 0.95;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--angulo-chispa))
+      translateY(clamp(-190px, -16vw, -95px))
+      scaleY(0.65);
+  }
+}
+
+@keyframes sello-luminoso-equipo {
+  0% {
+    opacity: 0;
+    transform:
+      translateX(-50%)
+      scaleX(0);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.74;
+    transform:
+      translateX(-50%)
+      scaleX(1);
+  }
+}
+
+@keyframes sello-texto-equipo {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform:
+      translate(-50%, -5px)
+      scale(0.92);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      translate(-50%, 0)
+      scale(1);
+  }
+}
+
+
+/* ==========================================================
+   RESUMEN FINAL · ENTRADA DE CIERRE / SHOW FINAL
+   ========================================================== */
+
+.resumen-final-publico-tv {
+  isolation: isolate;
+}
+
+.resumen-final-publico-tv > *:not(
+  .apertura-resumen-final-tv
+):not(
+  .confeti-resumen-final-tv
+) {
+  position: relative;
+  z-index: 3;
+}
+
+.apertura-resumen-final-tv {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(34, 197, 94, 0.12),
+      rgba(3, 7, 10, 0.76) 48%,
+      rgba(3, 7, 10, 0.94) 100%
+    );
+  opacity: 0;
+  animation:
+    telon-apertura-resumen 1.55s ease-out both;
+}
+
+.halo-apertura-resumen {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: min(72vw, 1040px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(134, 239, 172, 0.34);
+  box-shadow:
+    0 0 65px rgba(34, 197, 94, 0.13),
+    inset 0 0 65px rgba(34, 197, 94, 0.06);
+  opacity: 0;
+  transform:
+    translate(-50%, -50%)
+    scale(0.05);
+}
+
+.halo-apertura-resumen-1 {
+  animation:
+    halo-apertura-final 1.35s 0.08s ease-out both;
+}
+
+.halo-apertura-resumen-2 {
+  width: min(54vw, 780px);
+  border-style: dashed;
+  border-color: rgba(220, 252, 231, 0.20);
+  animation:
+    halo-apertura-final 1.5s 0.24s ease-out both;
+}
+
+.destello-apertura-resumen {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: min(80vw, 1200px);
+  height: 5px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(134, 239, 172, 0.15),
+      rgba(240, 253, 244, 0.96),
+      rgba(134, 239, 172, 0.15),
+      transparent
+    );
+  filter: blur(1px);
+  opacity: 0;
+  transform:
+    translate(-50%, -50%)
+    scaleX(0.05);
+  animation:
+    destello-horizontal-resumen 0.78s 0.34s ease-out both;
+}
+
+.confeti-resumen-final-tv {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confeti-resumen-final-tv i {
+  --columna-confeti:
+    calc((var(--confeti-i) + 1) * 5.26%);
+  position: absolute;
+  left: var(--columna-confeti);
+  top: -7vh;
+  width: clamp(4px, 0.42vw, 8px);
+  height: clamp(12px, 1.3vw, 22px);
+  border-radius: 2px;
+  background:
+    linear-gradient(
+      180deg,
+      #bbf7d0,
+      #22c55e
+    );
+  opacity: 0;
+  transform:
+    translateY(-10vh)
+    rotate(var(--confeti-rotacion, 0deg));
+  animation:
+    caida-confeti-resumen
+    var(--confeti-duracion, 1.8s)
+    var(--confeti-delay, 0.45s)
+    cubic-bezier(0.22, 0.68, 0.24, 1)
+    both;
+}
+
+.confeti-resumen-final-tv i:nth-child(3n) {
+  width: clamp(5px, 0.5vw, 9px);
+  height: clamp(5px, 0.5vw, 9px);
+  border-radius: 50%;
+  background: #f8fafc;
+}
+
+.confeti-resumen-final-tv i:nth-child(4n) {
+  background:
+    linear-gradient(
+      180deg,
+      #fde68a,
+      #22c55e
+    );
+}
+
+.cabecera-resumen-final-tv {
+  opacity: 0;
+  transform:
+    translateY(24px)
+    scale(0.94);
+  animation:
+    entrada-cabecera-resumen-show 0.8s 0.48s
+    cubic-bezier(0.16, 0.9, 0.22, 1)
+    forwards;
+}
+
+.sello-resumen-final {
+  transform: scale(0.3) rotate(-20deg);
+  animation:
+    golpe-sello-resumen 0.62s 0.86s
+    cubic-bezier(0.14, 0.92, 0.2, 1.18)
+    both;
+}
+
+.cabecera-resumen-final-tv h2 {
+  text-shadow:
+    0 0 28px rgba(134, 239, 172, 0.14);
+}
+
+.separador-resumen-final-tv {
+  width: min(640px, 72%);
+  height: 1px;
+  margin: -7px auto 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.separador-resumen-final-tv span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(134, 239, 172, 0.88),
+      transparent
+    );
+  transform: scaleX(0);
+  animation:
+    abrir-linea-resumen 0.72s 1.15s ease-out forwards;
+}
+
+.metricas-resumen-final-tv {
+  opacity: 0;
+  transform: translateY(14px);
+  animation:
+    entrada-metricas-resumen-show 0.64s 1.28s
+    ease-out forwards;
+}
+
+.metricas-resumen-final-tv > div {
+  transform: translateY(8px);
+  animation:
+    pulso-metrica-resumen 0.5s
+    cubic-bezier(0.18, 0.88, 0.22, 1)
+    both;
+}
+
+.metricas-resumen-final-tv > div:nth-child(1) {
+  animation-delay: 1.38s;
+}
+
+.metricas-resumen-final-tv > div:nth-child(2) {
+  animation-delay: 1.50s;
+}
+
+.metricas-resumen-final-tv > div:nth-child(3) {
+  animation-delay: 1.62s;
+}
+
+.grid-grupos-resumen-final {
+  opacity: 0;
+  animation:
+    mostrar-grid-resumen 0.2s 1.72s linear forwards;
+}
+
+.tarjeta-grupo-resumen-final {
+  animation-delay:
+    calc(
+      1.78s +
+      var(--retraso-grupo, 0ms)
+    );
+}
+
+.equipo-resumen-final {
+  animation-delay:
+    calc(
+      1.92s +
+      var(--retraso-equipo, 0ms)
+    );
+}
+
+.huella-publica-tv {
+  opacity: 0;
+  transform: translateY(10px);
+  animation:
+    entrada-huella-resumen-show 0.62s 2.35s
+    ease-out forwards;
+}
+
+@keyframes telon-apertura-resumen {
+  0% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes halo-apertura-final {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(0.05);
+  }
+
+  22% {
+    opacity: 0.82;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scale(1.32);
+  }
+}
+
+@keyframes destello-horizontal-resumen {
+  0% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scaleX(0.04);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      scaleX(1);
+  }
+}
+
+@keyframes caida-confeti-resumen {
+  0% {
+    opacity: 0;
+    transform:
+      translate3d(0, -10vh, 0)
+      rotate(var(--confeti-rotacion, 0deg));
+  }
+
+  12% {
+    opacity: 0.92;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate3d(
+        var(--confeti-deriva, 0px),
+        108vh,
+        0
+      )
+      rotate(var(--confeti-rotacion-final, 720deg));
+  }
+}
+
+@keyframes entrada-cabecera-resumen-show {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform:
+      translateY(24px)
+      scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes golpe-sello-resumen {
+  0% {
+    opacity: 0;
+    transform:
+      scale(0.3)
+      rotate(-20deg);
+  }
+
+  72% {
+    opacity: 1;
+    transform:
+      scale(1.12)
+      rotate(3deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      scale(1)
+      rotate(0);
+  }
+}
+
+@keyframes abrir-linea-resumen {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes entrada-metricas-resumen-show {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulso-metrica-resumen {
+  0% {
+    opacity: 0;
+    transform:
+      translateY(8px)
+      scale(0.94);
+  }
+
+  70% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1.04);
+  }
+
+  100% {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes mostrar-grid-resumen {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes entrada-huella-resumen-show {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px), (max-height: 720px) {
+  .confeti-resumen-final-tv i:nth-child(even) {
+    display: none;
+  }
+
+  .equipo-principal-publico-completo
+    .nombre-equipo-completo::after {
+    font-size: 8px;
+  }
+}
