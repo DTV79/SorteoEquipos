@@ -392,6 +392,480 @@ const [guardandoEdicionJugador, setGuardandoEdicionJugador] =
 const [mensajeEditarJugador, setMensajeEditarJugador] =
   useState('')
 
+
+/*
+============================================================
+MÚSICA DE PRESENTACIÓN
+============================================================
+*/
+
+function obtenerConfigMusicaPresentacion(origen = null) {
+  const datos =
+    origen ??
+    sorteoSeleccionado ??
+    {}
+
+  return {
+    esperaPath:
+      datos.musica_espera_path ??
+      null,
+
+    esperaNombre:
+      datos.musica_espera_nombre ??
+      null,
+
+    esperaVolumen:
+      limitarNumero(
+        datos.musica_espera_volumen,
+        0,
+        100,
+        65
+      ),
+
+    sorteoPath:
+      datos.musica_sorteo_path ??
+      null,
+
+    sorteoNombre:
+      datos.musica_sorteo_nombre ??
+      null,
+
+    sorteoVolumen:
+      limitarNumero(
+        datos.musica_sorteo_volumen,
+        0,
+        100,
+        55
+      ),
+  }
+}
+
+
+function abrirMusicaPresentacion() {
+  if (!sorteoSeleccionado) {
+    return
+  }
+
+  setMusicaPresentacion(
+    obtenerConfigMusicaPresentacion(
+      sorteoSeleccionado
+    )
+  )
+
+  setMensajeMusicaPresentacion('')
+  setPantalla('musica-presentacion')
+}
+
+
+function actualizarSorteoLocal(cambios) {
+  if (!sorteoSeleccionado) {
+    return
+  }
+
+  const actualizado = {
+    ...sorteoSeleccionado,
+    ...cambios,
+  }
+
+  setSorteoSeleccionado(
+    actualizado
+  )
+
+  setSorteos(
+    (actuales) =>
+      actuales.map(
+        (sorteo) =>
+          sorteo.id === actualizado.id
+            ? {
+                ...sorteo,
+                ...cambios,
+              }
+            : sorteo
+      )
+  )
+}
+
+
+async function subirMusicaPresentacion(
+  evento,
+  tipo
+) {
+  const archivo =
+    evento.target.files?.[0]
+
+  /*
+  Permitimos volver a elegir el mismo fichero después.
+  */
+  evento.target.value = ''
+
+  if (
+    !archivo ||
+    !sorteoSeleccionado
+  ) {
+    return
+  }
+
+  const extensionCorrecta =
+    String(archivo.name)
+      .toLowerCase()
+      .endsWith('.mp3')
+
+  const mimeCorrecto =
+    ['audio/mpeg', 'audio/mp3', 'audio/x-mpeg']
+      .includes(
+        String(archivo.type ?? '')
+          .toLowerCase()
+      )
+
+  if (
+    !extensionCorrecta &&
+    !mimeCorrecto
+  ) {
+    setMensajeMusicaPresentacion(
+      'Selecciona un archivo MP3.'
+    )
+    return
+  }
+
+  const limiteBytes =
+    25 * 1024 * 1024
+
+  if (
+    Number(archivo.size) >
+    limiteBytes
+  ) {
+    setMensajeMusicaPresentacion(
+      'El MP3 supera 25 MB. Conviene usar una versión más ligera para que la TV pueda precargarla con rapidez.'
+    )
+    return
+  }
+
+  const esEspera =
+    tipo === 'espera'
+
+  const pathAnterior =
+    esEspera
+      ? musicaPresentacion.esperaPath
+      : musicaPresentacion.sorteoPath
+
+  const nombreLimpio =
+    limpiarNombreArchivoMusica(
+      archivo.name
+    )
+
+  const nuevoPath =
+    `${sorteoSeleccionado.id}/${tipo}-${Date.now()}-${nombreLimpio}`
+
+  setSubiendoMusicaPresentacion(
+    tipo
+  )
+
+  setMensajeMusicaPresentacion(
+    `Subiendo ${
+      esEspera
+        ? 'música de espera'
+        : 'música del sorteo'
+    }...`
+  )
+
+  try {
+    const {
+      error: errorSubida,
+    } = await supabase
+      .storage
+      .from('musica-sorteos')
+      .upload(
+        nuevoPath,
+        archivo,
+        {
+          cacheControl: '3600',
+          contentType:
+            archivo.type ||
+            'audio/mpeg',
+          upsert: false,
+        }
+      )
+
+    if (errorSubida) {
+      throw errorSubida
+    }
+
+    const cambios =
+      esEspera
+        ? {
+            musica_espera_path:
+              nuevoPath,
+            musica_espera_nombre:
+              archivo.name,
+          }
+        : {
+            musica_sorteo_path:
+              nuevoPath,
+            musica_sorteo_nombre:
+              archivo.name,
+          }
+
+    const {
+      error: errorGuardado,
+    } = await supabase
+      .from('sorteos')
+      .update(cambios)
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (errorGuardado) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([nuevoPath])
+
+      throw errorGuardado
+    }
+
+    actualizarSorteoLocal(
+      cambios
+    )
+
+    setMusicaPresentacion(
+      (actual) => ({
+        ...actual,
+
+        ...(esEspera
+          ? {
+              esperaPath:
+                nuevoPath,
+              esperaNombre:
+                archivo.name,
+            }
+          : {
+              sorteoPath:
+                nuevoPath,
+              sorteoNombre:
+                archivo.name,
+            }),
+      })
+    )
+
+    /*
+    Borramos la pista anterior solo cuando la nueva ya está
+    correctamente vinculada al sorteo.
+    */
+    if (
+      pathAnterior &&
+      pathAnterior !== nuevoPath
+    ) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([
+          pathAnterior,
+        ])
+    }
+
+    setMensajeMusicaPresentacion(
+      `✓ ${
+        esEspera
+          ? 'Música de espera'
+          : 'Música del sorteo'
+      } actualizada.`
+    )
+  } catch (error) {
+    console.error(
+      'Error subiendo música:',
+      error
+    )
+
+    setMensajeMusicaPresentacion(
+      `Error: ${error.message}`
+    )
+  } finally {
+    setSubiendoMusicaPresentacion(
+      ''
+    )
+  }
+}
+
+
+async function eliminarMusicaPresentacion(
+  tipo
+) {
+  if (!sorteoSeleccionado) {
+    return
+  }
+
+  const esEspera =
+    tipo === 'espera'
+
+  const pathActual =
+    esEspera
+      ? musicaPresentacion.esperaPath
+      : musicaPresentacion.sorteoPath
+
+  const cambios =
+    esEspera
+      ? {
+          musica_espera_path: null,
+          musica_espera_nombre: null,
+        }
+      : {
+          musica_sorteo_path: null,
+          musica_sorteo_nombre: null,
+        }
+
+  setSubiendoMusicaPresentacion(
+    tipo
+  )
+
+  setMensajeMusicaPresentacion(
+    'Eliminando música...'
+  )
+
+  try {
+    const {
+      error,
+    } = await supabase
+      .from('sorteos')
+      .update(cambios)
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (error) {
+      throw error
+    }
+
+    if (pathActual) {
+      await supabase
+        .storage
+        .from('musica-sorteos')
+        .remove([
+          pathActual,
+        ])
+    }
+
+    actualizarSorteoLocal(
+      cambios
+    )
+
+    setMusicaPresentacion(
+      (actual) => ({
+        ...actual,
+
+        ...(esEspera
+          ? {
+              esperaPath: null,
+              esperaNombre: null,
+            }
+          : {
+              sorteoPath: null,
+              sorteoNombre: null,
+            }),
+      })
+    )
+
+    setMensajeMusicaPresentacion(
+      '✓ Música eliminada.'
+    )
+  } catch (error) {
+    console.error(
+      'Error eliminando música:',
+      error
+    )
+
+    setMensajeMusicaPresentacion(
+      `Error: ${error.message}`
+    )
+  } finally {
+    setSubiendoMusicaPresentacion(
+      ''
+    )
+  }
+}
+
+
+async function guardarVolumenesMusicaPresentacion() {
+  if (!sorteoSeleccionado) {
+    return
+  }
+
+  const cambios = {
+    musica_espera_volumen:
+      limitarNumero(
+        musicaPresentacion.esperaVolumen,
+        0,
+        100,
+        65
+      ),
+
+    musica_sorteo_volumen:
+      limitarNumero(
+        musicaPresentacion.sorteoVolumen,
+        0,
+        100,
+        55
+      ),
+  }
+
+  setGuardandoMusicaPresentacion(
+    true
+  )
+
+  setMensajeMusicaPresentacion(
+    'Guardando volúmenes...'
+  )
+
+  try {
+    const {
+      error,
+    } = await supabase
+      .from('sorteos')
+      .update(cambios)
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (error) {
+      throw error
+    }
+
+    actualizarSorteoLocal(
+      cambios
+    )
+
+    setMusicaPresentacion(
+      (actual) => ({
+        ...actual,
+        esperaVolumen:
+          cambios.musica_espera_volumen,
+        sorteoVolumen:
+          cambios.musica_sorteo_volumen,
+      })
+    )
+
+    setMensajeMusicaPresentacion(
+      '✓ Volúmenes guardados.'
+    )
+  } catch (error) {
+    console.error(
+      'Error guardando volúmenes:',
+      error
+    )
+
+    setMensajeMusicaPresentacion(
+      `Error: ${error.message}`
+    )
+  } finally {
+    setGuardandoMusicaPresentacion(
+      false
+    )
+  }
+}
+
+
 /*
 ============================================================
 EMPAREJAMIENTOS
@@ -536,6 +1010,39 @@ const [
 const [
   mensajeTiemposPresentacion,
   setMensajeTiemposPresentacion,
+] = useState('')
+
+/*
+============================================================
+MÚSICA DE PRESENTACIÓN
+============================================================
+*/
+
+const [
+  musicaPresentacion,
+  setMusicaPresentacion,
+] = useState({
+  esperaPath: null,
+  esperaNombre: null,
+  esperaVolumen: 65,
+  sorteoPath: null,
+  sorteoNombre: null,
+  sorteoVolumen: 55,
+})
+
+const [
+  subiendoMusicaPresentacion,
+  setSubiendoMusicaPresentacion,
+] = useState('')
+
+const [
+  guardandoMusicaPresentacion,
+  setGuardandoMusicaPresentacion,
+] = useState(false)
+
+const [
+  mensajeMusicaPresentacion,
+  setMensajeMusicaPresentacion,
 ] = useState('')
 
 /*
@@ -689,6 +1196,27 @@ const [equipoCompletoPublico, setEquipoCompletoPublico] =
 const [sonidoPublicoActivo, setSonidoPublicoActivo] =
   useState(false)
 
+const [
+  musicaPublica,
+  setMusicaPublica,
+] = useState(null)
+
+const [
+  estadoPrecargaMusicaPublica,
+  setEstadoPrecargaMusicaPublica,
+] = useState({
+  espera: 'pendiente',
+  sorteo: 'pendiente',
+})
+
+const [
+  detallePrecargaMusicaPublica,
+  setDetallePrecargaMusicaPublica,
+] = useState({
+  espera: '',
+  sorteo: '',
+})
+
 const [bloqueoSecuenciaPresentacion, setBloqueoSecuenciaPresentacion] =
   useState(false)
 
@@ -717,6 +1245,14 @@ arrastrar visualmente el último equipo de una ejecución anterior.
 const ejecucionPublicaRef = useRef(null)
 const audioContextPublicoRef = useRef(null)
 const sonidoPublicoActivoRef = useRef(false)
+
+const audioEsperaPublicoRef = useRef(null)
+const audioSorteoPublicoRef = useRef(null)
+const blobUrlEsperaPublicoRef = useRef(null)
+const blobUrlSorteoPublicoRef = useRef(null)
+const pistaMusicaActivaPublicoRef = useRef(null)
+const temporizadorFadeMusicaPublicoRef = useRef(null)
+
 const temporizadoresPublicosRef = useRef([])
 const temporizadoresRepeticionPublicaRef = useRef([])
 const temporizadorBloqueoAdminRef = useRef(null)
@@ -844,6 +1380,63 @@ const temporizadorRepeticionAdminRef = useRef(null)
     ejecucionPublicaId,
   ])
 
+
+  /*
+  ============================================================
+  PRECARGA DE MÚSICA EN LA TV
+  ============================================================
+
+  Las dos pistas se descargan completas al abrir la pantalla pública.
+  No se espera al momento de comenzar el sorteo.
+  */
+  useEffect(() => {
+    if (
+      !modoPublico ||
+      !sorteoPublicoId
+    ) {
+      return undefined
+    }
+
+    cargarConfiguracionMusicaPublica()
+
+    return () => {
+      detenerMusicaPublica()
+      limpiarPistaMusicaPublica(
+        'espera'
+      )
+      limpiarPistaMusicaPublica(
+        'sorteo'
+      )
+    }
+  }, [
+    modoPublico,
+    sorteoPublicoId,
+  ])
+
+
+  /*
+  Al cambiar el estado remoto de GENERADA a EN_CURSO,
+  la TV hace automáticamente el fundido entre la música
+  de espera y la música principal.
+  */
+  useEffect(() => {
+    if (
+      !modoPublico ||
+      !sonidoPublicoActivo
+    ) {
+      return
+    }
+
+    sincronizarMusicaPublica()
+  }, [
+    modoPublico,
+    sonidoPublicoActivo,
+    presentacionPublica?.estado,
+    estadoPrecargaMusicaPublica.espera,
+    estadoPrecargaMusicaPublica.sorteo,
+  ])
+
+
   /*
   El resumen final YA NO aparece automáticamente.
   La TV espera a que el administrador pulse el botón
@@ -897,6 +1490,14 @@ const temporizadorRepeticionAdminRef = useRef(null)
       if (temporizadorRepeticionAdminRef.current) {
         window.clearTimeout(temporizadorRepeticionAdminRef.current)
       }
+
+      detenerMusicaPublica()
+      limpiarPistaMusicaPublica(
+        'espera'
+      )
+      limpiarPistaMusicaPublica(
+        'sorteo'
+      )
 
       if (audioContextPublicoRef.current) {
         audioContextPublicoRef.current.close().catch(() => {})
@@ -1196,6 +1797,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
     setConfirmacionOficialidad(null)
     setMensajeOficialidad('')
     setMensajeTiemposPresentacion('')
+    setMensajeMusicaPresentacion('')
 
     setSorteoSeleccionado(sorteo)
     setPantalla('gestionar-sorteo')
@@ -1227,6 +1829,12 @@ const temporizadorRepeticionAdminRef = useRef(null)
           presentacion_intervalo_jugador_ms,
           presentacion_pausa_entre_equipos_ms,
           presentacion_pausa_resumen_ms,
+          musica_espera_path,
+          musica_espera_nombre,
+          musica_espera_volumen,
+          musica_sorteo_path,
+          musica_sorteo_nombre,
+          musica_sorteo_volumen,
           estado,
           creado_en
         `)
@@ -1418,6 +2026,31 @@ function obtenerUrlFoto(fotoPath) {
     .getPublicUrl(fotoPath)
 
   return data.publicUrl
+}
+
+
+function obtenerUrlMusica(musicaPath) {
+  if (!musicaPath) {
+    return null
+  }
+
+  const { data } = supabase
+    .storage
+    .from('musica-sorteos')
+    .getPublicUrl(musicaPath)
+
+  return data.publicUrl
+}
+
+
+function limpiarNombreArchivoMusica(nombre) {
+  return String(nombre ?? 'cancion.mp3')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
 }
 
 
@@ -5933,10 +6566,521 @@ function reproducirEfectoPublico(tipo) {
   }
 }
 
+
+function detenerFadeMusicaPublica() {
+  if (
+    temporizadorFadeMusicaPublicoRef.current
+  ) {
+    window.clearInterval(
+      temporizadorFadeMusicaPublicoRef.current
+    )
+
+    temporizadorFadeMusicaPublicoRef.current =
+      null
+  }
+}
+
+
+function limpiarPistaMusicaPublica(tipo) {
+  const esEspera =
+    tipo === 'espera'
+
+  const audioRef =
+    esEspera
+      ? audioEsperaPublicoRef
+      : audioSorteoPublicoRef
+
+  const blobRef =
+    esEspera
+      ? blobUrlEsperaPublicoRef
+      : blobUrlSorteoPublicoRef
+
+  if (audioRef.current) {
+    audioRef.current.pause()
+    audioRef.current.src = ''
+    audioRef.current = null
+  }
+
+  if (blobRef.current) {
+    URL.revokeObjectURL(
+      blobRef.current
+    )
+
+    blobRef.current = null
+  }
+}
+
+
+function detenerMusicaPublica() {
+  detenerFadeMusicaPublica()
+
+  for (
+    const audio of [
+      audioEsperaPublicoRef.current,
+      audioSorteoPublicoRef.current,
+    ]
+  ) {
+    if (audio) {
+      audio.pause()
+    }
+  }
+
+  pistaMusicaActivaPublicoRef.current =
+    null
+}
+
+
+async function precargarPistaMusicaPublica(
+  tipo,
+  path
+) {
+  const esEspera =
+    tipo === 'espera'
+
+  limpiarPistaMusicaPublica(
+    tipo
+  )
+
+  if (!path) {
+    setEstadoPrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]:
+          'sin_configurar',
+      })
+    )
+
+    setDetallePrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]:
+          'Sin canción configurada',
+      })
+    )
+
+    return
+  }
+
+  setEstadoPrecargaMusicaPublica(
+    (actual) => ({
+      ...actual,
+      [tipo]: 'cargando',
+    })
+  )
+
+  setDetallePrecargaMusicaPublica(
+    (actual) => ({
+      ...actual,
+      [tipo]:
+        'Descargando en la TV...',
+    })
+  )
+
+  try {
+    const url =
+      obtenerUrlMusica(
+        path
+      )
+
+    const respuesta =
+      await fetch(
+        url,
+        {
+          cache: 'force-cache',
+        }
+      )
+
+    if (!respuesta.ok) {
+      throw new Error(
+        `HTTP ${respuesta.status}`
+      )
+    }
+
+    /*
+    Descargamos el MP3 completo a memoria antes del directo.
+    Una vez creado el blob local, la reproducción no depende de
+    seguir descargando la canción mientras salen los jugadores.
+    */
+    const blob =
+      await respuesta.blob()
+
+    const blobUrl =
+      URL.createObjectURL(
+        blob
+      )
+
+    const audio =
+      new Audio(
+        blobUrl
+      )
+
+    audio.loop = true
+    audio.preload = 'auto'
+    audio.volume = 0
+
+    if (esEspera) {
+      audioEsperaPublicoRef.current =
+        audio
+      blobUrlEsperaPublicoRef.current =
+        blobUrl
+    } else {
+      audioSorteoPublicoRef.current =
+        audio
+      blobUrlSorteoPublicoRef.current =
+        blobUrl
+    }
+
+    setEstadoPrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]: 'lista',
+      })
+    )
+
+    setDetallePrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]:
+          `${(
+            blob.size /
+            (1024 * 1024)
+          ).toFixed(1)} MB precargados`,
+      })
+    )
+  } catch (error) {
+    console.warn(
+      `No se pudo precargar música ${tipo}:`,
+      error
+    )
+
+    limpiarPistaMusicaPublica(
+      tipo
+    )
+
+    setEstadoPrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]: 'error',
+      })
+    )
+
+    setDetallePrecargaMusicaPublica(
+      (actual) => ({
+        ...actual,
+        [tipo]:
+          'No se pudo precargar',
+      })
+    )
+  }
+}
+
+
+async function cargarConfiguracionMusicaPublica() {
+  if (!sorteoPublicoId) {
+    return
+  }
+
+  try {
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      'obtener_musica_presentacion_publica',
+      {
+        p_sorteo_id:
+          sorteoPublicoId,
+      }
+    )
+
+    if (error) {
+      throw error
+    }
+
+    const config =
+      data ?? {}
+
+    setMusicaPublica(
+      config
+    )
+
+    await Promise.all([
+      precargarPistaMusicaPublica(
+        'espera',
+        config.musica_espera_path
+      ),
+
+      precargarPistaMusicaPublica(
+        'sorteo',
+        config.musica_sorteo_path
+      ),
+    ])
+  } catch (error) {
+    console.warn(
+      'No se pudo cargar la configuración de música:',
+      error
+    )
+
+    setEstadoPrecargaMusicaPublica({
+      espera: 'error',
+      sorteo: 'error',
+    })
+
+    setDetallePrecargaMusicaPublica({
+      espera:
+        'Error de configuración',
+      sorteo:
+        'Error de configuración',
+    })
+  }
+}
+
+
+function volumenObjetivoMusicaPublica(
+  tipo
+) {
+  const bruto =
+    tipo === 'espera'
+      ? musicaPublica
+          ?.musica_espera_volumen
+      : musicaPublica
+          ?.musica_sorteo_volumen
+
+  return (
+    limitarNumero(
+      bruto,
+      0,
+      100,
+      tipo === 'espera'
+        ? 65
+        : 55
+    ) / 100
+  )
+}
+
+
+async function desbloquearAudioPublico(
+  audio
+) {
+  if (!audio) {
+    return
+  }
+
+  const volumenAnterior =
+    audio.volume
+
+  try {
+    audio.volume = 0
+
+    await audio.play()
+
+    audio.pause()
+    audio.currentTime = 0
+  } catch (error) {
+    console.warn(
+      'No se pudo preparar una pista de audio:',
+      error
+    )
+  } finally {
+    audio.volume =
+      volumenAnterior
+  }
+}
+
+
+async function cambiarPistaMusicaPublica(
+  tipoObjetivo,
+  {
+    inmediato = false,
+    reiniciar = false,
+  } = {}
+) {
+  if (
+    !sonidoPublicoActivoRef.current
+  ) {
+    return
+  }
+
+  const audioObjetivo =
+    tipoObjetivo === 'espera'
+      ? audioEsperaPublicoRef.current
+      : audioSorteoPublicoRef.current
+
+  if (!audioObjetivo) {
+    /*
+    Si no hay canción configurada o falla la descarga, el sorteo
+    sigue funcionando con normalidad y conserva los efectos.
+    */
+    detenerMusicaPublica()
+    return
+  }
+
+  const tipoActual =
+    pistaMusicaActivaPublicoRef.current
+
+  const audioActual =
+    tipoActual === 'espera'
+      ? audioEsperaPublicoRef.current
+      : tipoActual === 'sorteo'
+        ? audioSorteoPublicoRef.current
+        : null
+
+  const volumenObjetivo =
+    volumenObjetivoMusicaPublica(
+      tipoObjetivo
+    )
+
+  if (
+    tipoActual === tipoObjetivo
+  ) {
+    audioObjetivo.volume =
+      volumenObjetivo
+
+    if (audioObjetivo.paused) {
+      try {
+        await audioObjetivo.play()
+      } catch (error) {
+        console.warn(
+          'No se pudo reanudar la música:',
+          error
+        )
+      }
+    }
+
+    return
+  }
+
+  detenerFadeMusicaPublica()
+
+  if (reiniciar) {
+    try {
+      audioObjetivo.currentTime = 0
+    } catch {
+      // Algunos navegadores no permiten mover el tiempo hasta cargar.
+    }
+  }
+
+  audioObjetivo.volume =
+    inmediato
+      ? volumenObjetivo
+      : 0
+
+  try {
+    await audioObjetivo.play()
+  } catch (error) {
+    console.warn(
+      'No se pudo iniciar la música:',
+      error
+    )
+
+    return
+  }
+
+  pistaMusicaActivaPublicoRef.current =
+    tipoObjetivo
+
+  if (inmediato) {
+    if (
+      audioActual &&
+      audioActual !== audioObjetivo
+    ) {
+      audioActual.pause()
+    }
+
+    return
+  }
+
+  const duracionMs = 1200
+  const pasos = 24
+  const intervaloMs =
+    duracionMs / pasos
+
+  let paso = 0
+  const volumenInicialAnterior =
+    audioActual
+      ? audioActual.volume
+      : 0
+
+  temporizadorFadeMusicaPublicoRef.current =
+    window.setInterval(
+      () => {
+        paso += 1
+
+        const progreso =
+          Math.min(
+            1,
+            paso / pasos
+          )
+
+        audioObjetivo.volume =
+          volumenObjetivo *
+          progreso
+
+        if (audioActual) {
+          audioActual.volume =
+            Math.max(
+              0,
+              volumenInicialAnterior *
+                (1 - progreso)
+            )
+        }
+
+        if (progreso >= 1) {
+          detenerFadeMusicaPublica()
+
+          if (audioActual) {
+            audioActual.pause()
+          }
+        }
+      },
+      intervaloMs
+    )
+}
+
+
+async function sincronizarMusicaPublica(
+  opciones = {}
+) {
+  if (
+    !sonidoPublicoActivoRef.current
+  ) {
+    return
+  }
+
+  const estado =
+    String(
+      presentacionPublica?.estado ??
+      ''
+    ).toLowerCase()
+
+  if (
+    estado === 'generada' ||
+    !estado
+  ) {
+    await cambiarPistaMusicaPublica(
+      'espera',
+      opciones
+    )
+
+    return
+  }
+
+  if (
+    estado === 'en_curso' ||
+    estado === 'finalizada'
+  ) {
+    await cambiarPistaMusicaPublica(
+      'sorteo',
+      opciones
+    )
+  }
+}
+
+
 async function alternarSonidoPublico() {
   if (sonidoPublicoActivoRef.current) {
     sonidoPublicoActivoRef.current = false
     setSonidoPublicoActivo(false)
+    detenerMusicaPublica()
     return
   }
 
@@ -5959,8 +7103,27 @@ async function alternarSonidoPublico() {
 
     await audioContextPublicoRef.current.resume()
 
+    /*
+    Este clic local en la TV sirve también para desbloquear las dos
+    pistas MP3. Así, cuando después pulses "Comenzar sorteo" desde
+    el móvil, Chrome puede cambiar de canción sin pedir otro clic.
+    */
+    await Promise.all([
+      desbloquearAudioPublico(
+        audioEsperaPublicoRef.current
+      ),
+      desbloquearAudioPublico(
+        audioSorteoPublicoRef.current
+      ),
+    ])
+
     sonidoPublicoActivoRef.current = true
     setSonidoPublicoActivo(true)
+
+    await sincronizarMusicaPublica({
+      inmediato: true,
+      reiniciar: true,
+    })
 
     reproducirEfectoPublico('equipo')
   } catch (error) {
@@ -6842,6 +8005,26 @@ if (
   const preparada =
     estadoPublico === 'generada'
 
+  const configuracionMusicaCargada =
+    Boolean(
+      musicaPublica
+    )
+
+  const musicaEsperaLista =
+    !musicaPublica?.musica_espera_path ||
+    estadoPrecargaMusicaPublica.espera ===
+      'lista'
+
+  const musicaSorteoLista =
+    !musicaPublica?.musica_sorteo_path ||
+    estadoPrecargaMusicaPublica.sorteo ===
+      'lista'
+
+  const audioPublicoListoParaPreparar =
+    configuracionMusicaCargada &&
+    musicaEsperaLista &&
+    musicaSorteoLista
+
   const miembrosActualesPublico =
     miembrosSecuenciaPublica.length > 0
       ? miembrosSecuenciaPublica
@@ -6964,6 +8147,10 @@ if (
                 : ''
             }`}
             onClick={alternarSonidoPublico}
+            disabled={
+              !sonidoPublicoActivo &&
+              !audioPublicoListoParaPreparar
+            }
             title={
               sonidoPublicoActivo
                 ? 'Desactivar sonido'
@@ -6971,8 +8158,8 @@ if (
             }
           >
             {sonidoPublicoActivo
-              ? '🔊 Sonido'
-              : '🔇 Activar sonido'}
+              ? '🔊 Música y sonido'
+              : '🔇 Preparar audio'}
           </button>
 
           <button
@@ -6993,12 +8180,28 @@ if (
           type="button"
           className="aviso-activar-sonido-tv"
           onClick={alternarSonidoPublico}
+          disabled={
+            !audioPublicoListoParaPreparar
+          }
         >
-          <span>🔊</span>
+          <span>
+            {audioPublicoListoParaPreparar
+              ? '🔊'
+              : '⏳'}
+          </span>
 
           <div>
-            <strong>Activar sonido de la presentación</strong>
-            <small>Haz clic una vez antes de empezar el sorteo.</small>
+            <strong>
+              {audioPublicoListoParaPreparar
+                ? 'Preparar música y sonido'
+                : 'Precargando música...'}
+            </strong>
+
+            <small>
+              {audioPublicoListoParaPreparar
+                ? 'Haz clic una vez en la TV antes de empezar. Esto desbloquea las dos canciones para el control desde el móvil.'
+                : 'Espera a que las pistas configuradas estén listas. La presentación seguirá funcionando aunque alguna canción no esté configurada.'}
+            </small>
           </div>
         </button>
       )}
@@ -7057,6 +8260,63 @@ if (
               La presentación comenzará en breve.
             </p>
 
+            <div className="estado-precarga-musica-tv">
+              {[
+                {
+                  tipo: 'espera',
+                  titulo: 'Música de espera',
+                  nombre:
+                    musicaPublica?.musica_espera_nombre,
+                },
+                {
+                  tipo: 'sorteo',
+                  titulo: 'Música del sorteo',
+                  nombre:
+                    musicaPublica?.musica_sorteo_nombre,
+                },
+              ].map(
+                (pista) => {
+                  const estado =
+                    estadoPrecargaMusicaPublica[
+                      pista.tipo
+                    ]
+
+                  return (
+                    <div
+                      key={pista.tipo}
+                      className={`estado-pista-precarga estado-pista-${estado}`}
+                    >
+                      <span>
+                        {estado === 'lista'
+                          ? '✓'
+                          : estado === 'cargando'
+                            ? '↻'
+                            : estado === 'error'
+                              ? '!'
+                              : '—'}
+                      </span>
+
+                      <div>
+                        <strong>
+                          {pista.titulo}
+                        </strong>
+
+                        <small>
+                          {pista.nombre ??
+                            'Sin canción configurada'}
+                          {' · '}
+                          {detallePrecargaMusicaPublica[
+                            pista.tipo
+                          ] ||
+                            'Pendiente'}
+                        </small>
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </div>
+
             <div className="puntos-espera-publica">
               <span />
               <span />
@@ -7084,6 +8344,63 @@ if (
             <p>
               La presentación comenzará en breve.
             </p>
+
+            <div className="estado-precarga-musica-tv">
+              {[
+                {
+                  tipo: 'espera',
+                  titulo: 'Música de espera',
+                  nombre:
+                    musicaPublica?.musica_espera_nombre,
+                },
+                {
+                  tipo: 'sorteo',
+                  titulo: 'Música del sorteo',
+                  nombre:
+                    musicaPublica?.musica_sorteo_nombre,
+                },
+              ].map(
+                (pista) => {
+                  const estado =
+                    estadoPrecargaMusicaPublica[
+                      pista.tipo
+                    ]
+
+                  return (
+                    <div
+                      key={pista.tipo}
+                      className={`estado-pista-precarga estado-pista-${estado}`}
+                    >
+                      <span>
+                        {estado === 'lista'
+                          ? '✓'
+                          : estado === 'cargando'
+                            ? '↻'
+                            : estado === 'error'
+                              ? '!'
+                              : '—'}
+                      </span>
+
+                      <div>
+                        <strong>
+                          {pista.titulo}
+                        </strong>
+
+                        <small>
+                          {pista.nombre ??
+                            'Sin canción configurada'}
+                          {' · '}
+                          {detallePrecargaMusicaPublica[
+                            pista.tipo
+                          ] ||
+                            'Pendiente'}
+                        </small>
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </div>
 
             <div className="puntos-espera-publica">
               <span />
@@ -12254,6 +13571,306 @@ if (
 }
 
 
+
+/*
+============================================================
+PANTALLA MÚSICA DE PRESENTACIÓN
+============================================================
+*/
+
+if (
+  pantalla === 'musica-presentacion' &&
+  sorteoSeleccionado
+) {
+  const pistasMusica = [
+    {
+      tipo: 'espera',
+      titulo: 'Antes del sorteo',
+      subtitulo: 'Música de espera',
+      descripcion:
+        'Sonará mientras la TV muestre “El sorteo comenzará en breve”.',
+      icono: '⏳',
+      path:
+        musicaPresentacion.esperaPath,
+      nombre:
+        musicaPresentacion.esperaNombre,
+      volumen:
+        musicaPresentacion.esperaVolumen,
+    },
+    {
+      tipo: 'sorteo',
+      titulo: 'Durante el sorteo',
+      subtitulo: 'Música principal',
+      descripcion:
+        'Entrará con un fundido cuando comience el sorteo y seguirá en bucle durante la presentación.',
+      icono: '🎬',
+      path:
+        musicaPresentacion.sorteoPath,
+      nombre:
+        musicaPresentacion.sorteoNombre,
+      volumen:
+        musicaPresentacion.sorteoVolumen,
+    },
+  ]
+
+  return (
+    <main className="app app-admin">
+      <section className="panel-admin">
+
+        <button
+          className="boton-volver"
+          onClick={() =>
+            setPantalla(
+              'gestionar-sorteo'
+            )
+          }
+        >
+          ← Volver al sorteo
+        </button>
+
+        <header className="cabecera-gestion">
+          <div>
+            <p className="etiqueta">
+              PRESENTACIÓN
+            </p>
+
+            <h2>
+              Música de presentación
+            </h2>
+
+            <p className="descripcion-admin">
+              {sorteoSeleccionado.nombre}
+            </p>
+          </div>
+
+          <span className="badge-estado">
+            🎵 MP3
+          </span>
+        </header>
+
+        <div className="intro-musica-presentacion">
+          <div>
+            <span>🎧</span>
+          </div>
+
+          <p>
+            Selecciona canciones MP3 de cualquier carpeta de tu ordenador.
+            Se subirán a Supabase y la TV las precargará completas antes
+            del sorteo para evitar cortes durante la presentación.
+          </p>
+        </div>
+
+        <div className="grid-musica-presentacion">
+          {pistasMusica.map(
+            (pista) => {
+              const estaSubiendo =
+                subiendoMusicaPresentacion ===
+                pista.tipo
+
+              const url =
+                pista.path
+                  ? obtenerUrlMusica(
+                      pista.path
+                    )
+                  : null
+
+              return (
+                <article
+                  className="tarjeta-musica-presentacion"
+                  key={pista.tipo}
+                >
+                  <header>
+                    <div className="icono-pista-musica">
+                      {pista.icono}
+                    </div>
+
+                    <div>
+                      <span>
+                        {pista.titulo}
+                      </span>
+
+                      <h3>
+                        {pista.subtitulo}
+                      </h3>
+
+                      <p>
+                        {pista.descripcion}
+                      </p>
+                    </div>
+                  </header>
+
+                  <div
+                    className={`archivo-musica-actual ${
+                      pista.path
+                        ? 'archivo-musica-configurado'
+                        : ''
+                    }`}
+                  >
+                    <span>
+                      {pista.path
+                        ? '✓'
+                        : '—'}
+                    </span>
+
+                    <div>
+                      <small>
+                        CANCIÓN ACTUAL
+                      </small>
+
+                      <strong>
+                        {pista.nombre ??
+                          'Sin música configurada'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {url && (
+                    <audio
+                      className="preview-audio-musica"
+                      controls
+                      preload="metadata"
+                      src={url}
+                    />
+                  )}
+
+                  <div className="acciones-pista-musica">
+                    <label
+                      className={`boton boton-principal selector-mp3 ${
+                        estaSubiendo
+                          ? 'selector-mp3-bloqueado'
+                          : ''
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept=".mp3,audio/mpeg"
+                        disabled={
+                          Boolean(
+                            subiendoMusicaPresentacion
+                          )
+                        }
+                        onChange={(e) =>
+                          subirMusicaPresentacion(
+                            e,
+                            pista.tipo
+                          )
+                        }
+                      />
+
+                      {estaSubiendo
+                        ? 'Subiendo...'
+                        : pista.path
+                          ? 'Cambiar MP3'
+                          : 'Seleccionar MP3'}
+                    </label>
+
+                    {pista.path && (
+                      <button
+                        type="button"
+                        className="boton boton-secundario"
+                        disabled={
+                          Boolean(
+                            subiendoMusicaPresentacion
+                          )
+                        }
+                        onClick={() =>
+                          eliminarMusicaPresentacion(
+                            pista.tipo
+                          )
+                        }
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="volumen-pista-musica">
+                    <div>
+                      <span>
+                        Volumen
+                      </span>
+
+                      <strong>
+                        {pista.volumen}%
+                      </strong>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={pista.volumen}
+                      onChange={(e) =>
+                        setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+
+                            [pista.tipo === 'espera'
+                              ? 'esperaVolumen'
+                              : 'sorteoVolumen']:
+                              Number(
+                                e.target.value
+                              ),
+                          })
+                        )
+                      }
+                    />
+                  </div>
+                </article>
+              )
+            }
+          )}
+        </div>
+
+        <div className="nota-precarga-musica">
+          <span>⚡</span>
+
+          <div>
+            <strong>
+              Precarga antes del directo
+            </strong>
+
+            <p>
+              Al abrir la TV, las dos canciones se descargan completas
+              en segundo plano. El audio nunca bloquea el sorteo:
+              si una pista fallase, la presentación continuaría sin música.
+            </p>
+          </div>
+        </div>
+
+        <div className="acciones-guardar-musica">
+          <button
+            type="button"
+            className="boton boton-principal"
+            disabled={
+              guardandoMusicaPresentacion ||
+              Boolean(
+                subiendoMusicaPresentacion
+              )
+            }
+            onClick={
+              guardarVolumenesMusicaPresentacion
+            }
+          >
+            {guardandoMusicaPresentacion
+              ? 'Guardando...'
+              : 'Guardar volúmenes'}
+          </button>
+        </div>
+
+        {mensajeMusicaPresentacion && (
+          <p className="estado">
+            {mensajeMusicaPresentacion}
+          </p>
+        )}
+
+      </section>
+    </main>
+  )
+}
+
+
 /*
 ============================================================
 PANTALLA RESULTADO GENERADO
@@ -13517,6 +15134,26 @@ if (
 
                 <small>
                   Ajustar pausas y transiciones de la TV
+                </small>
+              </span>
+            </button>
+
+            {/* MÚSICA DE PRESENTACIÓN */}
+            <button
+              className="opcion-gestion"
+              onClick={abrirMusicaPresentacion}
+            >
+              <span className="icono-opcion">
+                🎵
+              </span>
+
+              <span>
+                <strong>
+                  Música de presentación
+                </strong>
+
+                <small>
+                  Elegir música de espera y música del sorteo
                 </small>
               </span>
             </button>

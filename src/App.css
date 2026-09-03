@@ -6574,3 +6574,343 @@ las fotos ni el símbolo + respecto a las demás filas.
       0 0 0 1px rgba(255, 255, 255, 0.025);
   }
 }
+
+
+/* ==========================================================
+   MÚSICA DE PRESENTACIÓN
+   ========================================================== */
+
+.intro-musica-presentacion {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 18px 0;
+  padding: 15px 17px;
+  border: 1px solid rgba(34, 197, 94, 0.14);
+  border-radius: 15px;
+  background: rgba(34, 197, 94, 0.035);
+}
+
+.intro-musica-presentacion > div {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  background: rgba(34, 197, 94, 0.09);
+  font-size: 22px;
+}
+
+.intro-musica-presentacion p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  opacity: 0.72;
+}
+
+.grid-musica-presentacion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.tarjeta-musica-presentacion {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.035),
+      rgba(255, 255, 255, 0.012)
+    );
+}
+
+.tarjeta-musica-presentacion > header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.icono-pista-musica {
+  width: 43px;
+  height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.14);
+  font-size: 19px;
+}
+
+.tarjeta-musica-presentacion header span {
+  display: block;
+  margin-bottom: 2px;
+  color: #86efac;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.tarjeta-musica-presentacion h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.tarjeta-musica-presentacion header p {
+  margin: 5px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  opacity: 0.58;
+}
+
+.archivo-musica-actual {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 16px 0 11px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.archivo-musica-actual > span {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  opacity: 0.55;
+}
+
+.archivo-musica-configurado > span {
+  background: rgba(34, 197, 94, 0.10);
+  color: #86efac;
+  opacity: 1;
+}
+
+.archivo-musica-actual small,
+.archivo-musica-actual strong {
+  display: block;
+}
+
+.archivo-musica-actual small {
+  margin-bottom: 2px;
+  font-size: 8px;
+  opacity: 0.45;
+  letter-spacing: 0.09em;
+}
+
+.archivo-musica-actual strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.preview-audio-musica {
+  width: 100%;
+  height: 35px;
+  margin-bottom: 11px;
+  opacity: 0.82;
+}
+
+.acciones-pista-musica {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.selector-mp3 {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.selector-mp3 input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.selector-mp3-bloqueado {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.volumen-pista-musica {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.volumen-pista-musica > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+
+.volumen-pista-musica > div span {
+  opacity: 0.55;
+}
+
+.volumen-pista-musica > div strong {
+  color: #86efac;
+}
+
+.volumen-pista-musica input[type="range"] {
+  width: 100%;
+  accent-color: #22c55e;
+}
+
+.nota-precarga-musica {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin-top: 15px;
+  padding: 13px 15px;
+  border: 1px solid rgba(96, 165, 250, 0.15);
+  border-radius: 13px;
+  background: rgba(96, 165, 250, 0.04);
+}
+
+.nota-precarga-musica > span {
+  font-size: 17px;
+}
+
+.nota-precarga-musica strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.nota-precarga-musica p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.5;
+  opacity: 0.6;
+}
+
+.acciones-guardar-musica {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+
+/* ==========================================================
+   ESTADO DE PRECARGA EN TV
+   ========================================================== */
+
+.estado-precarga-musica-tv {
+  width: min(760px, 88vw);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px auto 2px;
+}
+
+.estado-pista-precarga {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background: rgba(13, 19, 26, 0.66);
+  text-align: left;
+}
+
+.estado-pista-precarga > span {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 950;
+}
+
+.estado-pista-precarga strong,
+.estado-pista-precarga small {
+  display: block;
+}
+
+.estado-pista-precarga strong {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.estado-pista-precarga small {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  opacity: 0.55;
+}
+
+.estado-pista-lista {
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.estado-pista-lista > span {
+  background: rgba(34, 197, 94, 0.10);
+  color: #86efac;
+}
+
+.estado-pista-cargando > span {
+  color: #93c5fd;
+  animation: giro-precarga-musica 1s linear infinite;
+}
+
+.estado-pista-error {
+  border-color: rgba(248, 113, 113, 0.22);
+}
+
+.estado-pista-error > span {
+  background: rgba(248, 113, 113, 0.09);
+  color: #fca5a5;
+}
+
+@keyframes giro-precarga-musica {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .grid-musica-presentacion,
+  .estado-precarga-musica-tv {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.boton-sonido-publico:disabled,
+.aviso-activar-sonido-tv:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
+.aviso-activar-sonido-tv:disabled:hover {
+  transform: none;
+}
