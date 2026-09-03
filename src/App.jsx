@@ -9128,37 +9128,47 @@ if (
                     </div>
                   </div>
 
-                  <div className="acciones-final-control-movil">
-                  <button
-                    type="button"
-                    disabled={
-                      accionPresentacion ||
-                      repeticionEnCursoControl
-                    }
-                    onClick={
-                      repetirPresentacionEnTv
-                    }
-                  >
-                    {repeticionEnCursoControl
-                      ? '⏳ Reproduciendo…'
-                      : '🔁 Repetir presentación'}
-                  </button>
+                  {!resumenFinalEnviado &&
+                    !repeticionEnCursoControl && (
+                      <div className="zona-boton-principal-control-movil">
+                        <button
+                          type="button"
+                          className="boton-grande-control-movil"
+                          disabled={
+                            accionPresentacion
+                          }
+                          onClick={
+                            mostrarResumenFinalEnTv
+                          }
+                        >
+                          {accionPresentacion
+                            ? 'ENVIANDO…'
+                            : '📊 MOSTRAR RESUMEN FINAL'}
+                        </button>
+                      </div>
+                    )}
 
-                  <button
-                    type="button"
-                    disabled={
-                      accionPresentacion ||
-                      repeticionEnCursoControl ||
-                      resumenFinalEnviado
-                    }
-                    onClick={
-                      mostrarResumenFinalEnTv
-                    }
-                  >
-                    {resumenFinalEnviado
-                      ? '✓ Resumen mostrado'
-                      : '📊 Mostrar resumen final'}
-                  </button>
+                  <div className="acciones-final-control-movil">
+                    <button
+                      type="button"
+                      disabled={
+                        accionPresentacion ||
+                        repeticionEnCursoControl
+                      }
+                      onClick={
+                        repetirPresentacionEnTv
+                      }
+                    >
+                      {repeticionEnCursoControl
+                        ? '⏳ Reproduciendo…'
+                        : '🔁 Repetir presentación'}
+                    </button>
+
+                    {resumenFinalEnviado && (
+                      <span className="estado-resumen-control-movil">
+                        ✓ Resumen mostrado
+                      </span>
+                    )}
                   </div>
                 </>
               )}
