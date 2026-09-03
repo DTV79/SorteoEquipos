@@ -1438,6 +1438,9 @@ const [
     CONFIG_PRESENTACION.pausaEntreEquiposRepeticionMs,
   pausaAntesResumenRepeticionMs:
     CONFIG_PRESENTACION.pausaAntesResumenRepeticionMs,
+
+  estiloEntrada:
+    'destello',
 })
 
 const [
@@ -2331,6 +2334,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
           presentacion_intervalo_jugador_ms,
           presentacion_pausa_entre_equipos_ms,
           presentacion_pausa_resumen_ms,
+          presentacion_estilo_entrada,
           musica_espera_path,
           musica_espera_nombre,
           musica_espera_volumen,
@@ -4428,6 +4432,19 @@ function obtenerConfigPresentacion(origen = null) {
         CONFIG_PRESENTACION.pausaAntesResumenRepeticionMs
       ),
 
+    estiloEntrada:
+      ['destello', 'giro_zoom'].includes(
+        String(
+          datos.presentacion_estilo_entrada ??
+          'destello'
+        ).toLowerCase()
+      )
+        ? String(
+            datos.presentacion_estilo_entrada ??
+            'destello'
+          ).toLowerCase()
+        : 'destello',
+
     margenBloqueoAdminMs:
       CONFIG_PRESENTACION.margenBloqueoAdminMs,
   }
@@ -4512,6 +4529,19 @@ async function guardarTiemposPresentacion() {
         15000,
         CONFIG_PRESENTACION.pausaAntesResumenRepeticionMs
       ),
+
+    estiloEntrada:
+      ['destello', 'giro_zoom'].includes(
+        String(
+          tiemposPresentacion.estiloEntrada ??
+          'destello'
+        ).toLowerCase()
+      )
+        ? String(
+            tiemposPresentacion.estiloEntrada ??
+            'destello'
+          ).toLowerCase()
+        : 'destello',
   }
 
   setGuardandoTiemposPresentacion(true)
@@ -4532,6 +4562,9 @@ async function guardarTiemposPresentacion() {
 
       presentacion_pausa_resumen_ms:
         config.pausaAntesResumenRepeticionMs,
+
+      presentacion_estilo_entrada:
+        config.estiloEntrada,
     }
 
     const {
@@ -4575,7 +4608,7 @@ async function guardarTiemposPresentacion() {
     )
 
     setMensajeTiemposPresentacion(
-      '✓ Tiempos guardados. Se aplicarán inmediatamente a la presentación y a las repeticiones.'
+      '✓ Tiempos y estilo guardados. Se aplicarán a la presentación y a las repeticiones.'
     )
   } catch (error) {
     console.error(
@@ -8182,7 +8215,11 @@ async function alternarSonidoPublico() {
       reiniciar: true,
     })
 
-    reproducirEfectoPublico('equipo')
+    /*
+    Al preparar el audio no reproducimos ningún efecto.
+    El sonido de bomba queda reservado exclusivamente
+    para el momento EQUIPO COMPLETO.
+    */
   } catch (error) {
     console.warn(
       'No se pudo activar el sonido:',
@@ -9122,6 +9159,14 @@ if (
           ].filter(Boolean)
         : []
 
+  const estiloEntradaPublico =
+    String(
+      musicaPublica?.presentacion_estilo_entrada ??
+      'destello'
+    ).toLowerCase() === 'giro_zoom'
+      ? 'giro_zoom'
+      : 'destello'
+
   const esLigaUnicaPublica =
     String(
       presentacionPublica?.formato_sorteo ?? 'grupos'
@@ -9612,7 +9657,11 @@ if (
                             !equipoCompletoPublico &&
                             indiceMiembro ===
                               miembrosMostradosPublico.length - 1
-                              ? 'jugador-publico-entrada-espectaculo'
+                              ? (
+                                  estiloEntradaPublico === 'giro_zoom'
+                                    ? 'jugador-publico-entrada-giro-zoom'
+                                    : 'jugador-publico-entrada-espectaculo'
+                                )
                               : 'jugador-publico-estable'
                           }`}
                           style={{
@@ -14584,6 +14633,92 @@ if (
           </p>
         </div>
 
+        <div className="selector-estilo-entrada">
+          <div className="cabecera-selector-estilo">
+            <span>ESTILO DE ENTRADA</span>
+            <h3>¿Cómo aparece cada jugador?</h3>
+            <p>
+              Puedes conservar el efecto actual o probar una entrada
+              con giro y zoom. El sonido configurado funciona igual
+              en ambos estilos.
+            </p>
+          </div>
+
+          <div className="opciones-estilo-entrada">
+            <button
+              type="button"
+              className={`tarjeta-estilo-entrada ${
+                tiemposPresentacion.estiloEntrada === 'destello'
+                  ? 'tarjeta-estilo-entrada-activa'
+                  : ''
+              }`}
+              onClick={() => {
+                setTiemposPresentacion(
+                  (actual) => ({
+                    ...actual,
+                    estiloEntrada: 'destello',
+                  })
+                )
+                setMensajeTiemposPresentacion('')
+              }}
+            >
+              <span className="icono-estilo-entrada">
+                ✦
+              </span>
+
+              <span>
+                <strong>Destello</strong>
+                <small>
+                  El estilo que tienes ahora: entrada lateral,
+                  enfoque, halo y destello.
+                </small>
+              </span>
+
+              <em>
+                {tiemposPresentacion.estiloEntrada === 'destello'
+                  ? 'SELECCIONADO'
+                  : 'ELEGIR'}
+              </em>
+            </button>
+
+            <button
+              type="button"
+              className={`tarjeta-estilo-entrada ${
+                tiemposPresentacion.estiloEntrada === 'giro_zoom'
+                  ? 'tarjeta-estilo-entrada-activa'
+                  : ''
+              }`}
+              onClick={() => {
+                setTiemposPresentacion(
+                  (actual) => ({
+                    ...actual,
+                    estiloEntrada: 'giro_zoom',
+                  })
+                )
+                setMensajeTiemposPresentacion('')
+              }}
+            >
+              <span className="icono-estilo-entrada">
+                🌀
+              </span>
+
+              <span>
+                <strong>Giro + zoom</strong>
+                <small>
+                  Empieza pequeño, gira sobre sí mismo, crece hasta
+                  ocupar prácticamente toda la TV y vuelve a su tamaño.
+                </small>
+              </span>
+
+              <em>
+                {tiemposPresentacion.estiloEntrada === 'giro_zoom'
+                  ? 'SELECCIONADO'
+                  : 'ELEGIR'}
+              </em>
+            </button>
+          </div>
+        </div>
+
         <div className="grid-tiempos-presentacion">
           {camposTiempos.map(
             (campo) => {
@@ -14692,7 +14827,7 @@ if (
           >
             {guardandoTiemposPresentacion
               ? 'Guardando...'
-              : 'Guardar tiempos'}
+              : 'Guardar tiempos y estilo'}
           </button>
         </div>
 

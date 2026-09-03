@@ -7596,3 +7596,289 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
     min-height: auto;
   }
 }
+
+
+/* ==========================================================
+   ESTILO DE ENTRADA CONFIGURABLE
+   ========================================================== */
+
+.selector-estilo-entrada {
+  margin-bottom: 22px;
+  padding: 18px;
+  border: 1px solid #27313d;
+  border-radius: 16px;
+  background: #0d131a;
+}
+
+.cabecera-selector-estilo {
+  margin-bottom: 14px;
+}
+
+.cabecera-selector-estilo > span {
+  display: block;
+  margin-bottom: 4px;
+  color: #86efac;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.cabecera-selector-estilo h3 {
+  margin: 0 0 5px;
+  font-size: 19px;
+}
+
+.cabecera-selector-estilo p {
+  max-width: 760px;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.opciones-estilo-entrada {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tarjeta-estilo-entrada {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #2b3643;
+  border-radius: 14px;
+  background: #10171f;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tarjeta-estilo-entrada:hover {
+  border-color: rgba(34, 197, 94, 0.45);
+  transform: translateY(-2px);
+}
+
+.tarjeta-estilo-entrada-activa {
+  border-color: rgba(34, 197, 94, 0.72);
+  background: rgba(34, 197, 94, 0.075);
+  box-shadow:
+    inset 0 0 0 1px rgba(34, 197, 94, 0.08);
+}
+
+.icono-estilo-entrada {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: rgba(34, 197, 94, 0.08);
+  font-size: 24px;
+}
+
+.tarjeta-estilo-entrada strong,
+.tarjeta-estilo-entrada small {
+  display: block;
+}
+
+.tarjeta-estilo-entrada strong {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.tarjeta-estilo-entrada small {
+  color: #94a3b8;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.tarjeta-estilo-entrada em {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #64748b;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.tarjeta-estilo-entrada-activa em {
+  background: rgba(34, 197, 94, 0.11);
+  color: #86efac;
+}
+
+
+/* ==========================================================
+   GIRO + ZOOM · SEGUNDA OPCIÓN DE ENTRADA
+   ========================================================== */
+
+/*
+Durante esta animación permitimos que el jugador crezca fuera
+del panel central, para que el zoom pueda ocupar prácticamente
+toda la pantalla de TV.
+*/
+.equipo-principal-publico-formando:has(
+  .jugador-publico-entrada-giro-zoom
+) {
+  overflow: visible;
+}
+
+.jugador-publico-entrada-giro-zoom {
+  position: relative;
+  z-index: 80;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+  animation:
+    entrada-jugador-giro-zoom 1.55s
+      cubic-bezier(0.15, 0.82, 0.18, 1)
+      both;
+}
+
+.jugador-publico-entrada-giro-zoom .foto-publica-tv {
+  border-color: rgba(134, 239, 172, 0.82);
+  box-shadow:
+    0 0 0 10px rgba(34, 197, 94, 0.045),
+    0 0 48px rgba(34, 197, 94, 0.24);
+  animation:
+    pulso-foto-giro-zoom 1.55s ease-out both;
+}
+
+.jugador-publico-entrada-giro-zoom .foto-publica-tv img {
+  animation:
+    enfoque-foto-giro-zoom 1.35s ease-out both;
+}
+
+.jugador-publico-entrada-giro-zoom small,
+.jugador-publico-entrada-giro-zoom h2 {
+  animation:
+    texto-giro-zoom 0.44s 1.03s ease-out both;
+}
+
+@keyframes entrada-jugador-giro-zoom {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform:
+      rotate(-720deg)
+      scale(0.08);
+  }
+
+  24% {
+    opacity: 1;
+    filter: blur(2px);
+    transform:
+      rotate(-390deg)
+      scale(0.62);
+  }
+
+  55% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      rotate(-110deg)
+      scale(1.65);
+  }
+
+  72% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      rotate(18deg)
+      scale(3.45);
+  }
+
+  86% {
+    transform:
+      rotate(-5deg)
+      scale(0.90);
+  }
+
+  94% {
+    transform:
+      rotate(2deg)
+      scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform:
+      rotate(0deg)
+      scale(1);
+  }
+}
+
+@keyframes pulso-foto-giro-zoom {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(34, 197, 94, 0),
+      0 0 0 rgba(34, 197, 94, 0);
+  }
+
+  68% {
+    box-shadow:
+      0 0 0 26px rgba(34, 197, 94, 0.07),
+      0 0 100px rgba(34, 197, 94, 0.42);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 10px rgba(34, 197, 94, 0.045),
+      0 0 48px rgba(34, 197, 94, 0.24);
+  }
+}
+
+@keyframes enfoque-foto-giro-zoom {
+  0% {
+    filter:
+      blur(12px)
+      brightness(1.55);
+  }
+
+  60% {
+    filter:
+      blur(0)
+      brightness(1.16);
+  }
+
+  100% {
+    filter:
+      blur(0)
+      brightness(1);
+  }
+}
+
+@keyframes texto-giro-zoom {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .opciones-estilo-entrada {
+    grid-template-columns: 1fr;
+  }
+
+  .tarjeta-estilo-entrada {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .tarjeta-estilo-entrada em {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
