@@ -8283,3 +8283,77 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
     padding: 22px 18px 26px;
   }
 }
+
+
+/* ==========================================================
+   PRIMER EQUIPO · INDICADOR SIN CUENTA ATRÁS
+   ========================================================== */
+
+.cuenta-atras-primer-equipo {
+  display: none !important;
+}
+
+.indicador-primer-equipo {
+  position: relative;
+  width: clamp(130px, 14vw, 205px);
+  height: clamp(130px, 14vw, 205px);
+  margin-bottom: 28px;
+}
+
+.anillo-primer-equipo {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.anillo-primer-equipo-1 {
+  inset: 0;
+  border: 2px solid rgba(34, 197, 94, 0.13);
+  border-top-color: #22c55e;
+  border-right-color: rgba(134, 239, 172, 0.62);
+  animation: giro-primer-equipo 2.2s linear infinite;
+}
+
+.anillo-primer-equipo-2 {
+  inset: 14%;
+  border: 1px dashed rgba(134, 239, 172, 0.20);
+  animation: giro-primer-equipo 4s linear infinite reverse;
+}
+
+.nucleo-primer-equipo {
+  position: absolute;
+  inset: 27%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(74, 222, 128, 0.26);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 38% 30%,
+      rgba(74, 222, 128, 0.16),
+      rgba(8, 22, 15, 0.98) 70%
+    );
+  box-shadow:
+    0 0 0 12px rgba(34, 197, 94, 0.025),
+    0 0 48px rgba(34, 197, 94, 0.12);
+  font-size: clamp(32px, 4vw, 58px);
+  animation: pulso-primer-equipo 1.9s ease-in-out infinite;
+}
+
+@keyframes giro-primer-equipo {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulso-primer-equipo {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+
+  50% {
+    transform: scale(1.07);
+  }
+}

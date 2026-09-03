@@ -9471,9 +9471,13 @@ if (
         enCurso &&
         equiposPublicos.length === 0 && (
           <section className="espera-publica-tv espera-primer-equipo-tv">
-            <div className="cuenta-atras-primer-equipo" aria-hidden="true">
-              <span />
-              <strong>1</strong>
+            <div className="indicador-primer-equipo" aria-hidden="true">
+              <span className="anillo-primer-equipo anillo-primer-equipo-1" />
+              <span className="anillo-primer-equipo anillo-primer-equipo-2" />
+
+              <div className="nucleo-primer-equipo">
+                🎲
+              </div>
             </div>
 
             <p className="sobre-espera-publica">
