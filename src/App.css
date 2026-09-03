@@ -7085,7 +7085,7 @@ las fotos ni el símbolo + respecto a las demás filas.
 
 .jugador-publico-entrada-espectaculo {
   animation:
-    entrada-jugador-espectaculo 0.82s
+    entrada-jugador-espectaculo 1.10s
       cubic-bezier(0.16, 0.92, 0.22, 1)
       both;
 }
@@ -7094,7 +7094,7 @@ las fotos ni el símbolo + respecto a las demás filas.
   position: relative;
   border-color: rgba(134, 239, 172, 0.72);
   animation:
-    foto-jugador-espectaculo 1.05s
+    foto-jugador-espectaculo 1.20s
       cubic-bezier(0.16, 0.86, 0.22, 1)
       both;
   box-shadow:
@@ -7453,23 +7453,3 @@ las fotos ni el símbolo + respecto a las demás filas.
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .escenario-publico-tv::before,
-  .escenario-publico-tv::after,
-  .equipo-principal-publico-completo,
-  .jugador-publico-entrada-espectaculo,
-  .jugador-publico-entrada-espectaculo .foto-publica-tv,
-  .jugador-publico-entrada-espectaculo .foto-publica-tv img,
-  .jugador-publico-entrada-espectaculo small,
-  .jugador-publico-entrada-espectaculo h2,
-  .equipo-principal-publico-completo .pieza-miembro-publico,
-  .equipo-principal-publico-completo .grupo-equipo-publico,
-  .equipo-principal-publico-completo .nombre-equipo-completo,
-  .equipo-principal-publico-completo .mas-publico-tv,
-  .flash-jugador-publico::before,
-  .flash-jugador-publico::after,
-  .flash-equipo-completo-publico::before,
-  .flash-equipo-completo-publico::after {
-    animation: none !important;
-  }
-}
