@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
+import { supabaseCampeonato } from './lib/supabaseCampeonato'
+import CampeonatoAdmin from './CampeonatoAdmin'
 
 /*
 ============================================================
@@ -170,6 +172,10 @@ function App() {
   const [password, setPassword] = useState('')
   const [mensajeLogin, setMensajeLogin] = useState('')
   const [cargandoLogin, setCargandoLogin] = useState(false)
+  const [accesoCampeonato, setAccesoCampeonato] = useState({
+    disponible: false,
+    mensaje: '',
+  })
 
   /*
   ============================================================
@@ -2285,13 +2291,47 @@ const temporizadorRepeticionAdminRef = useRef(null)
         return
       }
 
+      let campeonatoDisponible = false
+      let mensajeCampeonato = ''
+
+      const {
+        error: errorLoginCampeonato,
+      } = await supabaseCampeonato.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (!errorLoginCampeonato) {
+        const {
+          data: esAdminCampeonato,
+          error: errorAdminCampeonato,
+        } = await supabaseCampeonato.rpc('es_administrador')
+
+        campeonatoDisponible =
+          !errorAdminCampeonato &&
+          esAdminCampeonato === true
+
+        if (!campeonatoDisponible) {
+          mensajeCampeonato =
+            'Este usuario todavía no está autorizado en Campeonato.'
+        }
+      } else {
+        mensajeCampeonato =
+          'Este usuario todavía no está creado en Campeonato.'
+      }
+
+      setAccesoCampeonato({
+        disponible: campeonatoDisponible,
+        mensaje: mensajeCampeonato,
+      })
+
       setMensajeLogin('')
       setPassword('')
 
       if (modoControlMovil) {
         await cargarControlMovilDesdeUrl()
       } else {
-        setPantalla('admin')
+        setPantalla('panel-principal')
       }
 
       setCargandoLogin(false)
@@ -9289,10 +9329,15 @@ async function activarPantallaCompletaPublica() {
 
   async function cerrarSesion() {
     await supabase.auth.signOut()
+    await supabaseCampeonato.auth.signOut()
 
     setEmail('')
     setPassword('')
     setMensajeLogin('')
+    setAccesoCampeonato({
+      disponible: false,
+      mensaje: '',
+    })
 
     setSorteoSeleccionado(null)
     setBombos([])
@@ -10814,6 +10859,73 @@ if (
 
         </section>
       </main>
+    )
+  }
+
+  if (pantalla === 'panel-principal') {
+    return (
+      <main className="app">
+        <section className="inicio inicio-panel-principal">
+          <div className="logo">🎾</div>
+          <p className="etiqueta">SPRINT PÁDEL</p>
+          <h1>Panel de control</h1>
+          <p className="descripcion">
+            Elige qué parte quieres gestionar.
+          </p>
+
+          <div className="modulos-principales">
+            <button
+              type="button"
+              className="modulo-principal modulo-sorteo"
+              onClick={() => setPantalla('admin')}
+            >
+              <span className="modulo-icono">🎲</span>
+              <strong>Sorteo de equipos</strong>
+              <small>Jugadores, bombos, equipos y presentación</small>
+            </button>
+
+            <button
+              type="button"
+              className="modulo-principal modulo-campeonato"
+              onClick={() =>
+                accesoCampeonato.disponible &&
+                setPantalla('campeonato')
+              }
+              disabled={!accesoCampeonato.disponible}
+            >
+              <span className="modulo-icono">🏆</span>
+              <strong>Gestión del campeonato</strong>
+              <small>
+                {accesoCampeonato.disponible
+                  ? 'Partidos y resultados'
+                  : 'Pendiente de autorizar este usuario'}
+              </small>
+            </button>
+          </div>
+
+          {accesoCampeonato.mensaje && (
+            <p className="aviso-acceso-campeonato">
+              {accesoCampeonato.mensaje}
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="boton-volver"
+            onClick={cerrarSesion}
+          >
+            Cerrar sesión
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (pantalla === 'campeonato') {
+    return (
+      <CampeonatoAdmin
+        onVolver={() => setPantalla('panel-principal')}
+      />
     )
   }
 
@@ -17248,12 +17360,22 @@ if (
 
             </div>
 
-            <button
-              className="boton boton-secundario"
-              onClick={cerrarSesion}
-            >
-              Cerrar sesión
-            </button>
+            <div className="acciones-panel-admin">
+              <button
+                type="button"
+                className="boton boton-secundario"
+                onClick={() => setPantalla('panel-principal')}
+              >
+                ← Panel principal
+              </button>
+
+              <button
+                className="boton boton-secundario"
+                onClick={cerrarSesion}
+              >
+                Cerrar sesión
+              </button>
+            </div>
 
           </header>
 
@@ -17512,9 +17634,7 @@ if (
           <button
             className="boton boton-principal"
             onClick={() =>
-              setPantalla(
-                'login'
-              )
+                setPantalla('login')
             }
           >
             Administración

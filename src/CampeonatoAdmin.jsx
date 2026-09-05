@@ -1,0 +1,369 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabaseCampeonato } from './lib/supabaseCampeonato'
+import './CampeonatoAdmin.css'
+
+const ESTADO_URL =
+  'https://dtv79.github.io/Campeonato/estado_torneo.json'
+
+function tituloFase(partido) {
+  const fase = {
+    GR: 'Grupos',
+    RG: 'Regrupos',
+    MM: 'Mata-Mata',
+    PP: 'Palas de playa',
+  }[partido.codigo_fase] ?? partido.codigo_fase
+
+  const detalle =
+    partido.codigo_grupo ||
+    partido.codigo_ronda ||
+    (partido.jornada
+      ? `Jornada ${partido.jornada}`
+      : '')
+
+  return [fase, detalle].filter(Boolean).join(' · ')
+}
+
+function valorSet(partido, numero, campo) {
+  return partido.sets?.find(
+    (set) => Number(set.numero_set) === numero
+  )?.[campo] ?? ''
+}
+
+export default function CampeonatoAdmin({ onVolver }) {
+  const [codigo, setCodigo] = useState('CAMP-2026-01')
+  const [partidos, setPartidos] = useState([])
+  const [filtro, setFiltro] = useState('')
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState('')
+  const [mensajes, setMensajes] = useState({})
+
+  const cargarPartidos = useCallback(async (codigoElegido) => {
+    setCargando(true)
+    setError('')
+
+    const { data, error: errorConsulta } =
+      await supabaseCampeonato.rpc(
+        'admin_listar_partidos',
+        { p_codigo: codigoElegido }
+      )
+
+    if (errorConsulta) {
+      setError(errorConsulta.message)
+      setCargando(false)
+      return
+    }
+
+    if (data?.ok !== true) {
+      setError(
+        data?.error ||
+        'Este usuario no tiene acceso al campeonato.'
+      )
+      setCargando(false)
+      return
+    }
+
+    setPartidos(data.partidos ?? [])
+    setCargando(false)
+  }, [])
+
+  useEffect(() => {
+    let cancelado = false
+
+    async function iniciar() {
+      let codigoActual = 'CAMP-2026-01'
+
+      try {
+        const respuesta = await fetch(
+          `${ESTADO_URL}?v=${Date.now()}`,
+          { cache: 'no-store' }
+        )
+        const datos = await respuesta.json()
+
+        codigoActual =
+          datos?.configuracion?.codigo_campeonato ||
+          codigoActual
+      } catch (errorCarga) {
+        console.warn(
+          'No se pudo leer el campeonato activo:',
+          errorCarga
+        )
+      }
+
+      if (cancelado) return
+
+      setCodigo(codigoActual)
+      await cargarPartidos(codigoActual)
+    }
+
+    iniciar()
+
+    return () => {
+      cancelado = true
+    }
+  }, [cargarPartidos])
+
+  const partidosVisibles = useMemo(() => {
+    const texto = filtro.trim().toLowerCase()
+    if (!texto) return partidos
+
+    return partidos.filter((partido) =>
+      [
+        partido.id_partido,
+        partido.equipo_1,
+        partido.equipo_2,
+        partido.codigo_fase,
+        partido.codigo_grupo,
+        partido.codigo_ronda,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(texto)
+    )
+  }, [filtro, partidos])
+
+  async function guardarResultado(evento, partido) {
+    evento.preventDefault()
+    const formulario = new FormData(evento.currentTarget)
+
+    const sets = [1, 2, 3]
+      .map((numero) => {
+        const juegosEquipo1 = formulario.get(`set${numero}_1`)
+        const juegosEquipo2 = formulario.get(`set${numero}_2`)
+
+        if (juegosEquipo1 === '' && juegosEquipo2 === '') {
+          return null
+        }
+
+        return {
+          juegos_equipo_1: juegosEquipo1,
+          juegos_equipo_2: juegosEquipo2,
+        }
+      })
+      .filter(Boolean)
+
+    if (
+      sets.some(
+        (set) =>
+          set.juegos_equipo_1 === '' ||
+          set.juegos_equipo_2 === ''
+      )
+    ) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto: 'Completa los dos marcadores de cada set utilizado.',
+        },
+      }))
+      return
+    }
+
+    setGuardando(partido.id_partido)
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: '',
+        texto: 'Guardando…',
+      },
+    }))
+
+    const pista = formulario.get('pista')
+    const duracion = formulario.get('duracion')
+
+    const { error: errorGuardado } =
+      await supabaseCampeonato.rpc(
+        'admin_guardar_resultado',
+        {
+          p_id_partido: partido.id_partido,
+          p_sets: sets,
+          p_pista: pista ? Number(pista) : null,
+          p_duracion_min: duracion
+            ? Number(duracion)
+            : null,
+        }
+      )
+
+    if (errorGuardado) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto: errorGuardado.message,
+        },
+      }))
+      setGuardando('')
+      return
+    }
+
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'correcto',
+        texto: 'Resultado guardado.',
+      },
+    }))
+    setGuardando('')
+    await cargarPartidos(codigo)
+  }
+
+  return (
+    <main className="app app-admin app-campeonato">
+      <section className="panel-admin panel-campeonato">
+        <header className="cabecera-admin cabecera-campeonato">
+          <div>
+            <p className="etiqueta">CAMPEONATO</p>
+            <h2>Resultados</h2>
+            <p className="descripcion-admin">
+              {codigo}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={onVolver}
+          >
+            ← Panel principal
+          </button>
+        </header>
+
+        <div className="barra-campeonato">
+          <div>
+            <strong>{partidos.length} partidos</strong>
+            <span>Introduce el marcador y guarda el partido.</span>
+          </div>
+
+          <input
+            type="search"
+            value={filtro}
+            onChange={(evento) =>
+              setFiltro(evento.target.value)
+            }
+            placeholder="Buscar equipo, grupo o partido"
+            aria-label="Buscar partido"
+          />
+        </div>
+
+        {cargando && (
+          <p className="estado">Cargando partidos…</p>
+        )}
+
+        {error && (
+          <p className="mensaje-login">Error: {error}</p>
+        )}
+
+        {!cargando && !error && partidosVisibles.length === 0 && (
+          <p className="estado tarjeta-partido-campeonato">
+            No hay partidos que coincidan.
+          </p>
+        )}
+
+        <div className="lista-partidos-campeonato">
+          {partidosVisibles.map((partido) => {
+            const mensaje = mensajes[partido.id_partido]
+
+            return (
+              <form
+                className="tarjeta-partido-campeonato"
+                key={partido.id_partido}
+                onSubmit={(evento) =>
+                  guardarResultado(evento, partido)
+                }
+              >
+                <div className="partido-cabecera-campeonato">
+                  <span>
+                    {tituloFase(partido)} · {partido.id_partido}
+                  </span>
+                  <b className={`badge-partido ${partido.estado}`}>
+                    {partido.estado === 'jugado'
+                      ? 'Jugado'
+                      : 'Pendiente'}
+                  </b>
+                </div>
+
+                <div className="equipos-campeonato">
+                  <strong>{partido.equipo_1}</strong>
+                  <span>VS</span>
+                  <strong>{partido.equipo_2}</strong>
+                </div>
+
+                <div className="sets-campeonato">
+                  {[1, 2, 3].map((numero) => (
+                    <label key={numero}>
+                      <span>SET {numero}</span>
+                      <div>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          name={`set${numero}_1`}
+                          defaultValue={valorSet(
+                            partido,
+                            numero,
+                            'juegos_equipo_1'
+                          )}
+                        />
+                        <b>–</b>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          name={`set${numero}_2`}
+                          defaultValue={valorSet(
+                            partido,
+                            numero,
+                            'juegos_equipo_2'
+                          )}
+                        />
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="datos-partido-campeonato">
+                  <label>
+                    <span>Pista</span>
+                    <input
+                      type="number"
+                      min="1"
+                      name="pista"
+                      defaultValue={partido.pista ?? ''}
+                    />
+                  </label>
+
+                  <label>
+                    <span>Duración (min)</span>
+                    <input
+                      type="number"
+                      min="1"
+                      name="duracion"
+                      defaultValue={partido.duracion_min ?? ''}
+                    />
+                  </label>
+
+                  <button
+                    className="boton boton-principal"
+                    type="submit"
+                    disabled={guardando === partido.id_partido}
+                  >
+                    {guardando === partido.id_partido
+                      ? 'Guardando…'
+                      : 'Guardar'}
+                  </button>
+                </div>
+
+                {mensaje && (
+                  <p className={`mensaje-partido ${mensaje.tipo}`}>
+                    {mensaje.texto}
+                  </p>
+                )}
+              </form>
+            )
+          })}
+        </div>
+      </section>
+    </main>
+  )
+}
