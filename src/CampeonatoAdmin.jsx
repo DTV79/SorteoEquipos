@@ -264,6 +264,65 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
+  function cambiarTipoSustitucion(evento) {
+    const cedido = evento.currentTarget.value === 'cedido'
+    const fila = evento.currentTarget.closest('.fila-sustitucion')
+    const checks = fila.querySelectorAll(
+      '.checks-sustitucion input[type="checkbox"]'
+    )
+
+    checks.forEach((check) => {
+      if (cedido) check.checked = false
+      check.disabled = cedido
+    })
+  }
+
+  async function crearJugador(evento, partido) {
+    const formulario = evento.currentTarget.closest('form')
+    const datos = new FormData(formulario)
+    const nombre = datos.get('nuevo_jugador_nombre')?.trim()
+    const alias = datos.get('nuevo_jugador_alias')?.trim()
+
+    if (!nombre || !alias) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto: 'Indica el nombre y el alias del nuevo jugador.',
+        },
+      }))
+      return
+    }
+
+    setGuardando(`${partido.id_partido}-jugador`)
+    const { error: errorGuardado } = await supabaseCampeonato.rpc(
+      'admin_crear_jugador',
+      { p_codigo: codigo, p_nombre: nombre, p_alias: alias }
+    )
+
+    if (errorGuardado) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto: errorGuardado.message,
+        },
+      }))
+      setGuardando('')
+      return
+    }
+
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'correcto',
+        texto: 'Jugador dado de alta. Ya puedes seleccionarlo.',
+      },
+    }))
+    setGuardando('')
+    await cargarPartidos(codigo)
+  }
+
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -345,6 +404,20 @@ export default function CampeonatoAdmin({ onVolver }) {
                   <strong>{partido.equipo_2}</strong>
                 </div>
 
+                {(partido.participantes ?? []).some(
+                  (participante) => participante.es_sustitucion
+                ) && (
+                  <div className="resumen-sustituciones">
+                    {(partido.participantes ?? [])
+                      .filter((participante) => participante.es_sustitucion)
+                      .map((participante) => (
+                        <span key={`${participante.lado}_${participante.posicion}`}>
+                          {participante.jugador_real} sustituye a {participante.titular}
+                        </span>
+                      ))}
+                  </div>
+                )}
+
                 <details className="sustituciones-campeonato">
                   <summary>
                     <span>Sustituciones</span>
@@ -358,14 +431,27 @@ export default function CampeonatoAdmin({ onVolver }) {
                   </summary>
 
                   <div className="lista-sustituciones">
-                    {(partido.participantes ?? []).map((participante) => {
-                      const clave = `${participante.lado}_${participante.posicion}`
-                      const sustituido = participante.es_sustitucion
+                    {[1, 2].map((lado) => (
+                      <section
+                        className={`equipo-sustituciones equipo-${lado}`}
+                        key={lado}
+                      >
+                        <h3>
+                          Equipo {lado}
+                          <small>{lado === 1 ? partido.equipo_1 : partido.equipo_2}</small>
+                        </h3>
 
-                      return (
-                        <fieldset key={clave} className="fila-sustitucion">
+                        {(partido.participantes ?? [])
+                          .filter((participante) => participante.lado === lado)
+                          .map((participante) => {
+                            const clave = `${participante.lado}_${participante.posicion}`
+                            const sustituido = participante.es_sustitucion
+                            const cedido = participante.tipo_sustitucion === 'cedido'
+
+                            return (
+                              <fieldset key={clave} className="fila-sustitucion">
                           <legend>
-                            {participante.lado === 1 ? 'Equipo 1' : 'Equipo 2'} · {participante.titular}
+                            Titular: {participante.titular}
                           </legend>
 
                           <label>
@@ -390,6 +476,7 @@ export default function CampeonatoAdmin({ onVolver }) {
                             <select
                               name={`tipo_${clave}`}
                               defaultValue={participante.tipo_sustitucion ?? 'libre'}
+                              onChange={cambiarTipoSustitucion}
                             >
                               <option value="libre">Libre</option>
                               <option value="cedido">Cedido por otro equipo</option>
@@ -406,6 +493,7 @@ export default function CampeonatoAdmin({ onVolver }) {
                                     ? participante.computa_ranking_historico
                                     : true
                                 }
+                                disabled={cedido}
                               />
                               Ranking Histórico
                             </label>
@@ -416,13 +504,42 @@ export default function CampeonatoAdmin({ onVolver }) {
                                 defaultChecked={
                                   sustituido ? participante.computa_isp : true
                                 }
+                                disabled={cedido}
                               />
                               ISP
                             </label>
                           </div>
-                        </fieldset>
-                      )
-                    })}
+                              </fieldset>
+                            )
+                          })}
+                      </section>
+                    ))}
+                  </div>
+
+                  <div className="alta-sustituto">
+                    <strong>¿No aparece el sustituto?</strong>
+                    <div>
+                      <input
+                        type="text"
+                        name="nuevo_jugador_nombre"
+                        placeholder="Nombre oficial"
+                      />
+                      <input
+                        type="text"
+                        name="nuevo_jugador_alias"
+                        placeholder="Alias visible"
+                      />
+                      <button
+                        type="button"
+                        className="boton boton-secundario"
+                        disabled={guardando === `${partido.id_partido}-jugador`}
+                        onClick={(evento) => crearJugador(evento, partido)}
+                      >
+                        {guardando === `${partido.id_partido}-jugador`
+                          ? 'Dando de alta…'
+                          : 'Dar de alta'}
+                      </button>
+                    </div>
                   </div>
 
                   <p className="ayuda-sustituciones">
