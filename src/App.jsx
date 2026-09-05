@@ -156,12 +156,6 @@ function App() {
       : 'inicio'
   })
 
-  const [conexion, setConexion] = useState(
-    'Comprobando conexión...'
-  )
-
-  const [detalle, setDetalle] = useState('')
-
   /*
   ============================================================
   LOGIN
@@ -1822,45 +1816,6 @@ const temporizadorRepeticionAdminRef = useRef(null)
     mensajeNuevoSorteo,
     setMensajeNuevoSorteo,
   ] = useState('')
-
-  /*
-  ============================================================
-  COMPROBAR CONEXIÓN PÚBLICA
-  ============================================================
-  */
-
-  useEffect(() => {
-    async function comprobarConexion() {
-      const { data, error } = await supabase.rpc(
-        'obtener_presentacion_publica',
-        {
-          p_sorteo_id:
-            '4844145b-b7e1-4db6-8c26-dcd75e0d80de',
-        }
-      )
-
-      if (error) {
-        console.error(error)
-
-        setConexion('Error de conexión')
-        setDetalle(error.message)
-
-        return
-      }
-
-      setConexion(
-        'Conexión con Supabase correcta'
-      )
-
-      if (data) {
-        setDetalle(
-          `${data.sorteo ?? 'Sorteo'} · Estado: ${data.estado}`
-        )
-      }
-    }
-
-    comprobarConexion()
-  }, [])
 
   /*
   ============================================================
@@ -17618,15 +17573,15 @@ if (
         </div>
 
         <p className="etiqueta">
-          SORTEO DE EQUIPOS
+          ADMINISTRACIÓN
         </p>
 
         <h1>
-          Sorteo Equipos
+          Sprint Pádel
         </h1>
 
         <p className="descripcion">
-          Gestión, generación y presentación de sorteos de equipos.
+          Administración del campeonato y sorteo de equipos.
         </p>
 
         <div className="acciones">
@@ -17637,20 +17592,10 @@ if (
                 setPantalla('login')
             }
           >
-            Administración
+            Acceso administrador
           </button>
 
         </div>
-
-        <p className="estado">
-          {conexion}
-        </p>
-
-        {detalle && (
-          <p className="estado">
-            {detalle}
-          </p>
-        )}
 
       </section>
     </main>
