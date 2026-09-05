@@ -32,6 +32,7 @@ function valorSet(partido, numero, campo) {
 export default function CampeonatoAdmin({ onVolver }) {
   const [codigo, setCodigo] = useState('CAMP-2026-01')
   const [partidos, setPartidos] = useState([])
+  const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -64,6 +65,7 @@ export default function CampeonatoAdmin({ onVolver }) {
     }
 
     setPartidos(data.partidos ?? [])
+    setJugadores(data.jugadores ?? [])
     setCargando(false)
   }, [])
 
@@ -208,6 +210,60 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
+  async function guardarSustituciones(evento, partido) {
+    const formulario = evento.currentTarget.closest('form')
+    const datos = new FormData(formulario)
+    const participantes = (partido.participantes ?? []).map(
+      (participante) => ({
+        lado: participante.lado,
+        posicion: participante.posicion,
+        id_jugador_real: datos.get(
+          `jugador_${participante.lado}_${participante.posicion}`
+        ),
+        tipo: datos.get(
+          `tipo_${participante.lado}_${participante.posicion}`
+        ),
+        computa_ranking: datos.has(
+          `ranking_${participante.lado}_${participante.posicion}`
+        ),
+        computa_isp: datos.has(
+          `isp_${participante.lado}_${participante.posicion}`
+        ),
+      })
+    )
+
+    setGuardando(`${partido.id_partido}-sustituciones`)
+    const { error: errorGuardado } = await supabaseCampeonato.rpc(
+      'admin_guardar_sustituciones',
+      {
+        p_id_partido: partido.id_partido,
+        p_participantes: participantes,
+      }
+    )
+
+    if (errorGuardado) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto: errorGuardado.message,
+        },
+      }))
+      setGuardando('')
+      return
+    }
+
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'correcto',
+        texto: 'Sustituciones guardadas.',
+      },
+    }))
+    setGuardando('')
+    await cargarPartidos(codigo)
+  }
+
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -288,6 +344,101 @@ export default function CampeonatoAdmin({ onVolver }) {
                   <span>VS</span>
                   <strong>{partido.equipo_2}</strong>
                 </div>
+
+                <details className="sustituciones-campeonato">
+                  <summary>
+                    <span>Sustituciones</span>
+                    <small>
+                      {(partido.participantes ?? []).some(
+                        (participante) => participante.es_sustitucion
+                      )
+                        ? 'Hay cambios'
+                        : 'Sin cambios'}
+                    </small>
+                  </summary>
+
+                  <div className="lista-sustituciones">
+                    {(partido.participantes ?? []).map((participante) => {
+                      const clave = `${participante.lado}_${participante.posicion}`
+                      const sustituido = participante.es_sustitucion
+
+                      return (
+                        <fieldset key={clave} className="fila-sustitucion">
+                          <legend>
+                            {participante.lado === 1 ? 'Equipo 1' : 'Equipo 2'} · {participante.titular}
+                          </legend>
+
+                          <label>
+                            <span>Jugador que disputa el partido</span>
+                            <select
+                              name={`jugador_${clave}`}
+                              defaultValue={participante.id_jugador_real}
+                            >
+                              {jugadores.map((jugador) => (
+                                <option
+                                  key={jugador.id_jugador}
+                                  value={jugador.id_jugador}
+                                >
+                                  {jugador.alias}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label>
+                            <span>Tipo si se sustituye</span>
+                            <select
+                              name={`tipo_${clave}`}
+                              defaultValue={participante.tipo_sustitucion ?? 'libre'}
+                            >
+                              <option value="libre">Libre</option>
+                              <option value="cedido">Cedido por otro equipo</option>
+                            </select>
+                          </label>
+
+                          <div className="checks-sustitucion">
+                            <label>
+                              <input
+                                type="checkbox"
+                                name={`ranking_${clave}`}
+                                defaultChecked={
+                                  sustituido
+                                    ? participante.computa_ranking_historico
+                                    : true
+                                }
+                              />
+                              Ranking Histórico
+                            </label>
+                            <label>
+                              <input
+                                type="checkbox"
+                                name={`isp_${clave}`}
+                                defaultChecked={
+                                  sustituido ? participante.computa_isp : true
+                                }
+                              />
+                              ISP
+                            </label>
+                          </div>
+                        </fieldset>
+                      )
+                    })}
+                  </div>
+
+                  <p className="ayuda-sustituciones">
+                    Si eliges “Cedido”, no computará individualmente para Ranking ni ISP.
+                  </p>
+                  <button
+                    type="button"
+                    className="boton boton-secundario boton-guardar-sustituciones"
+                    disabled={guardando === `${partido.id_partido}-sustituciones`}
+                    onClick={(evento) => guardarSustituciones(evento, partido)}
+                  >
+                    {guardando === `${partido.id_partido}-sustituciones`
+                      ? 'Guardando…'
+                      : 'Guardar sustituciones'}
+                  </button>
+                </details>
 
                 <div className="sets-campeonato">
                   {[1, 2, 3].map((numero) => (
