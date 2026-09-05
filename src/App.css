@@ -7724,7 +7724,12 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
 .jugador-publico-entrada-giro-zoom {
   position: relative;
   z-index: 80;
-  transform-origin: center center;
+  /*
+  El punto de giro se desplaza ligeramente hacia arriba. Al crecer,
+  la tarjeta gana más espacio por debajo que por encima y evita
+  tocar el borde superior del cuadro.
+  */
+  transform-origin: center 42%;
   will-change: transform, opacity, filter;
   animation:
     entrada-jugador-giro-zoom 1.55s
@@ -7773,28 +7778,32 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
     opacity: 1;
     filter: blur(0);
     transform:
+      translateY(10px)
       rotate(-110deg)
-      scale(1.28);
+      scale(1.24);
   }
 
   72% {
     opacity: 1;
     filter: blur(0);
     transform:
+      translateY(24px)
       rotate(18deg)
-      scale(1.82);
+      scale(1.68);
   }
 
   86% {
     transform:
+      translateY(9px)
       rotate(-5deg)
-      scale(0.90);
+      scale(0.92);
   }
 
   94% {
     transform:
+      translateY(3px)
       rotate(2deg)
-      scale(1.08);
+      scale(1.07);
   }
 
   100% {
@@ -7890,7 +7899,9 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
 .equipo-principal-publico-formando:has(
   .jugador-publico-entrada-giro-zoom
 ) .miembros-publico-tv {
-  min-height: clamp(320px, 42vh, 510px);
+  min-height: clamp(350px, 47vh, 540px);
+  padding-top: clamp(10px, 1.8vh, 22px);
+  box-sizing: border-box;
 }
 
 .jugador-publico-entrada-giro-zoom {
@@ -7901,7 +7912,7 @@ Así cada jugador tiene una entrada visual claramente diferenciada.
 En pantallas más pequeñas reducimos un poco más el pico del zoom.
 Así la animación sigue siendo clara sin tocar los bordes del panel.
 */
-@media (max-width: 1100px), (max-height: 760px) {
+@media (max-width: 1100px), (max-height: 900px) {
   @keyframes entrada-jugador-giro-zoom {
     0% {
       opacity: 0;
@@ -7923,28 +7934,32 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
       opacity: 1;
       filter: blur(0);
       transform:
+        translateY(8px)
         rotate(-110deg)
-        scale(1.12);
+        scale(1.10);
     }
 
     72% {
       opacity: 1;
       filter: blur(0);
       transform:
+        translateY(18px)
         rotate(18deg)
-        scale(1.52);
+        scale(1.44);
     }
 
     86% {
       transform:
+        translateY(7px)
         rotate(-5deg)
-        scale(0.92);
+        scale(0.93);
     }
 
     94% {
       transform:
+        translateY(2px)
         rotate(2deg)
-        scale(1.06);
+        scale(1.05);
     }
 
     100% {

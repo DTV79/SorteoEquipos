@@ -1590,6 +1590,17 @@ const [
 ] = useState(false)
 
 /*
+Indica si el sorteo seleccionado ya tiene al menos una ejecución
+generada en Supabase. No depende de haber iniciado todavía la
+presentación, por lo que permite mostrar "Control de presentación"
+desde el primer momento en cualquier dispositivo.
+*/
+const [
+  tieneEjecucionGeneradaSorteo,
+  setTieneEjecucionGeneradaSorteo,
+] = useState(false)
+
+/*
 ============================================================
 CONTROL MÓVIL
 ============================================================
@@ -2310,6 +2321,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
   function limpiarContextoEjecucionSeleccionada() {
     setEjecucionGenerada(null)
+    setTieneEjecucionGeneradaSorteo(false)
 
     setEquiposResultado([])
     setEjecucionResultado(null)
@@ -2351,6 +2363,16 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
     setSorteoSeleccionado(sorteo)
     setPantalla('gestionar-sorteo')
+
+    /*
+    La existencia del Control de presentación depende de que haya
+    una ejecución generada, no de que el sorteo ya esté "en_curso".
+    Lo comprobamos al entrar para que funcione también desde otro
+    ordenador o desde el móvil.
+    */
+    void comprobarEjecucionGeneradaSorteo(
+      sorteo.id
+    )
   }
 
   /*
@@ -5966,6 +5988,7 @@ async function confirmarGeneracionSorteo() {
     }
 
     setEjecucionGenerada(data)
+    setTieneEjecucionGeneradaSorteo(true)
 
     setMensajeGeneracion(
       'Sorteo generado correctamente. La ejecución ya está guardada en Supabase.'
@@ -6056,12 +6079,16 @@ async function abrirResultadoGenerado() {
     }
 
     if (!ejecucionPreferida) {
+      setTieneEjecucionGeneradaSorteo(false)
+
       setErrorResultado(
         'Todavía no hay ninguna ejecución generada para este sorteo.'
       )
       setCargandoResultado(false)
       return
     }
+
+    setTieneEjecucionGeneradaSorteo(true)
 
     setEjecucionOficialSorteo(
       ejecucionPreferida.es_oficial
@@ -6221,6 +6248,65 @@ CONTROL DE PRESENTACIÓN
 ============================================================
 */
 
+async function comprobarEjecucionGeneradaSorteo(
+  sorteoId
+) {
+  if (!sorteoId) {
+    setTieneEjecucionGeneradaSorteo(false)
+    return false
+  }
+
+  try {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('ejecuciones_sorteo')
+      .select(`
+        id,
+        numero_ejecucion
+      `)
+      .eq(
+        'sorteo_id',
+        sorteoId
+      )
+      .order(
+        'numero_ejecucion',
+        { ascending: false }
+      )
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    const existe =
+      Boolean(
+        data?.id
+      )
+
+    setTieneEjecucionGeneradaSorteo(
+      existe
+    )
+
+    return existe
+  } catch (error) {
+    /*
+    Si esta comprobación auxiliar falla, no bloqueamos ninguna
+    función del sorteo. Los estados en_curso/finalizado siguen
+    sirviendo además como respaldo para mostrar el control.
+    */
+    console.warn(
+      'No se pudo comprobar si hay una ejecución generada:',
+      error
+    )
+
+    return false
+  }
+}
+
+
 async function obtenerUltimaEjecucionDelSorteo() {
   if (!sorteoSeleccionado) {
     return null
@@ -6257,8 +6343,11 @@ async function obtenerUltimaEjecucionDelSorteo() {
   }
 
   if (!data) {
+    setTieneEjecucionGeneradaSorteo(false)
     return null
   }
+
+  setTieneEjecucionGeneradaSorteo(true)
 
   if (data.es_oficial) {
     setEjecucionOficialSorteo({
@@ -17089,10 +17178,17 @@ if (
             </button>
 
             {/* CONTROL DE PRESENTACIÓN
-                Se muestra cuando el sorteo ya está en curso o finalizado,
-                para poder volver al control aunque hayamos salido al panel. */}
-            {['en_curso', 'finalizado'].includes(
-              String(sorteoSeleccionado.estado ?? '').toLowerCase()
+                Se muestra desde que existe una ejecución generada,
+                aunque todavía no se haya iniciado la presentación.
+                Los estados en_curso/finalizado quedan como respaldo. */}
+            {(
+              tieneEjecucionGeneradaSorteo ||
+              ['en_curso', 'finalizado'].includes(
+                String(
+                  sorteoSeleccionado.estado ??
+                  ''
+                ).toLowerCase()
+              )
             ) && (
               <button
                 className="opcion-gestion opcion-control-presentacion"
