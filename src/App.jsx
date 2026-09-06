@@ -10906,6 +10906,7 @@ if (
     return (
       <CampeonatoAdmin
         onVolver={() => setPantalla('panel-principal')}
+        onAbrirSorteo={gestionarSorteo}
       />
     )
   }

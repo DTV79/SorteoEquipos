@@ -3,6 +3,7 @@ import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import CampeonatoJugadores from './CampeonatoJugadores'
 import SelectorCampeonatos from './SelectorCampeonatos'
+import EquiposCampeonato from './EquiposCampeonato'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -29,14 +30,14 @@ function valorSet(partido, numero, campo) {
   )?.[campo] ?? ''
 }
 
-export default function CampeonatoAdmin({ onVolver }) {
+export default function CampeonatoAdmin({ onVolver, onAbrirSorteo }) {
   const [codigo, setCodigo] = useState(() => window.sessionStorage.getItem('sprint-padel-campeonato-seleccionado') || '')
   const [partidos, setPartidos] = useState([])
   const [seccion, setSeccion] = useState(() => {
     const guardada = window.sessionStorage.getItem(
       'sprint-padel-seccion-campeonato'
     )
-    return ['campeonatos', 'menu', 'resultados', 'configuracion', 'jugadores'].includes(guardada)
+    return ['campeonatos', 'menu', 'resultados', 'configuracion', 'jugadores', 'equipos'].includes(guardada)
       ? guardada
       : 'campeonatos'
   })
@@ -413,6 +414,17 @@ export default function CampeonatoAdmin({ onVolver }) {
     )
   }
 
+  if (seccion === 'equipos') {
+    return (
+      <EquiposCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onPanelPrincipal={volverPanelPrincipal}
+        onAbrirSorteo={onAbrirSorteo}
+      />
+    )
+  }
+
   if (seccion === 'menu') {
     return (
       <main className="app app-admin app-campeonato">
@@ -439,9 +451,9 @@ export default function CampeonatoAdmin({ onVolver }) {
               <span>👤</span><strong>Jugadores e inscripciones</strong>
               <small>Altas, reservas, bajas y datos personales</small>
             </button>
-            <button type="button" className="modulo-campeonato" disabled>
-              <span>👥</span><strong>Equipos</strong>
-              <small>Próximamente</small>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('equipos')}>
+              <span>👥</span><strong>Equipos y sorteo</strong>
+              <small>Vincular sorteo, importar equipos o crearlos manualmente</small>
             </button>
             <button type="button" className="modulo-campeonato" disabled>
               <span>📊</span><strong>Clasificaciones</strong>
