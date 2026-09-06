@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
-import './CampeonatosAdmin.css'
+import './SelectorCampeonatos.css'
 
 function estadoVisible(estado) {
   return { pretorneo: 'Pretorneo', inscripciones: 'Inscripciones', en_juego: 'En juego', finalizado: 'Finalizado' }[estado] ?? estado
 }
 
-export default function CampeonatosAdmin({ onSeleccionar, onVolver }) {
+export default function SelectorCampeonatos({ onSeleccionar, onVolver }) {
   const [campeonatos, setCampeonatos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')

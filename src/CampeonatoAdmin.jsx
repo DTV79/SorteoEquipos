@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import CampeonatoJugadores from './CampeonatoJugadores'
-import CampeonatosAdmin from './CampeonatosAdmin'
+import SelectorCampeonatos from './SelectorCampeonatos'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -384,7 +384,7 @@ export default function CampeonatoAdmin({ onVolver }) {
   }
 
   if (seccion === 'campeonatos' || !codigo) {
-    return <CampeonatosAdmin onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
+    return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
   }
 
   if (seccion === 'configuracion') {
