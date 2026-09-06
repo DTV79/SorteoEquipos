@@ -5,6 +5,8 @@ import './CampeonatoJugadores.css'
 export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal }) {
   const [inscripciones, setInscripciones] = useState([])
   const [disponibles, setDisponibles] = useState([])
+  const [solicitudes, setSolicitudes] = useState([])
+  const [resoluciones, setResoluciones] = useState({})
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState('')
@@ -15,14 +17,16 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
 
   const cargar = useCallback(async () => {
     setCargando(true)
-    const { data, error } = await supabaseCampeonato.rpc(
-      'admin_listar_inscripciones', { p_codigo: codigo }
-    )
-    if (error || data?.ok !== true) {
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron cargar las inscripciones.' })
+    const [listado, bandeja] = await Promise.all([
+      supabaseCampeonato.rpc('admin_listar_inscripciones', { p_codigo: codigo }),
+      supabaseCampeonato.rpc('admin_listar_solicitudes', { p_codigo: codigo }),
+    ])
+    if (listado.error || listado.data?.ok !== true || bandeja.error || bandeja.data?.ok !== true) {
+      setMensaje({ tipo: 'error', texto: listado.error?.message || listado.data?.error || bandeja.error?.message || bandeja.data?.error || 'No se pudieron cargar las inscripciones.' })
     } else {
-      setInscripciones(data.inscripciones ?? [])
-      setDisponibles(data.disponibles ?? [])
+      setInscripciones(listado.data.inscripciones ?? [])
+      setDisponibles(listado.data.disponibles ?? [])
+      setSolicitudes(bandeja.data.solicitudes ?? [])
       setJugadorExistente('')
     }
     setCargando(false)
@@ -76,6 +80,25 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     await cargar()
   }
 
+  function cambiarResolucion(id, campo, valor) {
+    setResoluciones((actual) => ({ ...actual, [id]: { ...actual[id], [campo]: valor } }))
+  }
+
+  async function resolverSolicitud(solicitud, accion) {
+    const edicion = resoluciones[solicitud.id_inscripcion] ?? {}
+    const alias = (edicion.alias ?? solicitud.nombre_publico ?? '').trim()
+    if (accion !== 'rechazar' && !alias) return setMensaje({ tipo: 'error', texto: 'Indica el alias del jugador.' })
+    setGuardando(solicitud.id_inscripcion)
+    const { data, error } = await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+      p_id_inscripcion: solicitud.id_inscripcion, p_accion: accion,
+      p_id_jugador: edicion.id_jugador || null, p_alias: alias || null,
+    })
+    setGuardando('')
+    if (error || data?.ok !== true) return setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo resolver la solicitud.' })
+    setMensaje({ tipo: 'correcto', texto: accion === 'rechazar' ? 'Solicitud marcada como rechazada.' : `Solicitud tramitada con el código ${data.id_jugador}.` })
+    await cargar()
+  }
+
   async function guardarFila(evento, fila) {
     evento.preventDefault()
     const datos = new FormData(evento.currentTarget)
@@ -115,6 +138,19 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
           <div><strong>{totales.reservas}</strong><span>Reservas</span></div>
           <div><strong>{totales.bajas}</strong><span>Bajas</span></div>
         </div>
+
+        <section className="bandeja-solicitudes">
+          <div className="titulo-bandeja"><div><h3>Solicitudes del formulario</h3><p>Vincula a un jugador existente o crea automáticamente el siguiente código Jxxx.</p></div><strong>{solicitudes.filter((fila) => fila.estado_gestion === 'pendiente').length} pendientes</strong></div>
+          {solicitudes.filter((fila) => fila.estado_gestion === 'pendiente').length === 0 ? <p className="estado-sin-solicitudes">No hay solicitudes pendientes.</p> : solicitudes.filter((fila) => fila.estado_gestion === 'pendiente').map((fila) => {
+            const edicion = resoluciones[fila.id_inscripcion] ?? {}
+            return <article className="solicitud-inscripcion" key={fila.id_inscripcion}>
+              <div className="datos-solicitud"><strong>{fila.nombre_completo}</strong><span>{fila.telefono || 'Sin teléfono'} · {fila.estado_origen || 'Sin estado'}{fila.posicion ? ` · Posición ${fila.posicion}` : ''}</span>{fila.observaciones && <small>{fila.observaciones}</small>}</div>
+              <label><span>Alias</span><input value={edicion.alias ?? fila.nombre_publico ?? ''} onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)} /></label>
+              <label><span>Jugador</span><select value={edicion.id_jugador ?? ''} onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'id_jugador', e.target.value)}><option value="">Crear jugador nuevo (Jxxx)</option>{[...inscripciones, ...disponibles].sort((a, b) => a.id_jugador.localeCompare(b.id_jugador)).map((jugador) => <option key={jugador.id_jugador} value={jugador.id_jugador}>{jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}</option>)}</select></label>
+              <div className="acciones-solicitud"><button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'admitir')}>Admitir</button><button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button><button type="button" className="boton boton-peligro" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'rechazar')}>Rechazar</button></div>
+            </article>
+          })}
+        </section>
 
         <div className="altas-inscripciones">
           <form onSubmit={inscribirExistente}>
