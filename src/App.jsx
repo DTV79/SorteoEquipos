@@ -74,6 +74,15 @@ function formatearHuellaCorta(valor) {
   )
 }
 
+function separarNombreCampeonato(nombreOficial) {
+  const partes = String(nombreOficial ?? '').trim().split(/\s+/)
+
+  return {
+    nombre: partes.shift() || 'Jugador',
+    apellidos: partes.join(' ') || null,
+  }
+}
+
 function formatearFechaHoraPantalla(valor) {
   if (!valor) {
     return '—'
@@ -1826,6 +1835,18 @@ const temporizadorRepeticionAdminRef = useRef(null)
   const [guardandoSorteo, setGuardandoSorteo] =
     useState(false)
 
+  const [campeonatosNuevoSorteo, setCampeonatosNuevoSorteo] =
+    useState([])
+
+  const [campeonatoNuevoSorteo, setCampeonatoNuevoSorteo] =
+    useState('')
+
+  const [inscritosNuevoSorteo, setInscritosNuevoSorteo] =
+    useState([])
+
+  const [cargandoCampeonatosNuevoSorteo, setCargandoCampeonatosNuevoSorteo] =
+    useState(false)
+
   const [
     mensajeNuevoSorteo,
     setMensajeNuevoSorteo,
@@ -1842,6 +1863,73 @@ const temporizadorRepeticionAdminRef = useRef(null)
       cargarSorteos()
     }
   }, [pantalla])
+
+  useEffect(() => {
+    if (pantalla !== 'nuevo-sorteo') return
+
+    let cancelado = false
+
+    async function cargarCampeonatosParaSorteo() {
+      setCargandoCampeonatosNuevoSorteo(true)
+      setMensajeNuevoSorteo('')
+
+      const { data, error } =
+        await supabaseCampeonato.rpc('admin_listar_campeonatos')
+
+      if (cancelado) return
+
+      if (error || data?.ok !== true) {
+        setCampeonatosNuevoSorteo([])
+        setMensajeNuevoSorteo(
+          `No se pudieron cargar los campeonatos: ${error?.message || data?.error || 'error desconocido'}`
+        )
+      } else {
+        setCampeonatosNuevoSorteo(data.campeonatos ?? [])
+      }
+
+      setCargandoCampeonatosNuevoSorteo(false)
+    }
+
+    void cargarCampeonatosParaSorteo()
+
+    return () => {
+      cancelado = true
+    }
+  }, [pantalla])
+
+  useEffect(() => {
+    if (pantalla !== 'nuevo-sorteo' || !campeonatoNuevoSorteo) return
+
+    let cancelado = false
+
+    async function cargarInscritosParaSorteo() {
+      setMensajeNuevoSorteo('Cargando jugadores inscritos...')
+
+      const { data, error } = await supabaseCampeonato.rpc(
+        'admin_obtener_equipos_campeonato',
+        { p_codigo: campeonatoNuevoSorteo }
+      )
+
+      if (cancelado) return
+
+      if (error || data?.ok !== true) {
+        setInscritosNuevoSorteo([])
+        setMensajeNuevoSorteo(
+          `No se pudieron cargar los inscritos: ${error?.message || data?.error || 'error desconocido'}`
+        )
+        return
+      }
+
+      setInscritosNuevoSorteo(data.inscritos ?? [])
+      setMensajeNuevoSorteo('')
+    }
+
+    void cargarInscritosParaSorteo()
+
+    return () => {
+      cancelado = true
+    }
+  }, [pantalla, campeonatoNuevoSorteo])
 
   /*
   ============================================================
@@ -2480,11 +2568,14 @@ const temporizadorRepeticionAdminRef = useRef(null)
       'Guardando sorteo...'
     )
 
-    const { error } =
-      await supabase
-        .from('sorteos')
-        .insert([
-          {
+    let sorteoCreado = null
+
+    try {
+      const { data, error } =
+        await supabase
+          .from('sorteos')
+          .insert([
+            {
             nombre:
               nuevoNombre.trim(),
 
@@ -2513,39 +2604,148 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
             jugadores_por_equipo:
               Number(nuevosJugadoresPorEquipo),
-          },
-        ])
+            },
+          ])
+          .select('*')
+          .single()
 
-    if (error) {
-      console.error(
-        'Error creando sorteo:',
-        error
-      )
+      if (error) throw error
+
+      sorteoCreado = data
+
+      if (campeonatoNuevoSorteo) {
+        if (inscritosNuevoSorteo.length === 0) {
+          throw new Error(
+            'El campeonato seleccionado no tiene jugadores inscritos.'
+          )
+        }
+
+        setMensajeNuevoSorteo(
+          `Añadiendo ${inscritosNuevoSorteo.length} jugadores inscritos...`
+        )
+
+        const codigos = inscritosNuevoSorteo.map(
+          (jugador) => jugador.id_jugador
+        )
+
+        const { data: existentes, error: errorExistentes } =
+          await supabase
+            .from('jugadores')
+            .select('id,codigo_jugador')
+            .in('codigo_jugador', codigos)
+
+        if (errorExistentes) throw errorExistentes
+
+        const codigosExistentes = new Set(
+          (existentes ?? []).map((jugador) => jugador.codigo_jugador)
+        )
+
+        const jugadoresNuevos = inscritosNuevoSorteo
+          .filter((jugador) => !codigosExistentes.has(jugador.id_jugador))
+          .map((jugador) => {
+            const nombre = separarNombreCampeonato(jugador.nombre_oficial)
+
+            return {
+              codigo_jugador: jugador.id_jugador,
+              nombre: nombre.nombre,
+              apellidos: nombre.apellidos,
+              alias: jugador.alias || nombre.nombre,
+              activo: true,
+            }
+          })
+
+        if (jugadoresNuevos.length > 0) {
+          const { error: errorJugadores } = await supabase
+            .from('jugadores')
+            .insert(jugadoresNuevos)
+
+          if (errorJugadores) throw errorJugadores
+        }
+
+        const { data: jugadoresSorteo, error: errorJugadoresSorteo } =
+          await supabase
+            .from('jugadores')
+            .select('id,codigo_jugador')
+            .in('codigo_jugador', codigos)
+
+        if (errorJugadoresSorteo) throw errorJugadoresSorteo
+
+        const { data: bomboGeneral, error: errorBombo } = await supabase
+          .from('bombos')
+          .insert({
+            sorteo_id: sorteoCreado.id,
+            codigo: 'GENERAL',
+            nombre: 'Inscritos del campeonato',
+            orden: 1,
+            descripcion: 'Importados automáticamente. Puedes crear otros bombos y reasignarlos.',
+          })
+          .select('id')
+          .single()
+
+        if (errorBombo) throw errorBombo
+
+        const participantes = (jugadoresSorteo ?? []).map((jugador) => ({
+          sorteo_id: sorteoCreado.id,
+          jugador_id: jugador.id,
+          bombo_id: bomboGeneral.id,
+          estado: 'incluido',
+        }))
+
+        const { error: errorParticipantes } = await supabase
+          .from('participantes_sorteo')
+          .insert(participantes)
+
+        if (errorParticipantes) throw errorParticipantes
+
+        const campeonato = campeonatosNuevoSorteo.find(
+          (item) => item.codigo_campeonato === campeonatoNuevoSorteo
+        )
+
+        const { data: vinculo, error: errorVinculo } =
+          await supabaseCampeonato.rpc('admin_vincular_sorteo', {
+            p_codigo: campeonatoNuevoSorteo,
+            p_sorteo_id: String(sorteoCreado.id),
+            p_sorteo_nombre: sorteoCreado.nombre,
+          })
+
+        if (errorVinculo || vinculo?.ok !== true) {
+          throw new Error(
+            errorVinculo?.message || vinculo?.error ||
+            `No se pudo vincular el sorteo con ${campeonato?.nombre || campeonatoNuevoSorteo}.`
+          )
+        }
+      }
+
+      setNuevoNombre('')
+      setNuevaDescripcion('')
+      setNuevaFecha('')
+      setNuevoFormatoSorteo('grupos')
+      setNuevosGrupos(2)
+      setNuevosJugadoresPorEquipo(2)
+      setNuevaDistribucionGrupos('equilibrada')
+      setCampeonatoNuevoSorteo('')
+      setInscritosNuevoSorteo([])
+      setMensajeNuevoSorteo('')
+
+      await cargarSorteos()
+
+      gestionarSorteo(sorteoCreado)
+    } catch (error) {
+      console.error('Error creando sorteo:', error)
+
+      if (sorteoCreado?.id) {
+        await supabase
+          .from('sorteos')
+          .delete()
+          .eq('id', sorteoCreado.id)
+      }
 
       setMensajeNuevoSorteo(
         `Error: ${error.message}`
       )
-
+    } finally {
       setGuardandoSorteo(false)
-
-      return
     }
-
-    setNuevoNombre('')
-    setNuevaDescripcion('')
-    setNuevaFecha('')
-    setNuevoFormatoSorteo('grupos')
-    setNuevosGrupos(2)
-    setNuevosJugadoresPorEquipo(2)
-    setNuevaDistribucionGrupos('equilibrada')
-
-    setMensajeNuevoSorteo('')
-
-    await cargarSorteos()
-
-    setGuardandoSorteo(false)
-
-    setPantalla('admin')
   }
 
   /*
@@ -10940,6 +11140,38 @@ if (
             className="formulario-login formulario-sorteo"
             onSubmit={guardarNuevoSorteo}
           >
+            <label className="campo-formulario campo-campeonato-sorteo">
+              <span>Jugadores del campeonato</span>
+
+              <select
+                value={campeonatoNuevoSorteo}
+                onChange={(e) => {
+                  setInscritosNuevoSorteo([])
+                  setCampeonatoNuevoSorteo(e.target.value)
+                }}
+                disabled={cargandoCampeonatosNuevoSorteo}
+              >
+                <option value="">
+                  Sorteo independiente · elegir jugadores manualmente
+                </option>
+
+                {campeonatosNuevoSorteo.map((campeonato) => (
+                  <option
+                    key={campeonato.codigo_campeonato}
+                    value={campeonato.codigo_campeonato}
+                  >
+                    {campeonato.nombre} · {campeonato.codigo_campeonato} · {campeonato.inscripciones} inscritos
+                  </option>
+                ))}
+              </select>
+
+              <small className="ayuda-campo-formulario">
+                {campeonatoNuevoSorteo
+                  ? `${inscritosNuevoSorteo.length} jugadores inscritos se añadirán automáticamente al nuevo sorteo.`
+                  : 'Puedes crear un sorteo independiente y añadir después sus participantes manualmente.'}
+              </small>
+            </label>
+
             <input
               type="text"
               placeholder="Nombre del sorteo"
@@ -17380,11 +17612,13 @@ if (
 
               <button
                 className="boton boton-principal"
-                onClick={() =>
+                onClick={() => {
+                  setCampeonatoNuevoSorteo('')
+                  setInscritosNuevoSorteo([])
                   setPantalla(
                     'nuevo-sorteo'
                   )
-                }
+                }}
               >
                 + Nuevo sorteo
               </button>
