@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
+import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import './CampeonatoAdmin.css'
 
 const ESTADO_URL =
@@ -32,6 +33,7 @@ function valorSet(partido, numero, campo) {
 export default function CampeonatoAdmin({ onVolver }) {
   const [codigo, setCodigo] = useState('CAMP-2026-01')
   const [partidos, setPartidos] = useState([])
+  const [seccion, setSeccion] = useState('resultados')
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -323,6 +325,16 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
+  if (seccion === 'configuracion') {
+    return (
+      <CampeonatoConfiguracion
+        codigo={codigo}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={onVolver}
+      />
+    )
+  }
+
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -335,13 +347,10 @@ export default function CampeonatoAdmin({ onVolver }) {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="boton boton-secundario"
-            onClick={onVolver}
-          >
-            ← Panel principal
-          </button>
+          <div className="acciones-cabecera-configuracion">
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
+            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Panel principal</button>
+          </div>
         </header>
 
         <div className="barra-campeonato">
