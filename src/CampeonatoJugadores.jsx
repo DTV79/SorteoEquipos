@@ -14,6 +14,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
   const [jugadorExistente, setJugadorExistente] = useState('')
   const [estadoExistente, setEstadoExistente] = useState('inscrito')
   const [nuevo, setNuevo] = useState({ nombre: '', alias: '', estado: 'inscrito' })
+  const [confirmacion, setConfirmacion] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -122,6 +123,32 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     await cargar()
   }
 
+  async function ejecutarCorreccion() {
+    if (!confirmacion) return
+    const { tipo, fila, solicitud } = confirmacion
+    setGuardando(`corregir-${fila.id_jugador}`)
+    let respuesta
+    if (tipo === 'baja') {
+      respuesta = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
+        p_codigo: codigo, p_id_jugador: fila.id_jugador,
+        p_estado: 'baja', p_observaciones: fila.observaciones,
+      })
+    } else {
+      respuesta = await supabaseCampeonato.rpc('admin_deshacer_admision', {
+        p_id_inscripcion: solicitud.id_inscripcion,
+        p_eliminar_jugador: tipo === 'eliminar',
+      })
+    }
+    setGuardando('')
+    if (respuesta.error || respuesta.data?.ok === false) {
+      setMensaje({ tipo: 'error', texto: respuesta.error?.message || respuesta.data?.error || 'No se pudo realizar la corrección.' })
+      return
+    }
+    setConfirmacion(null)
+    setMensaje({ tipo: 'correcto', texto: tipo === 'baja' ? `${fila.alias} queda de baja en este campeonato.` : tipo === 'eliminar' ? 'Alta deshecha y jugador creado por error eliminado.' : 'Admisión deshecha. La solicitud vuelve a pendientes.' })
+    await cargar()
+  }
+
   return (
     <main className="app app-admin app-jugadores-campeonato">
       <section className="panel-admin panel-jugadores-campeonato">
@@ -184,12 +211,30 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                 <label><span>Estado en este campeonato</span><select name="estado" defaultValue={fila.estado}><option value="inscrito">Inscrito</option><option value="reserva">Reserva</option><option value="baja">Baja</option></select></label>
                 <label><span>Observaciones</span><input name="observaciones" defaultValue={fila.observaciones ?? ''} /></label>
                 <label className="jugador-activo"><input type="checkbox" name="activo" defaultChecked={fila.jugador_activo} /><span>Activo en el histórico general</span></label>
-                <button className="boton boton-secundario" disabled={guardando === fila.id_jugador}>{guardando === fila.id_jugador ? 'Guardando…' : 'Guardar cambios'}</button>
+                <div className="acciones-fila-jugador">
+                  <button className="boton boton-secundario" disabled={guardando === fila.id_jugador}>{guardando === fila.id_jugador ? 'Guardando…' : 'Guardar cambios'}</button>
+                  {fila.estado !== 'baja' && <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'baja', fila })}>Dar de baja</button>}
+                  {(() => {
+                    const solicitud = solicitudes.find((item) => item.id_jugador === fila.id_jugador && ['admitido', 'reserva'].includes(item.estado_gestion))
+                    if (!solicitud) return null
+                    return <>
+                      <button type="button" className="boton boton-secundario" onClick={() => setConfirmacion({ tipo: 'deshacer', fila, solicitud })}>Deshacer admisión</button>
+                      {solicitud.jugador_creado && <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'eliminar', fila, solicitud })}>Eliminar alta errónea</button>}
+                    </>
+                  })()}
+                </div>
               </form>
             ))}
           </div>
         )}
       </section>
+      {confirmacion && <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
+        <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
+          <h3 id="titulo-confirmacion-jugador">{confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}</h3>
+          <p>{confirmacion.tipo === 'baja' ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.` : confirmacion.tipo === 'eliminar' ? `Se devolverá la solicitud de ${confirmacion.fila.alias} a pendientes y se eliminará su código porque fue creado por error. Solo se permitirá si todavía no tiene datos relacionados.` : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}</p>
+          <div><button type="button" className="boton boton-secundario" onClick={() => setConfirmacion(null)}>Cancelar</button><button type="button" className={`boton ${confirmacion.tipo === 'deshacer' ? 'boton-principal' : 'boton-peligro'}`} onClick={ejecutarCorreccion} disabled={guardando.startsWith('corregir-')}>{guardando.startsWith('corregir-') ? 'Procesando…' : 'Confirmar'}</button></div>
+        </section>
+      </div>}
     </main>
   )
 }
