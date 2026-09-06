@@ -33,13 +33,24 @@ function valorSet(partido, numero, campo) {
 export default function CampeonatoAdmin({ onVolver }) {
   const [codigo, setCodigo] = useState('CAMP-2026-01')
   const [partidos, setPartidos] = useState([])
-  const [seccion, setSeccion] = useState('resultados')
+  const [seccion, setSeccion] = useState(() =>
+    window.sessionStorage.getItem('sprint-padel-seccion-campeonato') === 'configuracion'
+      ? 'configuracion'
+      : 'resultados'
+  )
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
   const [mensajes, setMensajes] = useState({})
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      'sprint-padel-seccion-campeonato',
+      seccion
+    )
+  }, [seccion])
 
   const cargarPartidos = useCallback(async (codigoElegido) => {
     setCargando(true)

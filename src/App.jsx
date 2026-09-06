@@ -151,10 +151,23 @@ function App() {
     const parametros =
       new URLSearchParams(window.location.search)
 
+    const pantallaGuardada =
+      window.sessionStorage.getItem('sprint-padel-pantalla')
+
     return parametros.get('control') === '1'
       ? 'control-movil-cargando'
-      : 'inicio'
+      : ['panel-principal', 'campeonato'].includes(pantallaGuardada)
+        ? pantallaGuardada
+        : 'inicio'
   })
+
+  useEffect(() => {
+    if (['panel-principal', 'campeonato'].includes(pantalla)) {
+      window.sessionStorage.setItem('sprint-padel-pantalla', pantalla)
+    } else if (pantalla === 'inicio' || pantalla === 'login') {
+      window.sessionStorage.removeItem('sprint-padel-pantalla')
+    }
+  }, [pantalla])
 
   /*
   ============================================================
@@ -166,10 +179,11 @@ function App() {
   const [password, setPassword] = useState('')
   const [mensajeLogin, setMensajeLogin] = useState('')
   const [cargandoLogin, setCargandoLogin] = useState(false)
-  const [accesoCampeonato, setAccesoCampeonato] = useState({
-    disponible: false,
+  const [accesoCampeonato, setAccesoCampeonato] = useState(() => ({
+    disponible:
+      window.sessionStorage.getItem('sprint-padel-acceso-campeonato') === 'true',
     mensaje: '',
-  })
+  }))
 
   /*
   ============================================================
@@ -2279,6 +2293,10 @@ const temporizadorRepeticionAdminRef = useRef(null)
         disponible: campeonatoDisponible,
         mensaje: mensajeCampeonato,
       })
+      window.sessionStorage.setItem(
+        'sprint-padel-acceso-campeonato',
+        String(campeonatoDisponible)
+      )
 
       setMensajeLogin('')
       setPassword('')
@@ -9327,6 +9345,10 @@ async function activarPantallaCompletaPublica() {
     setMostrarConfirmacionInicioPresentacion(false)
     setErrorControlMovil('')
     setEnlaceControlMovilCopiado(false)
+
+    window.sessionStorage.removeItem('sprint-padel-pantalla')
+    window.sessionStorage.removeItem('sprint-padel-seccion-campeonato')
+    window.sessionStorage.removeItem('sprint-padel-acceso-campeonato')
 
     setPantalla('inicio')
   }
