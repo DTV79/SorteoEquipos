@@ -1836,7 +1836,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
   const [
     nuevaDistribucionGrupos,
     setNuevaDistribucionGrupos,
-  ] = useState('equilibrada')
+  ] = useState('aleatoria')
 
   const [guardandoSorteo, setGuardandoSorteo] =
     useState(false)
@@ -2714,7 +2714,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
       setNuevoFormatoSorteo('grupos')
       setNuevosGrupos(2)
       setNuevosJugadoresPorEquipo(2)
-      setNuevaDistribucionGrupos('equilibrada')
+      setNuevaDistribucionGrupos('aleatoria')
       setCampeonatoNuevoSorteo('')
       setInscritosNuevoSorteo([])
       setMensajeNuevoSorteo('')
@@ -11341,22 +11341,22 @@ if (
                         e.target.value
                       )
                     }
-                  >
-                    <option value="equilibrada">
-                      Equilibrado por emparejamientos
-                    </option>
+              >
+                <option value="aleatoria">
+                  Aleatorio con cupos iguales
+                </option>
 
-                    <option value="aleatoria">
-                      Aleatorio
-                    </option>
+                <option value="equilibrada">
+                  Equilibrado por emparejamientos
+                </option>
                   </select>
 
                 </label>
 
                 <p className="descripcion-regla">
-                  Equilibrado reparte lo máximo posible cada tipo de
-                  emparejamiento entre todos los grupos. Aleatorio mantiene
-                  los grupos del mismo tamaño, pero no fuerza ese equilibrio.
+                  Aleatorio sortea también el grupo de cada equipo, manteniendo
+                  exactamente los mismos cupos. Equilibrado compensa los tipos
+                  de emparejamiento entre grupos.
                 </p>
               </>
             )}
@@ -14436,10 +14436,6 @@ if (
                   <strong>
                     Equilibrado
                   </strong>
-
-                  <span className="badge-recomendado-reparto">
-                    RECOMENDADO
-                  </span>
                 </div>
 
                 <p>
@@ -14484,6 +14480,10 @@ if (
                   <strong>
                     Aleatorio
                   </strong>
+
+                  <span className="badge-recomendado-reparto">
+                    RECOMENDADO
+                  </span>
                 </div>
 
                 <p>
