@@ -95,7 +95,7 @@ function Campo({ etiqueta, children, ayuda }) {
   )
 }
 
-export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados, onPanelPrincipal }) {
+export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados, onPanelPrincipal, onCampeonatoEliminado }) {
   const [config, setConfig] = useState(VALORES_INICIALES)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
@@ -203,7 +203,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     }
     setAccionMantenimiento(null)
     if (funcion === 'admin_eliminar_campeonato_definitivamente') {
-      onPanelPrincipal()
+      onCampeonatoEliminado()
       return
     }
     setConfig((actual) => ({ ...actual, estado_torneo: 'Inscripciones' }))

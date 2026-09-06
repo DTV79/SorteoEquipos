@@ -10864,10 +10864,14 @@ if (
             <button
               type="button"
               className="modulo-principal modulo-campeonato"
-              onClick={() =>
-                accesoCampeonato.disponible &&
+              onClick={() => {
+                if (!accesoCampeonato.disponible) return
+                window.sessionStorage.setItem(
+                  'sprint-padel-seccion-campeonato',
+                  'campeonatos'
+                )
                 setPantalla('campeonato')
-              }
+              }}
               disabled={!accesoCampeonato.disponible}
             >
               <span className="modulo-icono">🏆</span>
