@@ -4223,6 +4223,99 @@ y posición aunque cambie la longitud del nombre.
   }
 }
 
+/* ==========================================================
+   JUGADORES · BOMBO RÁPIDO Y ACCIONES FUERA DE LA FICHA
+   ========================================================== */
+
+.fila-jugador-sorteo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.fila-jugador-sorteo .tarjeta-jugador {
+  min-width: 0;
+}
+
+.fila-jugador-sorteo .lado-derecho-jugador {
+  display: block;
+  width: auto;
+}
+
+.fila-jugador-sorteo .datos-jugador {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.selector-bombo-rapido {
+  width: min(260px, 100%);
+  padding: 9px 34px 9px 12px;
+  border: 1px solid #285c3a;
+  border-radius: 10px;
+  background: #10291a;
+  color: #86efac;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.selector-bombo-rapido:focus {
+  border-color: #22c55e;
+  outline: 2px solid rgb(34 197 94 / 18%);
+}
+
+.selector-bombo-rapido:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.acciones-jugador-externas {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.acciones-jugador-externas .boton-accion-jugador {
+  width: 82px;
+  min-height: 38px;
+}
+
+.mensaje-bombo-rapido {
+  margin: 10px 0;
+}
+
+@media (max-width: 700px) {
+  .fila-jugador-sorteo {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .fila-jugador-sorteo .datos-jugador {
+    width: 100%;
+    align-items: center;
+  }
+
+  .selector-bombo-rapido {
+    flex: 1;
+    width: 100%;
+  }
+
+  .acciones-jugador-externas {
+    flex-direction: row;
+    padding: 0 4px 8px;
+  }
+
+  .acciones-jugador-externas .boton-accion-jugador {
+    flex: 1;
+    width: auto;
+  }
+}
+
 
 /* ==========================================================
    TV · RESUMEN FINAL · ALINEACIÓN FIJA DE LAS PAREJAS
