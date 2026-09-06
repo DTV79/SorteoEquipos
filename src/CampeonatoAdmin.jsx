@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
-import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import './CampeonatoAdmin.css'
 
 const ESTADO_URL =
@@ -33,24 +32,12 @@ function valorSet(partido, numero, campo) {
 export default function CampeonatoAdmin({ onVolver }) {
   const [codigo, setCodigo] = useState('CAMP-2026-01')
   const [partidos, setPartidos] = useState([])
-  const [seccion, setSeccion] = useState(() =>
-    window.sessionStorage.getItem('sprint-padel-seccion-campeonato') === 'configuracion'
-      ? 'configuracion'
-      : 'resultados'
-  )
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
   const [mensajes, setMensajes] = useState({})
-
-  useEffect(() => {
-    window.sessionStorage.setItem(
-      'sprint-padel-seccion-campeonato',
-      seccion
-    )
-  }, [seccion])
 
   const cargarPartidos = useCallback(async (codigoElegido) => {
     setCargando(true)
@@ -336,16 +323,6 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
-  if (seccion === 'configuracion') {
-    return (
-      <CampeonatoConfiguracion
-        codigo={codigo}
-        onResultados={() => setSeccion('resultados')}
-        onPanelPrincipal={onVolver}
-      />
-    )
-  }
-
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -358,10 +335,13 @@ export default function CampeonatoAdmin({ onVolver }) {
             </p>
           </div>
 
-          <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Panel principal</button>
-          </div>
+          <button
+            type="button"
+            className="boton boton-secundario"
+            onClick={onVolver}
+          >
+            ← Panel principal
+          </button>
         </header>
 
         <div className="barra-campeonato">
