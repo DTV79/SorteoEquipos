@@ -57,6 +57,15 @@ export default function CampeonatoAdmin({ onVolver }) {
     )
   }, [seccion])
 
+  function volverPanelPrincipal() {
+    window.sessionStorage.setItem(
+      'sprint-padel-seccion-campeonato',
+      'menu'
+    )
+    setSeccion('menu')
+    onVolver()
+  }
+
   const cargarPartidos = useCallback(async (codigoElegido) => {
     setCargando(true)
     setError('')
@@ -417,7 +426,8 @@ export default function CampeonatoAdmin({ onVolver }) {
       <CampeonatoConfiguracion
         codigo={codigo}
         onVolver={() => setSeccion('menu')}
-        onPanelPrincipal={onVolver}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
       />
     )
   }
@@ -432,7 +442,7 @@ export default function CampeonatoAdmin({ onVolver }) {
               <h2>Gestión del campeonato</h2>
               <p className="descripcion-admin">{codigo}</p>
             </div>
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>
+            <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>
               ← Panel principal
             </button>
           </header>
@@ -483,7 +493,7 @@ export default function CampeonatoAdmin({ onVolver }) {
           <div className="acciones-cabecera-configuracion">
             <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
             <button type="button" className="boton boton-secundario" onClick={() => setSeccion('menu')}>← Gestión</button>
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Panel principal</button>
+            <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>← Panel principal</button>
           </div>
         </header>
 

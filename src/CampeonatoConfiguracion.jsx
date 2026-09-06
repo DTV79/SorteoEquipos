@@ -95,7 +95,7 @@ function Campo({ etiqueta, children, ayuda }) {
   )
 }
 
-export default function CampeonatoConfiguracion({ codigo, onResultados, onPanelPrincipal }) {
+export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados, onPanelPrincipal }) {
   const [config, setConfig] = useState(VALORES_INICIALES)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
@@ -182,7 +182,8 @@ export default function CampeonatoConfiguracion({ codigo, onResultados, onPanelP
             <p className="descripcion-admin">{codigo} · Fuente maestra Supabase</p>
           </div>
           <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={onResultados}>← Resultados</button>
+            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={onResultados}>Partidos y resultados</button>
             <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button>
           </div>
         </header>
