@@ -13559,7 +13559,9 @@ if (
                         <span>
                           {participanteCambiandoBombo === participante.id
                             ? 'Guardando…'
-                            : participante.estado}
+                            : participante.bombo_id
+                              ? 'Incluido'
+                              : 'Pendiente de asignar'}
                         </span>
 
                       </div>
