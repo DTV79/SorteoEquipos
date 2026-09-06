@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
+import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import './CampeonatoAdmin.css'
 
 const ESTADO_URL =
@@ -32,12 +33,29 @@ function valorSet(partido, numero, campo) {
 export default function CampeonatoAdmin({ onVolver }) {
   const [codigo, setCodigo] = useState('CAMP-2026-01')
   const [partidos, setPartidos] = useState([])
+  const [seccion, setSeccion] = useState(() => {
+    const guardada = window.sessionStorage.getItem(
+      'sprint-padel-seccion-campeonato'
+    )
+    return ['menu', 'resultados', 'configuracion'].includes(guardada)
+      ? guardada
+      : 'menu'
+  })
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
   const [mensajes, setMensajes] = useState({})
+  const [puntosMaximos, setPuntosMaximos] = useState(15)
+  const [partidoAAnular, setPartidoAAnular] = useState(null)
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      'sprint-padel-seccion-campeonato',
+      seccion
+    )
+  }, [seccion])
 
   const cargarPartidos = useCallback(async (codigoElegido) => {
     setCargando(true)
@@ -95,7 +113,20 @@ export default function CampeonatoAdmin({ onVolver }) {
       if (cancelado) return
 
       setCodigo(codigoActual)
-      await cargarPartidos(codigoActual)
+      const [, configuracion] = await Promise.all([
+        cargarPartidos(codigoActual),
+        supabaseCampeonato.rpc(
+          'admin_obtener_configuracion',
+          { p_codigo: codigoActual }
+        ),
+      ])
+
+      const maximo = Number(
+        configuracion.data?.configuracion?.puntos_maximos_por_set
+      )
+      if (Number.isFinite(maximo) && maximo > 0) {
+        setPuntosMaximos(maximo)
+      }
     }
 
     iniciar()
@@ -208,6 +239,64 @@ export default function CampeonatoAdmin({ onVolver }) {
     }))
     setGuardando('')
     await cargarPartidos(codigo)
+  }
+
+  async function anularResultado(partido) {
+    const claveGuardando = `anular-${partido.id_partido}`
+    setGuardando(claveGuardando)
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: '',
+        texto: 'Anulando resultado…',
+      },
+    }))
+
+    const { data, error: errorAnulacion } =
+      await supabaseCampeonato.rpc(
+        'admin_anular_resultado',
+        { p_id_partido: partido.id_partido }
+      )
+
+    if (errorAnulacion || data?.ok !== true) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto:
+            errorAnulacion?.message ||
+            data?.error ||
+            'No se pudo anular el resultado.',
+        },
+      }))
+      setGuardando('')
+      return
+    }
+
+    await cargarPartidos(codigo)
+    setPartidoAAnular(null)
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'correcto',
+        texto: 'Resultado anulado. El partido vuelve a estar pendiente.',
+      },
+    }))
+    setGuardando('')
+  }
+
+  function validarPuntuacion(evento, partido) {
+    const valor = Number(evento.currentTarget.value)
+    if (evento.currentTarget.value === '' || valor <= puntosMaximos) return
+
+    evento.currentTarget.value = ''
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'error',
+        texto: `El número no puede ser mayor que ${puntosMaximos}. Se ha borrado el valor.`,
+      },
+    }))
   }
 
   async function guardarSustituciones(evento, partido) {
@@ -323,6 +412,62 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
+  if (seccion === 'configuracion') {
+    return (
+      <CampeonatoConfiguracion
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onPanelPrincipal={onVolver}
+      />
+    )
+  }
+
+  if (seccion === 'menu') {
+    return (
+      <main className="app app-admin app-campeonato">
+        <section className="panel-admin panel-campeonato panel-inicio-campeonato">
+          <header className="cabecera-admin cabecera-campeonato">
+            <div>
+              <p className="etiqueta">CAMPEONATO</p>
+              <h2>Gestión del campeonato</h2>
+              <p className="descripcion-admin">{codigo}</p>
+            </div>
+            <button type="button" className="boton boton-secundario" onClick={onVolver}>
+              ← Panel principal
+            </button>
+          </header>
+
+          <div className="modulos-campeonato">
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('configuracion')}>
+              <span>⚙️</span><strong>Configuración del torneo</strong>
+              <small>Formato, fases, puntuación y contenido de la web</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('resultados')}>
+              <span>🎾</span><strong>Partidos y resultados</strong>
+              <small>Marcadores, pistas, duración y sustituciones</small>
+            </button>
+            <button type="button" className="modulo-campeonato" disabled>
+              <span>👤</span><strong>Jugadores e inscripciones</strong>
+              <small>Próximamente</small>
+            </button>
+            <button type="button" className="modulo-campeonato" disabled>
+              <span>👥</span><strong>Equipos</strong>
+              <small>Próximamente</small>
+            </button>
+            <button type="button" className="modulo-campeonato" disabled>
+              <span>📊</span><strong>Clasificaciones</strong>
+              <small>Próximamente</small>
+            </button>
+            <button type="button" className="modulo-campeonato" disabled>
+              <span>🏆</span><strong>Fases y cruces</strong>
+              <small>Próximamente</small>
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -335,13 +480,11 @@ export default function CampeonatoAdmin({ onVolver }) {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="boton boton-secundario"
-            onClick={onVolver}
-          >
-            ← Panel principal
-          </button>
+          <div className="acciones-cabecera-configuracion">
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('menu')}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Panel principal</button>
+          </div>
         </header>
 
         <div className="barra-campeonato">
@@ -382,7 +525,7 @@ export default function CampeonatoAdmin({ onVolver }) {
             return (
               <form
                 className="tarjeta-partido-campeonato"
-                key={partido.id_partido}
+                key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}
                 onSubmit={(evento) =>
                   guardarResultado(evento, partido)
                 }
@@ -566,7 +709,9 @@ export default function CampeonatoAdmin({ onVolver }) {
                           type="number"
                           inputMode="numeric"
                           min="0"
+                          max={puntosMaximos}
                           name={`set${numero}_1`}
+                          onChange={(evento) => validarPuntuacion(evento, partido)}
                           defaultValue={valorSet(
                             partido,
                             numero,
@@ -578,7 +723,9 @@ export default function CampeonatoAdmin({ onVolver }) {
                           type="number"
                           inputMode="numeric"
                           min="0"
+                          max={puntosMaximos}
                           name={`set${numero}_2`}
+                          onChange={(evento) => validarPuntuacion(evento, partido)}
                           defaultValue={valorSet(
                             partido,
                             numero,
@@ -611,15 +758,29 @@ export default function CampeonatoAdmin({ onVolver }) {
                     />
                   </label>
 
-                  <button
-                    className="boton boton-principal"
-                    type="submit"
-                    disabled={guardando === partido.id_partido}
-                  >
-                    {guardando === partido.id_partido
-                      ? 'Guardando…'
-                      : 'Guardar'}
-                  </button>
+                  <div className="acciones-resultado-campeonato">
+                    {partido.estado === 'jugado' && (
+                      <button
+                        className="boton boton-peligro"
+                        type="button"
+                        disabled={Boolean(guardando)}
+                        onClick={() => setPartidoAAnular(partido)}
+                      >
+                        {guardando === `anular-${partido.id_partido}`
+                          ? 'Anulando…'
+                          : 'Anular resultado'}
+                      </button>
+                    )}
+                    <button
+                      className="boton boton-principal"
+                      type="submit"
+                      disabled={Boolean(guardando)}
+                    >
+                      {guardando === partido.id_partido
+                        ? 'Guardando…'
+                        : 'Guardar'}
+                    </button>
+                  </div>
                 </div>
 
                 {mensaje && (
@@ -631,6 +792,22 @@ export default function CampeonatoAdmin({ onVolver }) {
             )
           })}
         </div>
+
+        {partidoAAnular && (
+          <div className="modal-fondo" role="presentation" onMouseDown={() => setPartidoAAnular(null)}>
+            <div className="modal-confirmacion modal-anular-resultado" role="dialog" aria-modal="true" aria-labelledby="titulo-anular-resultado" onMouseDown={(evento) => evento.stopPropagation()}>
+              <span className="icono-modal-anular">↩</span>
+              <h3 id="titulo-anular-resultado">¿Anular este resultado?</h3>
+              <p><strong>{partidoAAnular.equipo_1}</strong> contra <strong>{partidoAAnular.equipo_2}</strong></p>
+              <p>El partido volverá a Pendiente. Se borrarán automáticamente el marcador, la pista y la duración.</p>
+              <p className="nota-modal-anular">Las sustituciones se conservarán.</p>
+              <div className="modal-acciones">
+                <button type="button" className="boton boton-secundario" onClick={() => setPartidoAAnular(null)}>Cancelar</button>
+                <button type="button" className="boton boton-peligro" disabled={Boolean(guardando)} onClick={() => anularResultado(partidoAAnular)}>{guardando ? 'Anulando…' : 'Sí, anular resultado'}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   )
