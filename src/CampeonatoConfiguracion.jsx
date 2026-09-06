@@ -100,6 +100,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
+  const [accionMantenimiento, setAccionMantenimiento] = useState(null)
+  const [resumenMantenimiento, setResumenMantenimiento] = useState(null)
+  const [confirmacionMantenimiento, setConfirmacionMantenimiento] = useState('')
+  const [procesandoMantenimiento, setProcesandoMantenimiento] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -164,6 +168,46 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y protegida frente a Excel.' })
     }
     setGuardando(false)
+  }
+
+  async function abrirMantenimiento(tipo) {
+    setAccionMantenimiento(tipo)
+    setResumenMantenimiento(null)
+    setConfirmacionMantenimiento('')
+    const { data, error } = await supabaseCampeonato.rpc(
+      'admin_resumen_mantenimiento_campeonato',
+      { p_codigo: codigo }
+    )
+    if (error || data?.ok !== true) {
+      setAccionMantenimiento(null)
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo revisar el campeonato.' })
+      return
+    }
+    setResumenMantenimiento(data)
+  }
+
+  async function ejecutarMantenimiento() {
+    if (confirmacionMantenimiento !== codigo) return
+    setProcesandoMantenimiento(true)
+    const funcion = accionMantenimiento === 'vaciar'
+      ? 'admin_vaciar_datos_deportivos'
+      : 'admin_eliminar_campeonato_definitivamente'
+    const { data, error } = await supabaseCampeonato.rpc(funcion, {
+      p_codigo: codigo,
+      p_confirmacion: confirmacionMantenimiento,
+    })
+    setProcesandoMantenimiento(false)
+    if (error || data?.ok !== true) {
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo completar la operación.' })
+      return
+    }
+    setAccionMantenimiento(null)
+    if (funcion === 'admin_eliminar_campeonato_definitivamente') {
+      onPanelPrincipal()
+      return
+    }
+    setConfig((actual) => ({ ...actual, estado_torneo: 'Inscripciones' }))
+    setMensaje({ tipo: 'correcto', texto: `Datos deportivos eliminados. ${codigo} se conserva con su configuración e inscripciones.` })
   }
 
   if (cargando) {
@@ -264,10 +308,49 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             {config.modo_mantenimiento && <div className="campos-texto-configuracion bloque-dependiente"><Campo etiqueta="Título"><input name="titulo_mantenimiento" value={config.titulo_mantenimiento || ''} onChange={cambiar} /></Campo><Campo etiqueta="Mensaje"><textarea name="mensaje_mantenimiento" value={config.mensaje_mantenimiento || ''} onChange={cambiar} rows="3" /></Campo></div>}
           </fieldset>
 
+          <fieldset className="zona-peligro-campeonato">
+            <legend>Mantenimiento del campeonato</legend>
+            <p>Estas acciones eliminan datos de Supabase. Los jugadores generales y sus códigos Jxxx se conservan.</p>
+            <div className="acciones-mantenimiento-campeonato">
+              <div>
+                <strong>Vaciar datos deportivos</strong>
+                <span>Borra equipos, partidos, resultados, clasificaciones, Histórico e ISP de esta edición. Conserva el campeonato, su configuración, solicitudes e inscripciones.</span>
+                <button type="button" className="boton boton-advertencia" onClick={() => abrirMantenimiento('vaciar')}>Vaciar datos deportivos</button>
+              </div>
+              <div>
+                <strong>Eliminar campeonato definitivamente</strong>
+                <span>Borra toda la edición, incluidas configuración, solicitudes e inscripciones. No deja datos del campeonato en Histórico ni en ISP.</span>
+                <button type="button" className="boton boton-peligro" onClick={() => abrirMantenimiento('eliminar')}>Eliminar campeonato</button>
+              </div>
+            </div>
+          </fieldset>
+
           {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
           <div className="barra-guardar-configuracion"><span>Al guardar, Supabase será la fuente maestra y Excel no podrá sobrescribir estos valores.</span><button className="boton boton-principal" type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar configuración'}</button></div>
         </form>
       </section>
+      {accionMantenimiento && (
+        <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !procesandoMantenimiento && setAccionMantenimiento(null)}>
+          <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-mantenimiento-campeonato" onMouseDown={(evento) => evento.stopPropagation()}>
+            <span className="icono-peligro">!</span>
+            <h3 id="titulo-mantenimiento-campeonato">{accionMantenimiento === 'vaciar' ? 'Vaciar datos deportivos' : 'Eliminar campeonato definitivamente'}</h3>
+            {!resumenMantenimiento ? <p>Revisando los datos relacionados…</p> : <>
+              <p>{accionMantenimiento === 'vaciar' ? `Se conservarán la configuración y las ${resumenMantenimiento.inscripciones} inscripciones.` : 'Esta edición desaparecerá completamente y no podrá recuperarse.'}</p>
+              <dl className="resumen-borrado">
+                <div><dt>Equipos</dt><dd>{resumenMantenimiento.equipos}</dd></div>
+                <div><dt>Partidos</dt><dd>{resumenMantenimiento.partidos}</dd></div>
+                <div><dt>Sets</dt><dd>{resumenMantenimiento.sets}</dd></div>
+                <div><dt>Clasificaciones</dt><dd>{resumenMantenimiento.clasificaciones}</dd></div>
+                <div><dt>Histórico</dt><dd>{resumenMantenimiento.ranking_historico}</dd></div>
+                <div><dt>ISP</dt><dd>{resumenMantenimiento.isp_partidos}</dd></div>
+                {accionMantenimiento === 'eliminar' && <><div><dt>Inscripciones</dt><dd>{resumenMantenimiento.inscripciones}</dd></div><div><dt>Solicitudes</dt><dd>{resumenMantenimiento.solicitudes}</dd></div></>}
+              </dl>
+              <label className="confirmacion-escrita"><span>Para confirmar, escribe <b>{codigo}</b></span><input value={confirmacionMantenimiento} onChange={(evento) => setConfirmacionMantenimiento(evento.target.value)} autoComplete="off" /></label>
+            </>}
+            <div className="botones-modal-mantenimiento"><button type="button" className="boton boton-secundario" onClick={() => setAccionMantenimiento(null)} disabled={procesandoMantenimiento}>Cancelar</button><button type="button" className={`boton ${accionMantenimiento === 'vaciar' ? 'boton-advertencia' : 'boton-peligro'}`} onClick={ejecutarMantenimiento} disabled={!resumenMantenimiento || confirmacionMantenimiento !== codigo || procesandoMantenimiento}>{procesandoMantenimiento ? 'Procesando…' : accionMantenimiento === 'vaciar' ? 'Vaciar definitivamente' : 'Eliminar definitivamente'}</button></div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
