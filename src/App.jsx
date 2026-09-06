@@ -415,6 +415,12 @@ const [guardandoEdicionJugador, setGuardandoEdicionJugador] =
 const [mensajeEditarJugador, setMensajeEditarJugador] =
   useState('')
 
+const [participanteCambiandoBombo, setParticipanteCambiandoBombo] =
+  useState(null)
+
+const [mensajeBomboRapido, setMensajeBomboRapido] =
+  useState('')
+
 
 /*
 ============================================================
@@ -2670,24 +2676,10 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
         if (errorJugadoresSorteo) throw errorJugadoresSorteo
 
-        const { data: bomboGeneral, error: errorBombo } = await supabase
-          .from('bombos')
-          .insert({
-            sorteo_id: sorteoCreado.id,
-            codigo: 'GENERAL',
-            nombre: 'Inscritos del campeonato',
-            orden: 1,
-            descripcion: 'Importados automáticamente. Puedes crear otros bombos y reasignarlos.',
-          })
-          .select('id')
-          .single()
-
-        if (errorBombo) throw errorBombo
-
         const participantes = (jugadoresSorteo ?? []).map((jugador) => ({
           sorteo_id: sorteoCreado.id,
           jugador_id: jugador.id,
-          bombo_id: bomboGeneral.id,
+          bombo_id: null,
           estado: 'incluido',
         }))
 
@@ -2964,6 +2956,56 @@ function abrirEditarJugador(participante, jugador) {
 
   setMensajeEditarJugador('')
   setPantalla('editar-jugador')
+}
+
+async function cambiarBomboRapido(participante, nuevoBomboId) {
+  if (participante.bombo_id === (nuevoBomboId || null)) return
+
+  setParticipanteCambiandoBombo(participante.id)
+  setMensajeBomboRapido('')
+
+  try {
+    const { data: miembroFijo, error: errorComprobarFijo } = await supabase
+      .from('miembros_equipo_fijo')
+      .select('equipo_fijo_id')
+      .eq('participante_id', participante.id)
+      .maybeSingle()
+
+    if (errorComprobarFijo) throw errorComprobarFijo
+
+    if (miembroFijo) {
+      throw new Error(
+        'Este jugador forma parte de un equipo fijo. Elimina primero ese equipo fijo para cambiarlo de bombo.'
+      )
+    }
+
+    const bomboId = nuevoBomboId || null
+    const { error } = await supabase
+      .from('participantes_sorteo')
+      .update({ bombo_id: bomboId })
+      .eq('id', participante.id)
+
+    if (error) throw error
+
+    setParticipantes((actuales) =>
+      actuales.map((item) =>
+        item.id === participante.id
+          ? { ...item, bombo_id: bomboId }
+          : item
+      )
+    )
+
+    const bombo = bombos.find((item) => item.id === bomboId)
+    setMensajeBomboRapido(
+      bombo
+        ? `Jugador asignado al bombo ${bombo.codigo}.`
+        : 'Jugador dejado sin bombo.'
+    )
+  } catch (error) {
+    setMensajeBomboRapido(`Error: ${error.message}`)
+  } finally {
+    setParticipanteCambiandoBombo(null)
+  }
 }
 
 async function quitarJugadorDelSorteo(participante, jugador) {
@@ -11646,11 +11688,13 @@ if (
     const objetivoBombos =
       Number(cantidadBombosObjetivo) || 0
 
+    const cantidadBombosActual = bombos.length
+
     const cantidadBombosACrear =
       Math.max(
         0,
         objetivoBombos -
-        bombos.length
+        cantidadBombosActual
       )
 
     const codigosExistentesPreview =
@@ -11736,8 +11780,8 @@ if (
     className="boton boton-secundario"
     onClick={() => {
       setCantidadBombosObjetivo(
-        bombos.length > 0
-          ? bombos.length
+        cantidadBombosActual > 0
+          ? cantidadBombosActual
           : 4
       )
 
@@ -11753,7 +11797,7 @@ if (
     className="boton boton-principal"
     onClick={() => {
       setNuevoOrdenBombo(
-        bombos.length + 1
+        cantidadBombosActual + 1
       )
 
       setPantalla('nuevo-bombo')
@@ -11771,7 +11815,7 @@ if (
               <div className="resumen-bombos-configurables">
                 <div>
                   <span>Bombos configurados</span>
-                  <strong>{bombos.length}</strong>
+                  <strong>{cantidadBombosActual}</strong>
                 </div>
 
                 <div>
@@ -11808,11 +11852,11 @@ if (
 
           {!cargandoBombos &&
             !errorBombos &&
-            bombos.length === 0 && (
+            cantidadBombosActual === 0 && (
               <div className="sin-datos">
 
                 <p>
-                  Este sorteo todavía no tiene bombos.
+                  Este sorteo todavía no tiene bombos definitivos.
                 </p>
 
                 <span>
@@ -12013,7 +12057,7 @@ if (
                     </span>
 
                     <strong>
-                      {bombos.length}
+                      {cantidadBombosActual}
                     </strong>
                   </div>
 
@@ -12034,7 +12078,7 @@ if (
 
                     <strong>
                       {Math.max(
-                        bombos.length,
+                        cantidadBombosActual,
                         objetivoBombos
                       )}
                     </strong>
@@ -12072,7 +12116,7 @@ if (
                 ) : (
                   <div className="aviso-creador-bombos">
                     {objetivoBombos ===
-                    bombos.length
+                    cantidadBombosActual
                       ? 'Ya tienes exactamente esa cantidad de bombos.'
                       : 'La creación automática no elimina bombos. Para reducir la cantidad, elimina manualmente los que no necesites.'}
                   </div>
@@ -13406,6 +13450,12 @@ if (
           </p>
         )}
 
+        {mensajeBomboRapido && (
+          <p className="estado mensaje-bombo-rapido">
+            {mensajeBomboRapido}
+          </p>
+        )}
+
         {!cargandoJugadores &&
           !errorJugadores &&
           participantes.length === 0 && (
@@ -13434,13 +13484,6 @@ if (
                     participante.jugador_id
                 )
 
-              const bombo =
-                bombos.find(
-                  (b) =>
-                    b.id ===
-                    participante.bombo_id
-                )
-
               if (!jugador) {
                 return null
               }
@@ -13455,12 +13498,13 @@ if (
                   .join(' ')
 
               return (
-                <article
-                  className="tarjeta-jugador"
+                <div
+                  className="fila-jugador-sorteo"
                   key={participante.id}
                 >
+                  <article className="tarjeta-jugador">
 
-                  <div className="jugador-principal">
+                    <div className="jugador-principal">
 
                     <div className="avatar-jugador">
                       {jugador.foto_path ? (
@@ -13486,57 +13530,73 @@ if (
                       </span>
                     </div>
 
-                  </div>
-
-                  <div className="lado-derecho-jugador">
-
-                    <div className="datos-jugador">
-
-                      <span className="bombo-jugador">
-                        {bombo
-                          ? `Bombo ${bombo.codigo}`
-                          : 'Sin bombo'}
-                      </span>
-
-                      <span>
-                        {participante.estado}
-                      </span>
-
                     </div>
 
-                    <div className="acciones-jugador">
+                    <div className="lado-derecho-jugador">
 
-                      <button
-                        type="button"
-                        className="boton-accion-jugador"
-                        onClick={() =>
-                          abrirEditarJugador(
-                            participante,
-                            jugador
-                          )
-                        }
-                      >
-                        Editar
-                      </button>
+                      <div className="datos-jugador">
 
-                      <button
-                        type="button"
-                        className="boton-accion-jugador boton-quitar-jugador"
-                        onClick={() =>
-                          quitarJugadorDelSorteo(
-                            participante,
-                            jugador
-                          )
-                        }
-                      >
-                        Quitar
-                      </button>
+                        <select
+                          className="selector-bombo-rapido"
+                          aria-label={`Bombo de ${nombreVisible}`}
+                          value={participante.bombo_id ?? ''}
+                          disabled={
+                            participanteCambiandoBombo === participante.id ||
+                            bombos.length === 0
+                          }
+                          onChange={(evento) =>
+                            cambiarBomboRapido(participante, evento.target.value)
+                          }
+                        >
+                          <option value="">Sin bombo</option>
+                          {bombos.map((opcionBombo) => (
+                            <option key={opcionBombo.id} value={opcionBombo.id}>
+                              {opcionBombo.codigo} · {opcionBombo.nombre}
+                            </option>
+                          ))}
+                        </select>
 
+                        <span>
+                          {participanteCambiandoBombo === participante.id
+                            ? 'Guardando…'
+                            : participante.estado}
+                        </span>
+
+                      </div>
                     </div>
+                  </article>
+
+                  <div className="acciones-jugador acciones-jugador-externas">
+
+                    <button
+                      type="button"
+                      className="boton-accion-jugador"
+                      onClick={() =>
+                        abrirEditarJugador(
+                          participante,
+                          jugador
+                        )
+                      }
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton-accion-jugador boton-quitar-jugador"
+                      onClick={() =>
+                        quitarJugadorDelSorteo(
+                          participante,
+                          jugador
+                        )
+                      }
+                    >
+                      Quitar
+                    </button>
 
                   </div>
 
-                </article>
+                </div>
               )
             }
           )}
