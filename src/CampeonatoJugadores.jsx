@@ -128,7 +128,11 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     const { tipo, fila, solicitud } = confirmacion
     setGuardando(`corregir-${fila.id_jugador}`)
     let respuesta
-    if (tipo === 'baja') {
+    if (tipo === 'eliminar-general') {
+      respuesta = await supabaseCampeonato.rpc('admin_eliminar_jugador_sin_historial', {
+        p_id_jugador: fila.id_jugador,
+      })
+    } else if (tipo === 'baja') {
       respuesta = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
         p_codigo: codigo, p_id_jugador: fila.id_jugador,
         p_estado: 'baja', p_observaciones: fila.observaciones,
@@ -145,7 +149,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
       return
     }
     setConfirmacion(null)
-    setMensaje({ tipo: 'correcto', texto: tipo === 'baja' ? `${fila.alias} queda de baja en este campeonato.` : tipo === 'eliminar' ? 'Alta deshecha y jugador creado por error eliminado.' : 'Admisión deshecha. La solicitud vuelve a pendientes.' })
+    setMensaje({ tipo: 'correcto', texto: tipo === 'baja' ? `${fila.alias} queda de baja en este campeonato.` : tipo === 'eliminar' ? 'Alta deshecha y jugador creado por error eliminado.' : tipo === 'eliminar-general' ? `${fila.id_jugador} eliminado. El código queda libre.` : 'Admisión deshecha. La solicitud vuelve a pendientes.' })
     await cargar()
   }
 
@@ -199,6 +203,12 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
           </form>
         </div>
 
+        {disponibles.length > 0 && <section className="jugadores-no-inscritos">
+          <h3>Jugadores no inscritos en este campeonato</h3>
+          <p>Solo podrán eliminarse si nunca participaron y no existe ninguna referencia histórica.</p>
+          <div>{disponibles.map((fila) => <article key={fila.id_jugador}><span><b>{fila.id_jugador}</b><strong>{fila.alias}</strong><small>{fila.nombre_oficial}</small></span><button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'eliminar-general', fila })}>Eliminar jugador</button></article>)}</div>
+        </section>}
+
         {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
         <div className="barra-listado-jugadores"><strong>{inscripciones.length} jugadores en el campeonato</strong><input type="search" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar jugador" /></div>
         {cargando ? <p className="estado">Cargando jugadores…</p> : (
@@ -230,8 +240,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
       </section>
       {confirmacion && <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
         <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
-          <h3 id="titulo-confirmacion-jugador">{confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}</h3>
-          <p>{confirmacion.tipo === 'baja' ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.` : confirmacion.tipo === 'eliminar' ? `Se devolverá la solicitud de ${confirmacion.fila.alias} a pendientes y se eliminará su código porque fue creado por error. Solo se permitirá si todavía no tiene datos relacionados.` : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}</p>
+          <h3 id="titulo-confirmacion-jugador">{confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'eliminar-general' ? 'Eliminar jugador definitivamente' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}</h3>
+          <p>{confirmacion.tipo === 'baja' ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.` : confirmacion.tipo === 'eliminar-general' ? `Se intentará eliminar definitivamente a ${confirmacion.fila.alias} (${confirmacion.fila.id_jugador}). La operación se bloqueará si existe cualquier inscripción, equipo, partido, sustitución, histórico o dato ISP relacionado.` : confirmacion.tipo === 'eliminar' ? `Se devolverá la solicitud de ${confirmacion.fila.alias} a pendientes y se eliminará su código porque fue creado por error. Solo se permitirá si todavía no tiene datos relacionados.` : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}</p>
           <div><button type="button" className="boton boton-secundario" onClick={() => setConfirmacion(null)}>Cancelar</button><button type="button" className={`boton ${confirmacion.tipo === 'deshacer' ? 'boton-principal' : 'boton-peligro'}`} onClick={ejecutarCorreccion} disabled={guardando.startsWith('corregir-')}>{guardando.startsWith('corregir-') ? 'Procesando…' : 'Confirmar'}</button></div>
         </section>
       </div>}
