@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoConfiguracion from './CampeonatoConfiguracion'
+import CampeonatoJugadores from './CampeonatoJugadores'
 import './CampeonatoAdmin.css'
 
 const ESTADO_URL =
@@ -37,7 +38,7 @@ export default function CampeonatoAdmin({ onVolver }) {
     const guardada = window.sessionStorage.getItem(
       'sprint-padel-seccion-campeonato'
     )
-    return ['menu', 'resultados', 'configuracion'].includes(guardada)
+    return ['menu', 'resultados', 'configuracion', 'jugadores'].includes(guardada)
       ? guardada
       : 'menu'
   })
@@ -432,6 +433,16 @@ export default function CampeonatoAdmin({ onVolver }) {
     )
   }
 
+  if (seccion === 'jugadores') {
+    return (
+      <CampeonatoJugadores
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
   if (seccion === 'menu') {
     return (
       <main className="app app-admin app-campeonato">
@@ -456,9 +467,9 @@ export default function CampeonatoAdmin({ onVolver }) {
               <span>🎾</span><strong>Partidos y resultados</strong>
               <small>Marcadores, pistas, duración y sustituciones</small>
             </button>
-            <button type="button" className="modulo-campeonato" disabled>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('jugadores')}>
               <span>👤</span><strong>Jugadores e inscripciones</strong>
-              <small>Próximamente</small>
+              <small>Altas, reservas, bajas y datos personales</small>
             </button>
             <button type="button" className="modulo-campeonato" disabled>
               <span>👥</span><strong>Equipos</strong>
