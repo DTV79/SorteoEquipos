@@ -190,45 +190,21 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     await cargar()
   }
 
-  function cambiarResolucion(id, campo, valor) {
-    setResoluciones((actual) => ({
-      ...actual,
-      [id]: { ...actual[id], [campo]: valor },
-    }))
-  }
-
   function seleccionarJugadorSolicitud(solicitud, idJugador) {
-    if (!idJugador) {
-      setResoluciones((actual) => ({
-        ...actual,
-        [solicitud.id_inscripcion]: {
-          ...actual[solicitud.id_inscripcion],
-          id_jugador: '',
-          alias: solicitud.nombre_publico ?? '',
-        },
-      }))
-      return
-    }
-
-    const jugador = [...inscripciones, ...disponibles]
-      .find((fila) => fila.id_jugador === idJugador)
-
     setResoluciones((actual) => ({
       ...actual,
       [solicitud.id_inscripcion]: {
         ...actual[solicitud.id_inscripcion],
         id_jugador: idJugador,
-        alias: jugador?.alias ?? actual[solicitud.id_inscripcion]?.alias ?? '',
       },
     }))
   }
 
   async function resolverSolicitud(solicitud, accion) {
     const edicion = resoluciones[solicitud.id_inscripcion] ?? {}
-    const alias = (edicion.alias ?? solicitud.nombre_publico ?? '').trim()
 
-    if (accion !== 'rechazar' && !alias) {
-      setMensaje({ tipo: 'error', texto: 'Indica el alias del jugador.' })
+    if (accion !== 'rechazar' && !edicion.id_jugador) {
+      setMensaje({ tipo: 'error', texto: 'Selecciona primero un jugador del catálogo.' })
       return
     }
 
@@ -236,20 +212,14 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     setMensaje(null)
 
     try {
-      // Esta única función realiza una transacción completa: crea o vincula al
-      // jugador, lo inscribe y saca la solicitud de la bandeja de pendientes.
-      const vinculaExistente = accion !== 'rechazar' && Boolean(edicion.id_jugador)
-      const resolucion = vinculaExistente
-        ? await supabaseCampeonato.rpc('admin_admitir_solicitud_existente', {
+      const resolucion = accion === 'rechazar'
+        ? await supabaseCampeonato.rpc('admin_rechazar_solicitud', {
+            p_id_inscripcion: solicitud.id_inscripcion,
+          })
+        : await supabaseCampeonato.rpc('admin_vincular_solicitud_existente', {
             p_id_inscripcion: solicitud.id_inscripcion,
             p_id_jugador: edicion.id_jugador,
             p_estado: accion === 'reserva' ? 'reserva' : 'inscrito',
-          })
-        : await supabaseCampeonato.rpc('admin_resolver_solicitud', {
-            p_id_inscripcion: solicitud.id_inscripcion,
-            p_accion: accion,
-            p_id_jugador: null,
-            p_alias: accion === 'rechazar' ? null : alias,
           })
 
       if (resolucion.error || resolucion.data?.ok !== true) {
@@ -295,11 +265,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
 
     // Una solicitud rechazada no tiene una admisión que deshacer.
     const respuesta = fueRechazada
-      ? await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+      ? await supabaseCampeonato.rpc('admin_reabrir_solicitud', {
           p_id_inscripcion: solicitud.id_inscripcion,
-          p_accion: 'pendiente',
-          p_id_jugador: null,
-          p_alias: null,
         })
       : await supabaseCampeonato.rpc('admin_deshacer_admision', {
           p_id_inscripcion: solicitud.id_inscripcion,
@@ -523,10 +490,10 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                 </div>
 
                 <label>
-                  <span>Alias</span>
+                  <span>Alias solicitado</span>
                   <input
-                    value={edicion.alias ?? fila.nombre_publico ?? ''}
-                    onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)}
+                    value={fila.nombre_publico ?? ''}
+                    readOnly
                   />
                 </label>
 
@@ -536,7 +503,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                     value={edicion.id_jugador ?? ''}
                     onChange={(e) => seleccionarJugadorSolicitud(fila, e.target.value)}
                   >
-                    <option value="">Crear jugador nuevo (Jxxx)</option>
+                    <option value="">Selecciona un jugador existente</option>
                     {[...inscripciones, ...disponibles]
                       .sort((a, b) => a.id_jugador.localeCompare(b.id_jugador))
                       .map((jugador) => (
@@ -548,10 +515,10 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                 </label>
 
                 <div className="acciones-solicitud">
-                  <button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'admitir')}>
+                  <button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion || !edicion.id_jugador} onClick={() => resolverSolicitud(fila, 'admitir')}>
                     {guardando === fila.id_inscripcion ? 'Procesando…' : 'Admitir'}
                   </button>
-                  <button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button>
+                  <button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion || !edicion.id_jugador} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button>
                   <button type="button" className="boton boton-peligro" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'rechazar')}>Rechazar</button>
                 </div>
               </article>
