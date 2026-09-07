@@ -10,6 +10,7 @@ function nombreSeparado(nombreOficial) {
 
 export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, onAbrirSorteo }) {
   const [datos, setDatos] = useState({ equipos: [], inscritos: [], vinculo: {}, tiene_partidos: false })
+  const [configuracion, setConfiguracion] = useState({})
   const [sorteos, setSorteos] = useState([])
   const [sorteoId, setSorteoId] = useState('')
   const [bombos, setBombos] = useState([])
@@ -32,13 +33,18 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
     let cancelado = false
     async function iniciar() {
       try {
-        const [, consultaSorteos] = await Promise.all([
+        const [, consultaSorteos, consultaConfiguracion] = await Promise.all([
           cargarCampeonato(),
           supabase.from('sorteos').select('id,nombre,fecha_evento,estado').order('creado_en', { ascending: false }),
+          supabaseCampeonato.rpc('admin_obtener_configuracion', { p_codigo: codigo }),
         ])
         if (cancelado) return
         if (consultaSorteos.error) throw consultaSorteos.error
         setSorteos(consultaSorteos.data ?? [])
+        if (consultaConfiguracion.error || consultaConfiguracion.data?.ok !== true) {
+          throw new Error(consultaConfiguracion.error?.message || consultaConfiguracion.data?.error || 'No se pudo cargar la configuración.')
+        }
+        setConfiguracion(consultaConfiguracion.data.configuracion ?? {})
       } catch (error) {
         if (!cancelado) setMensaje({ tipo: 'error', texto: error.message })
       } finally {
@@ -50,6 +56,22 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
   }, [cargarCampeonato])
 
   const sorteo = sorteos.find((item) => String(item.id) === String(sorteoId))
+  const esGrupos = String(configuracion.estructura_primera_fase || '').toLowerCase().includes('grupo')
+  const numeroGrupos = Math.max(1, Number(configuracion.num_grupos_iniciales) || 1)
+  const codigosGrupos = useMemo(
+    () => Array.from({ length: numeroGrupos }, (_, indice) => String.fromCharCode(65 + indice)),
+    [numeroGrupos]
+  )
+  const equiposPorGrupo = useMemo(() => {
+    if (!esGrupos) return { LIGA: datos.equipos }
+    const resultado = Object.fromEntries(codigosGrupos.map((grupo) => [grupo, []]))
+    resultado.SIN_GRUPO = []
+    for (const equipo of datos.equipos) {
+      const grupo = String(equipo.codigo_grupo || '').trim().toUpperCase()
+      ;(resultado[grupo] || resultado.SIN_GRUPO).push(equipo)
+    }
+    return resultado
+  }, [datos.equipos, esGrupos, codigosGrupos])
   const jugadoresOcupados = useMemo(() => new Set(datos.equipos.flatMap((e) => [e.id_jugador_1, e.id_jugador_2])), [datos.equipos])
   const disponibles = datos.inscritos.filter((j) => !jugadoresOcupados.has(j.id_jugador))
 
@@ -133,12 +155,16 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
       const ejecucion = await supabase.from('ejecuciones_sorteo').select('id,numero_ejecucion').eq('sorteo_id', sorteoId).eq('es_oficial', true).order('numero_ejecucion', { ascending: false }).limit(1).maybeSingle()
       if (ejecucion.error) throw ejecucion.error
       if (!ejecucion.data) throw new Error('El sorteo todavía no tiene una ejecución marcada como oficial.')
-      const consultaEquipos = await supabase.from('v_equipos_sorteados').select('equipo_id,miembros').eq('ejecucion_id', ejecucion.data.id).order('numero_equipo')
+      const consultaEquipos = await supabase.from('v_equipos_sorteados').select('equipo_id,numero_equipo,codigo_grupo,grupo,nombre_equipo,miembros').eq('ejecucion_id', ejecucion.data.id).order('numero_equipo')
       if (consultaEquipos.error) throw consultaEquipos.error
       const equipos = (consultaEquipos.data ?? []).map((equipo) => {
         const miembros = Array.isArray(equipo.miembros) ? equipo.miembros : []
         if (miembros.length !== 2) throw new Error('Todos los equipos oficiales deben estar formados exactamente por dos jugadores.')
-        return { id_jugador_1: miembros[0]?.codigo_jugador, id_jugador_2: miembros[1]?.codigo_jugador }
+        return {
+          id_jugador_1: miembros[0]?.codigo_jugador,
+          id_jugador_2: miembros[1]?.codigo_jugador,
+          codigo_grupo: esGrupos ? (equipo.codigo_grupo || null) : null,
+        }
       })
       const respuesta = await supabaseCampeonato.rpc('admin_reemplazar_equipos_campeonato', { p_codigo: codigo, p_origen: 'Sorteo', p_sorteo_id: String(sorteoId), p_sorteo_nombre: sorteo?.nombre || datos.vinculo?.sorteo_nombre || '', p_ejecucion_id: String(ejecucion.data.id), p_equipos: equipos })
       if (respuesta.error || respuesta.data?.ok !== true) throw new Error(respuesta.error?.message || respuesta.data?.error || 'No se pudieron guardar los equipos.')
@@ -152,7 +178,7 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
     evento.preventDefault()
     if (!manual.j1 || !manual.j2 || manual.j1 === manual.j2) return
     setProcesando('manual')
-    const equipos = [...datos.equipos.map((e) => ({ id_jugador_1: e.id_jugador_1, id_jugador_2: e.id_jugador_2 })), { id_jugador_1: manual.j1, id_jugador_2: manual.j2 }]
+    const equipos = [...datos.equipos.map((e) => ({ id_jugador_1: e.id_jugador_1, id_jugador_2: e.id_jugador_2, codigo_grupo: e.codigo_grupo || null })), { id_jugador_1: manual.j1, id_jugador_2: manual.j2, codigo_grupo: null }]
     const respuesta = await supabaseCampeonato.rpc('admin_reemplazar_equipos_campeonato', { p_codigo: codigo, p_origen: 'Manual', p_sorteo_id: datos.vinculo?.sorteo_id || null, p_sorteo_nombre: datos.vinculo?.sorteo_nombre || null, p_ejecucion_id: datos.vinculo?.ejecucion_id || null, p_equipos: equipos })
     setProcesando('')
     if (respuesta.error || respuesta.data?.ok !== true) { setMensaje({ tipo: 'error', texto: respuesta.error?.message || respuesta.data?.error }); return }
@@ -167,15 +193,63 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
     await cargarCampeonato(); setMensaje({ tipo: 'correcto', texto: 'Equipo eliminado.' })
   }
 
+  async function cambiarGrupo(equipo, grupo) {
+    setProcesando(`grupo-${equipo.id_equipo}`)
+    const respuesta = await supabaseCampeonato.rpc('admin_asignar_grupo_equipo', {
+      p_codigo: codigo,
+      p_id_equipo: equipo.id_equipo,
+      p_codigo_grupo: grupo || null,
+    })
+    setProcesando('')
+    if (respuesta.error || respuesta.data?.ok !== true) {
+      setMensaje({ tipo: 'error', texto: respuesta.error?.message || respuesta.data?.error || 'No se pudo cambiar el grupo.' })
+      return
+    }
+    await cargarCampeonato()
+    setMensaje({ tipo: 'correcto', texto: grupo ? `Equipo trasladado al grupo ${grupo}.` : 'Equipo dejado sin grupo.' })
+  }
+
+  function tarjetaEquipo(equipo, indice) {
+    return <article key={equipo.id_equipo}>
+      <span>Equipo {indice + 1}</span>
+      <strong>{equipo.jugador_1} / {equipo.jugador_2}</strong>
+      <small>{equipo.id_jugador_1} + {equipo.id_jugador_2}</small>
+      {esGrupos && <select
+        className="selector-grupo-equipo"
+        value={equipo.codigo_grupo || ''}
+        disabled={datos.tiene_partidos || Boolean(procesando)}
+        onChange={(evento) => cambiarGrupo(equipo, evento.target.value)}
+      >
+        <option value="">Sin grupo</option>
+        {codigosGrupos.map((grupo) => <option key={grupo} value={grupo}>Grupo {grupo}</option>)}
+      </select>}
+      <button className="boton boton-peligro" disabled={datos.tiene_partidos || Boolean(procesando)} onClick={() => eliminarEquipo(equipo)}>{procesando === equipo.id_equipo ? 'Eliminando…' : 'Eliminar'}</button>
+    </article>
+  }
+
   return <main className="app app-admin"><section className="panel-admin panel-equipos-campeonato">
-    <header className="cabecera-admin"><div><p className="etiqueta">CAMPEONATO</p><h2>Equipos y sorteo</h2><p className="descripcion-admin">{codigo}</p></div><div className="acciones-cabecera-configuracion"><button className="boton boton-secundario" onClick={onVolver}>← Gestión</button><button className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button></div></header>
+    <header className="cabecera-admin"><div><p className="etiqueta">CAMPEONATO</p><h2>{esGrupos ? 'Equipos y grupos' : 'Equipos y liga'}</h2><p className="descripcion-admin">{codigo}</p></div><div className="acciones-cabecera-configuracion"><button className="boton boton-secundario" onClick={onVolver}>← Gestión</button><button className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button></div></header>
     {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
     {cargando ? <p className="estado">Cargando…</p> : <>
-      <section className="bloque-equipos"><h3>Sorteo vinculado</h3><p>Elige el sorteo que formará los equipos de este campeonato.</p><div className="fila-vinculo-sorteo"><select value={sorteoId} onChange={(e) => setSorteoId(e.target.value)}><option value="">Selecciona un sorteo</option>{sorteos.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select><button className="boton boton-secundario" disabled={!sorteo || Boolean(procesando)} onClick={vincular}>{procesando === 'vincular' ? 'Vinculando…' : 'Vincular'}</button></div>
-      {datos.vinculo?.sorteo_id === String(sorteoId) && <div className="acciones-sorteo-vinculado"><button className="boton boton-secundario" onClick={cargarParticipantesSorteo} disabled={Boolean(procesando)}>Preparar inscritos para el sorteo</button><button className="boton boton-secundario" onClick={() => onAbrirSorteo(sorteo)} disabled={!sorteo}>Abrir sorteo</button><button className="boton boton-principal" onClick={enviarEquiposSorteo} disabled={Boolean(procesando) || datos.tiene_partidos}>{procesando === 'equipos-sorteo' ? 'Enviando…' : 'Enviar equipos oficiales al campeonato'}</button></div>}</section>
+      <section className="bloque-equipos bloque-organizacion-equipos">
+        <div className="titulo-equipos-actuales"><div><h3>{esGrupos ? 'Distribución de equipos' : 'Equipos de la liga'}</h3><p>{datos.equipos.length} equipos{esGrupos ? ` · ${numeroGrupos} grupos` : ' · liga única'}</p></div>{datos.tiene_partidos && <b>Bloqueados porque ya existen partidos</b>}</div>
+        {datos.equipos.length === 0 ? <p className="estado">Todavía no hay equipos.</p> : esGrupos ? (
+          <div className="rejilla-grupos-campeonato">
+            {codigosGrupos.map((grupo) => <section className="grupo-campeonato" key={grupo}><header><h4>Grupo {grupo}</h4><span>{equiposPorGrupo[grupo]?.length || 0} equipos</span></header><div className="lista-equipos-campeonato">{(equiposPorGrupo[grupo] || []).map(tarjetaEquipo)}</div></section>)}
+            {equiposPorGrupo.SIN_GRUPO?.length > 0 && <section className="grupo-campeonato grupo-sin-asignar"><header><h4>Sin grupo</h4><span>{equiposPorGrupo.SIN_GRUPO.length} equipos</span></header><div className="lista-equipos-campeonato">{equiposPorGrupo.SIN_GRUPO.map(tarjetaEquipo)}</div></section>}
+          </div>
+        ) : <div className="lista-equipos-campeonato lista-equipos-liga">{datos.equipos.map(tarjetaEquipo)}</div>}
+      </section>
+
+      <form className="bloque-equipos alta-equipo-manual" onSubmit={crearManual}><h3>Crear equipo manualmente</h3><p>También puedes formar equipos sin utilizar un sorteo.</p><div><select required value={manual.j1} onChange={(e) => setManual({ ...manual, j1: e.target.value })}><option value="">Primer jugador</option>{disponibles.map((j) => <option key={j.id_jugador} value={j.id_jugador}>{j.alias} · {j.id_jugador}</option>)}</select><select required value={manual.j2} onChange={(e) => setManual({ ...manual, j2: e.target.value })}><option value="">Segundo jugador</option>{disponibles.filter((j) => j.id_jugador !== manual.j1).map((j) => <option key={j.id_jugador} value={j.id_jugador}>{j.alias} · {j.id_jugador}</option>)}</select><button className="boton boton-principal" disabled={datos.tiene_partidos || Boolean(procesando)}>{procesando === 'manual' ? 'Creando…' : 'Crear equipo'}</button></div></form>
+
+      <details className="bloque-equipos bloque-procedencia-sorteo">
+        <summary>Procedencia y actualización desde sorteo</summary>
+        <p>{datos.vinculo?.sorteo_nombre ? `Equipos procedentes de «${datos.vinculo.sorteo_nombre}».` : 'Puedes vincular un sorteo para importar sus equipos oficiales.'}</p>
+        <div className="fila-vinculo-sorteo"><select value={sorteoId} onChange={(e) => setSorteoId(e.target.value)}><option value="">Selecciona un sorteo</option>{sorteos.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select><button className="boton boton-secundario" disabled={!sorteo || Boolean(procesando)} onClick={vincular}>{procesando === 'vincular' ? 'Vinculando…' : 'Vincular'}</button></div>
+        {datos.vinculo?.sorteo_id === String(sorteoId) && <div className="acciones-sorteo-vinculado"><button className="boton boton-secundario" onClick={cargarParticipantesSorteo} disabled={Boolean(procesando)}>Preparar inscritos</button><button className="boton boton-secundario" onClick={() => onAbrirSorteo(sorteo)} disabled={!sorteo}>Abrir sorteo</button><button className="boton boton-principal" onClick={enviarEquiposSorteo} disabled={Boolean(procesando) || datos.tiene_partidos}>{procesando === 'equipos-sorteo' ? 'Enviando…' : 'Actualizar desde equipos oficiales'}</button></div>}
+      </details>
       {bombos.length > 0 && <section className="bloque-equipos"><h3>Inscritos que se enviarán al sorteo</h3><div className="lista-asignacion-bombos">{datos.inscritos.map((j) => <label key={j.id_jugador}><span><b>{j.alias}</b><small>{j.id_jugador}</small></span>{yaParticipan[j.id_jugador] ? <strong>Ya participa</strong> : <select value={asignaciones[j.id_jugador] || ''} onChange={(e) => setAsignaciones({ ...asignaciones, [j.id_jugador]: e.target.value })}><option value="">Selecciona bombo</option>{bombos.map((b) => <option key={b.id} value={b.id}>{b.codigo} · {b.nombre}</option>)}</select>}</label>)}</div><button className="boton boton-principal" onClick={importarInscritos} disabled={Boolean(procesando)}>{procesando === 'importar' ? 'Importando…' : 'Importar inscritos al sorteo'}</button></section>}
-      <section className="bloque-equipos"><div className="titulo-equipos-actuales"><div><h3>Equipos del campeonato</h3><p>{datos.equipos.length} equipos · Origen: {datos.vinculo?.origen_ultima_carga || 'Manual/sin definir'}</p></div>{datos.tiene_partidos && <b>Bloqueados porque ya existen partidos</b>}</div><div className="lista-equipos-campeonato">{datos.equipos.map((e, i) => <article key={e.id_equipo}><span>Equipo {i + 1}</span><strong>{e.jugador_1} / {e.jugador_2}</strong><small>{e.id_jugador_1} + {e.id_jugador_2}</small><button className="boton boton-peligro" disabled={datos.tiene_partidos || Boolean(procesando)} onClick={() => eliminarEquipo(e)}>{procesando === e.id_equipo ? 'Eliminando…' : 'Eliminar'}</button></article>)}</div>{datos.equipos.length === 0 && <p className="estado">Todavía no hay equipos.</p>}</section>
-      <form className="bloque-equipos alta-equipo-manual" onSubmit={crearManual}><h3>Crear equipo manualmente</h3><p>Alternativa para campeonatos en los que no se utilice sorteo.</p><div><select required value={manual.j1} onChange={(e) => setManual({ ...manual, j1: e.target.value })}><option value="">Primer jugador</option>{disponibles.map((j) => <option key={j.id_jugador} value={j.id_jugador}>{j.alias} · {j.id_jugador}</option>)}</select><select required value={manual.j2} onChange={(e) => setManual({ ...manual, j2: e.target.value })}><option value="">Segundo jugador</option>{disponibles.filter((j) => j.id_jugador !== manual.j1).map((j) => <option key={j.id_jugador} value={j.id_jugador}>{j.alias} · {j.id_jugador}</option>)}</select><button className="boton boton-principal" disabled={datos.tiene_partidos || Boolean(procesando)}>{procesando === 'manual' ? 'Creando…' : 'Crear equipo'}</button></div></form>
     </>}
   </section></main>
 }

@@ -48,6 +48,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [guardando, setGuardando] = useState('')
   const [mensajes, setMensajes] = useState({})
   const [puntosMaximos, setPuntosMaximos] = useState(15)
+  const [estructuraPrimeraFase, setEstructuraPrimeraFase] = useState('Grupos')
   const [partidoAAnular, setPartidoAAnular] = useState(null)
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     ])
     const maximo = Number(configuracion.data?.configuracion?.puntos_maximos_por_set)
     if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
+    setEstructuraPrimeraFase(configuracion.data?.configuracion?.estructura_primera_fase || 'Grupos')
   }
 
   const cargarPartidos = useCallback(async (codigoElegido) => {
@@ -453,8 +455,8 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <small>Altas, reservas, bajas y datos personales</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('equipos')}>
-              <span>👥</span><strong>Equipos y sorteo</strong>
-              <small>Vincular sorteo, importar equipos o crearlos manualmente</small>
+              <span>👥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
+              <small>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos distribuidos en sus grupos' : 'Todos los equipos de la liga'}</small>
             </button>
             <button type="button" className="modulo-campeonato" disabled>
               <span>📊</span><strong>Clasificaciones</strong>
