@@ -8,6 +8,13 @@ function nombreSeparado(nombreOficial) {
   return { nombre: partes.shift() || 'Jugador', apellidos: partes.join(' ') || null }
 }
 
+function normalizarCodigoGrupo(valor) {
+  const codigo = String(valor || '').trim().toUpperCase()
+  const numero = codigo.match(/^G(?:RUPO)?[-_ ]?(\d+)$/)?.[1]
+  if (numero) return String.fromCharCode(64 + Number(numero))
+  return codigo
+}
+
 export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, onAbrirSorteo }) {
   const [datos, setDatos] = useState({ equipos: [], inscritos: [], vinculo: {}, tiene_partidos: false })
   const [configuracion, setConfiguracion] = useState({})
@@ -67,7 +74,7 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
     const resultado = Object.fromEntries(codigosGrupos.map((grupo) => [grupo, []]))
     resultado.SIN_GRUPO = []
     for (const equipo of datos.equipos) {
-      const grupo = String(equipo.codigo_grupo || '').trim().toUpperCase()
+      const grupo = normalizarCodigoGrupo(equipo.codigo_grupo)
       ;(resultado[grupo] || resultado.SIN_GRUPO).push(equipo)
     }
     return resultado
@@ -163,7 +170,7 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
         return {
           id_jugador_1: miembros[0]?.codigo_jugador,
           id_jugador_2: miembros[1]?.codigo_jugador,
-          codigo_grupo: esGrupos ? (equipo.codigo_grupo || null) : null,
+          codigo_grupo: esGrupos ? (normalizarCodigoGrupo(equipo.codigo_grupo || equipo.grupo) || null) : null,
         }
       })
       const respuesta = await supabaseCampeonato.rpc('admin_reemplazar_equipos_campeonato', { p_codigo: codigo, p_origen: 'Sorteo', p_sorteo_id: String(sorteoId), p_sorteo_nombre: sorteo?.nombre || datos.vinculo?.sorteo_nombre || '', p_ejecucion_id: String(ejecucion.data.id), p_equipos: equipos })
@@ -216,7 +223,7 @@ export default function EquiposCampeonato({ codigo, onVolver, onPanelPrincipal, 
       <small>{equipo.id_jugador_1} + {equipo.id_jugador_2}</small>
       {esGrupos && <select
         className="selector-grupo-equipo"
-        value={equipo.codigo_grupo || ''}
+        value={normalizarCodigoGrupo(equipo.codigo_grupo)}
         disabled={datos.tiene_partidos || Boolean(procesando)}
         onChange={(evento) => cambiarGrupo(equipo, evento.target.value)}
       >
