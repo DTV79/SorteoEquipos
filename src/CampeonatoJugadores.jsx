@@ -375,6 +375,11 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
       respuesta = await supabaseCampeonato.rpc('admin_eliminar_alta_solicitud', {
         p_id_inscripcion: solicitud.id_inscripcion,
       })
+    } else if (tipo === 'eliminar-jugador') {
+      respuesta = await supabaseCampeonato.rpc('admin_eliminar_jugador_sin_historial', {
+        p_codigo: codigo,
+        p_id_jugador: fila.id_jugador,
+      })
     } else if (tipo === 'baja' || tipo === 'reactivar') {
       respuesta = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
         p_codigo: codigo,
@@ -417,6 +422,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             ? 'Jugador retirado del campeonato. Su código se conserva.'
             : tipo === 'eliminar-alta-solicitud'
               ? 'Alta eliminada. La solicitud vuelve a pendientes y el código queda libre.'
+              : tipo === 'eliminar-jugador'
+                ? `Jugador ${fila.id_jugador} eliminado. Su código queda libre.`
               : tipo === 'baja'
           ? `${fila.alias} queda de baja en este campeonato.`
           : tipo === 'reactivar'
@@ -470,6 +477,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'baja', fila })}>Dar de baja</button>
           )}
           <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'quitar', fila })}>Quitar del campeonato</button>
+          <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'eliminar-jugador', fila })}>Eliminar jugador</button>
         </div>
       </form>
     )
@@ -699,7 +707,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
           <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
             <h3 id="titulo-confirmacion-jugador">
-              {confirmacion.tipo === 'reabrir-rechazo' ? 'Anular rechazo' : confirmacion.tipo === 'volver-solicitud' ? 'Volver a pendientes' : confirmacion.tipo === 'eliminar-alta-solicitud' ? 'Eliminar alta equivocada' : confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
+              {confirmacion.tipo === 'reabrir-rechazo' ? 'Anular rechazo' : confirmacion.tipo === 'volver-solicitud' ? 'Volver a pendientes' : confirmacion.tipo === 'eliminar-alta-solicitud' ? 'Eliminar alta equivocada' : confirmacion.tipo === 'eliminar-jugador' ? 'Eliminar jugador definitivamente' : confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
             </h3>
             <p>
               {confirmacion.tipo === 'reabrir-rechazo'
@@ -708,6 +716,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                   ? `${confirmacion.fila.alias} se retirará del campeonato y su solicitud volverá a pendientes. Su código de jugador se conservará.`
                   : confirmacion.tipo === 'eliminar-alta-solicitud'
                     ? `Se retirará a ${confirmacion.fila.alias}, se eliminará el jugador creado desde esta solicitud y su código quedará libre. Solo se permitirá si no tiene datos relacionados.`
+                    : confirmacion.tipo === 'eliminar-jugador'
+                      ? `Se eliminará definitivamente a ${confirmacion.fila.alias} del campeonato y del catálogo general. El código ${confirmacion.fila.id_jugador} quedará libre. Si tiene cualquier dato relacionado, la operación se bloqueará.`
                     : confirmacion.tipo === 'baja'
                 ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.`
                 : confirmacion.tipo === 'reactivar'
