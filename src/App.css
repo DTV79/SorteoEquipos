@@ -289,6 +289,82 @@ h1 {
   font-size: 14px;
 }
 
+.mensaje-vinculo-sorteo {
+  margin: 0 0 18px;
+  padding: 13px 15px;
+  border: 1px solid #166534;
+  border-radius: 12px;
+  background: #0b2418;
+  color: #86efac;
+  font-weight: 700;
+}
+
+.mensaje-vinculo-sorteo.mensaje-vinculo-error {
+  border-color: #991b1b;
+  background: #2b1115;
+  color: #fca5a5;
+}
+
+.vinculo-campeonato-tarjeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #101720;
+}
+
+.vinculo-campeonato-tarjeta span {
+  display: block;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.vinculo-campeonato-tarjeta strong {
+  color: #f8fafc;
+}
+
+.vinculo-campeonato-tarjeta small {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+}
+
+.vinculo-campeonato-activo {
+  justify-content: flex-start;
+  border-color: #166534;
+  background: #0b2117;
+}
+
+.vinculo-campeonato-activo span {
+  color: #4ade80;
+}
+
+.vinculo-campeonato-activo .boton {
+  margin-left: auto;
+}
+
+.acciones-vinculo-campeonato {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.acciones-vinculo-campeonato select {
+  min-width: 310px;
+  padding: 11px 13px;
+  border: 1px solid #475569;
+  border-radius: 10px;
+  background: #111827;
+  color: #f8fafc;
+  font: inherit;
+}
+
 .badge-estado {
   height: fit-content;
   padding: 6px 10px;
@@ -344,6 +420,21 @@ h1 {
   .datos-sorteo {
     flex-direction: column;
     gap: 6px;
+  }
+
+  .vinculo-campeonato-tarjeta,
+  .acciones-vinculo-campeonato {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .acciones-vinculo-campeonato select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .vinculo-campeonato-activo .boton {
+    margin-left: 0;
   }
 }
 
@@ -3893,6 +3984,12 @@ h1 {
   flex-wrap: wrap;
 }
 
+.boton-enviar-equipos-listado:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+  filter: grayscale(.65);
+}
+
 .boton-eliminar-sorteo,
 .boton-peligro {
   border: 1px solid #7f1d1d;
@@ -5682,6 +5779,39 @@ las fotos ni el símbolo + respecto a las demás filas.
   border-radius: 10px;
   background: rgba(250, 204, 21, 0.07);
   color: #fde68a;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.campo-campeonato-oficialidad {
+  display: block;
+  margin-top: 18px;
+  text-align: left;
+}
+
+.campo-campeonato-oficialidad > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #86efac;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.campo-campeonato-oficialidad select {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #475569;
+  border-radius: 10px;
+  background: #111827;
+  color: #f8fafc;
+  font: inherit;
+}
+
+.campo-campeonato-oficialidad small {
+  display: block;
+  margin-top: 7px;
+  color: #94a3b8;
   font-size: 11px;
   line-height: 1.45;
 }

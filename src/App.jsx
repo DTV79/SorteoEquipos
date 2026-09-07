@@ -18518,41 +18518,8 @@ if (
 
                   </div>
 
-                  <div
-                    className={`vinculo-campeonato-tarjeta ${
-                      vinculosCampeonatoSorteos[String(sorteo.id)]
-                        ? 'vinculo-campeonato-activo'
-                        : 'vinculo-campeonato-independiente'
-                    }`}
-                  >
-                    {vinculosCampeonatoSorteos[String(sorteo.id)] ? (
-                      <>
-                        <span>CAMPEONATO VINCULADO</span>
-                        <strong>
-                          🏆 {vinculosCampeonatoSorteos[String(sorteo.id)].nombre || vinculosCampeonatoSorteos[String(sorteo.id)].codigo_campeonato}
-                        </strong>
-                        <small>
-                          {vinculosCampeonatoSorteos[String(sorteo.id)].codigo_campeonato}
-                        </small>
-
-                        <button
-                          type="button"
-                          className="boton boton-secundario"
-                          disabled={Boolean(vinculandoSorteo)}
-                          onClick={() =>
-                            enviarSorteoOficialDesdeListado(
-                              sorteo,
-                              vinculosCampeonatoSorteos[String(sorteo.id)]
-                            )
-                          }
-                        >
-                          {vinculandoSorteo === String(sorteo.id)
-                            ? 'Enviando…'
-                            : 'Enviar equipos oficiales'}
-                        </button>
-                      </>
-                    ) : (
-                      <>
+                  {!vinculosCampeonatoSorteos[String(sorteo.id)] && (
+                    <div className="vinculo-campeonato-tarjeta vinculo-campeonato-independiente">
                         <div>
                           <span>SORTEO INDEPENDIENTE</span>
                           <small>
@@ -18613,9 +18580,8 @@ if (
                               : 'Vincular y enviar'}
                           </button>
                         </div>
-                      </>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   <div className="acciones-tarjeta-sorteo">
                     <button
@@ -18638,6 +18604,33 @@ if (
                       }}
                     >
                       🗑 Eliminar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton boton-principal boton-enviar-equipos-listado"
+                      disabled={
+                        !vinculosCampeonatoSorteos[String(sorteo.id)] ||
+                        !sorteosOficiales[String(sorteo.id)] ||
+                        Boolean(vinculandoSorteo)
+                      }
+                      title={
+                        !vinculosCampeonatoSorteos[String(sorteo.id)]
+                          ? 'Primero vincula el sorteo con un campeonato'
+                          : !sorteosOficiales[String(sorteo.id)]
+                            ? 'Estará disponible cuando el sorteo sea oficial'
+                            : 'Enviar los equipos oficiales al campeonato'
+                      }
+                      onClick={() =>
+                        enviarSorteoOficialDesdeListado(
+                          sorteo,
+                          vinculosCampeonatoSorteos[String(sorteo.id)]
+                        )
+                      }
+                    >
+                      {vinculandoSorteo === String(sorteo.id)
+                        ? 'Enviando…'
+                        : 'Enviar equipos oficiales'}
                     </button>
                   </div>
 
