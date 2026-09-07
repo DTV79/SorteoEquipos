@@ -16,6 +16,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
   const [nuevo, setNuevo] = useState({ nombre: '', alias: '', estado: 'inscrito' })
   const [confirmacion, setConfirmacion] = useState(null)
   const [recargandoFormulario, setRecargandoFormulario] = useState(false)
+  const [altaSolicitud, setAltaSolicitud] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -198,6 +199,69 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         id_jugador: idJugador,
       },
     }))
+  }
+
+  async function abrirAltaSolicitud(solicitud) {
+    setMensaje(null)
+    const respuesta = await supabaseCampeonato.rpc('admin_siguiente_codigo_jugador')
+
+    if (respuesta.error || respuesta.data?.ok !== true || !respuesta.data.id_jugador) {
+      setMensaje({
+        tipo: 'error',
+        texto: respuesta.error?.message || respuesta.data?.error ||
+          'No se pudo obtener el siguiente código.',
+      })
+      return
+    }
+
+    setAltaSolicitud({
+      solicitud,
+      id_jugador: respuesta.data.id_jugador,
+      alias: solicitud.nombre_publico ?? '',
+      estado: 'inscrito',
+    })
+  }
+
+  async function confirmarAltaSolicitud(evento) {
+    evento.preventDefault()
+    if (!altaSolicitud) return
+
+    const alias = altaSolicitud.alias.trim()
+    if (!alias) {
+      setMensaje({ tipo: 'error', texto: 'Indica el alias del nuevo jugador.' })
+      return
+    }
+
+    const clave = `alta-${altaSolicitud.solicitud.id_inscripcion}`
+    setGuardando(clave)
+    setMensaje(null)
+
+    const respuesta = await supabaseCampeonato.rpc(
+      'admin_crear_jugador_desde_solicitud',
+      {
+        p_id_inscripcion: altaSolicitud.solicitud.id_inscripcion,
+        p_alias: alias,
+        p_estado: altaSolicitud.estado,
+      }
+    )
+
+    setGuardando('')
+
+    if (respuesta.error || respuesta.data?.ok !== true) {
+      setMensaje({
+        tipo: 'error',
+        texto: respuesta.error?.message || respuesta.data?.error ||
+          'No se pudo crear el jugador.',
+      })
+      return
+    }
+
+    setAltaSolicitud(null)
+    setMensaje({
+      tipo: 'correcto',
+      texto: `Jugador ${respuesta.data.id_jugador} creado e inscrito correctamente.`,
+    })
+    await cargar()
   }
 
   async function resolverSolicitud(solicitud, accion) {
@@ -515,6 +579,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                 </label>
 
                 <div className="acciones-solicitud">
+                  <button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => abrirAltaSolicitud(fila)}>＋ Nuevo jugador</button>
                   <button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion || !edicion.id_jugador} onClick={() => resolverSolicitud(fila, 'admitir')}>
                     {guardando === fila.id_inscripcion ? 'Procesando…' : 'Admitir'}
                   </button>
@@ -611,6 +676,27 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
           </div>
         )}
       </section>
+
+      {altaSolicitud && (
+        <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setAltaSolicitud(null) }}>
+          <form className="modal-jugador modal-alta-solicitud" role="dialog" aria-modal="true" aria-labelledby="titulo-alta-solicitud" onSubmit={confirmarAltaSolicitud}>
+            <h3 id="titulo-alta-solicitud">Crear jugador nuevo</h3>
+            <p>Comprueba los datos antes de crear definitivamente el jugador.</p>
+            <div className="datos-alta-solicitud">
+              <label><span>Código reservado</span><input value={altaSolicitud.id_jugador} readOnly /></label>
+              <label><span>Nombre oficial</span><input value={altaSolicitud.solicitud.nombre_completo} readOnly /></label>
+              <label><span>Alias</span><input value={altaSolicitud.alias} onChange={(e) => setAltaSolicitud({ ...altaSolicitud, alias: e.target.value })} required /></label>
+              <label><span>Estado</span><select value={altaSolicitud.estado} onChange={(e) => setAltaSolicitud({ ...altaSolicitud, estado: e.target.value })}><option value="inscrito">Inscrito</option><option value="reserva">Reserva</option></select></label>
+            </div>
+            <div className="acciones-modal-alta">
+              <button type="button" className="boton boton-secundario" onClick={() => setAltaSolicitud(null)}>Cancelar</button>
+              <button type="submit" className="boton boton-principal" disabled={guardando === `alta-${altaSolicitud.solicitud.id_inscripcion}`}>
+                {guardando === `alta-${altaSolicitud.solicitud.id_inscripcion}` ? 'Creando…' : 'Confirmar creación'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {confirmacion && (
         <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
