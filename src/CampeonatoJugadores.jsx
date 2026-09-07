@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import './CampeonatoJugadores.css'
 
-export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal }) {
+export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal, onCrearSorteo }) {
   const [inscripciones, setInscripciones] = useState([])
   const [disponibles, setDisponibles] = useState([])
   const [solicitudes, setSolicitudes] = useState([])
@@ -500,6 +500,15 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <p className="descripcion-admin">{codigo}</p>
           </div>
           <div className="acciones-cabecera-configuracion">
+            <button
+              type="button"
+              className="boton boton-principal"
+              onClick={() => onCrearSorteo?.(codigo)}
+              disabled={totales.inscritos < 2}
+              title={totales.inscritos < 2 ? 'Se necesitan al menos dos jugadores inscritos' : ''}
+            >
+              ⚡ Crear sorteo con inscritos
+            </button>
             <button
               type="button"
               className="boton boton-principal"

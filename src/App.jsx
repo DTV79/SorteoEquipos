@@ -1578,6 +1578,27 @@ const [accionOficialidad, setAccionOficialidad] =
 const [mensajeOficialidad, setMensajeOficialidad] =
   useState('')
 
+const [resultadoOficialidad, setResultadoOficialidad] =
+  useState(null)
+
+const [campeonatoDestinoOficialidad, setCampeonatoDestinoOficialidad] =
+  useState('')
+
+const [sorteosOficiales, setSorteosOficiales] =
+  useState({})
+
+const [vinculosCampeonatoSorteos, setVinculosCampeonatoSorteos] =
+  useState({})
+
+const [destinoCampeonatoSorteo, setDestinoCampeonatoSorteo] =
+  useState({})
+
+const [vinculandoSorteo, setVinculandoSorteo] =
+  useState('')
+
+const [mensajeVinculoSorteo, setMensajeVinculoSorteo] =
+  useState('')
+
 /*
 ============================================================
 RESULTADO GENERADO
@@ -2464,6 +2485,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
     setEjecucionOficialSorteo(null)
     setConfirmacionOficialidad(null)
+    setResultadoOficialidad(null)
     setMensajeOficialidad('')
     setMensajeTiemposPresentacion('')
     setMensajeMusicaPresentacion('')
@@ -2480,6 +2502,45 @@ const temporizadorRepeticionAdminRef = useRef(null)
     void comprobarEjecucionGeneradaSorteo(
       sorteo.id
     )
+  }
+
+  async function prepararSorteoDesdeCampeonato(codigoCampeonato) {
+    setMensajeNuevoSorteo('')
+    setInscritosNuevoSorteo([])
+
+    const respuesta = await supabaseCampeonato.rpc(
+      'admin_listar_campeonatos'
+    )
+
+    if (respuesta.error || respuesta.data?.ok !== true) {
+      window.alert(
+        respuesta.error?.message ||
+        respuesta.data?.error ||
+        'No se pudo cargar el campeonato.'
+      )
+      return
+    }
+
+    const campeonatos = respuesta.data.campeonatos ?? []
+    const campeonato = campeonatos.find(
+      (item) => item.codigo_campeonato === codigoCampeonato
+    )
+
+    if (!campeonato) {
+      window.alert('No se encontró el campeonato seleccionado.')
+      return
+    }
+
+    setCampeonatosNuevoSorteo(campeonatos)
+    setCampeonatoNuevoSorteo(codigoCampeonato)
+    setNuevoNombre(`Sorteo de equipos · ${campeonato.nombre}`)
+    setNuevaDescripcion(
+      `Sorteo vinculado al campeonato ${campeonato.nombre} (${codigoCampeonato})`
+    )
+    setNuevaFecha(campeonato.fecha ?? '')
+    setNuevoFormatoSorteo('grupos')
+    setNuevosJugadoresPorEquipo(2)
+    setPantalla('nuevo-sorteo')
   }
 
   /*
@@ -2554,7 +2615,270 @@ const temporizadorRepeticionAdminRef = useRef(null)
       data ?? []
     )
 
+    const idsSorteos =
+      (data ?? []).map(
+        (sorteo) => sorteo.id
+      )
+
+    if (idsSorteos.length > 0) {
+      const oficiales = await supabase
+        .from('ejecuciones_sorteo')
+        .select('id,sorteo_id,numero_ejecucion')
+        .in('sorteo_id', idsSorteos)
+        .eq('es_oficial', true)
+
+      if (!oficiales.error) {
+        setSorteosOficiales(
+          Object.fromEntries(
+            (oficiales.data ?? []).map(
+              (ejecucion) => [
+                String(ejecucion.sorteo_id),
+                ejecucion,
+              ]
+            )
+          )
+        )
+      }
+    } else {
+      setSorteosOficiales({})
+    }
+
+    void cargarVinculosCampeonatosSorteos()
+
     setCargandoSorteos(false)
+  }
+
+
+  async function cargarVinculosCampeonatosSorteos() {
+    try {
+      const listado =
+        await supabaseCampeonato.rpc(
+          'admin_listar_campeonatos'
+        )
+
+      if (
+        listado.error ||
+        listado.data?.ok !== true
+      ) {
+        return
+      }
+
+      const campeonatos =
+        listado.data.campeonatos ?? []
+
+      setCampeonatosNuevoSorteo(
+        campeonatos
+      )
+
+      const detalles = await Promise.all(
+        campeonatos.map(
+          async (campeonato) => {
+            const codigo =
+              campeonato.codigo_campeonato
+
+            const respuesta =
+              await supabaseCampeonato.rpc(
+                'admin_obtener_equipos_campeonato',
+                { p_codigo: codigo }
+              )
+
+            return {
+              campeonato,
+              detalle:
+                respuesta.error ||
+                respuesta.data?.ok !== true
+                  ? null
+                  : respuesta.data,
+            }
+          }
+        )
+      )
+
+      const mapa = {}
+
+      for (const item of detalles) {
+        const sorteoId =
+          item.detalle?.vinculo
+            ?.sorteo_id
+
+        if (sorteoId) {
+          mapa[String(sorteoId)] = {
+            codigo_campeonato:
+              item.campeonato.codigo_campeonato,
+            nombre:
+              item.campeonato.nombre,
+            ejecucion_id:
+              item.detalle.vinculo
+                ?.ejecucion_id ?? null,
+          }
+        }
+      }
+
+      setVinculosCampeonatoSorteos(
+        mapa
+      )
+    } catch (error) {
+      console.warn(
+        'No se pudieron cargar los vínculos de los campeonatos:',
+        error
+      )
+    }
+  }
+
+
+  async function vincularSorteoConCampeonato(
+    sorteo
+  ) {
+    const codigo =
+      destinoCampeonatoSorteo[
+        sorteo.id
+      ]
+
+    if (!codigo) {
+      setMensajeVinculoSorteo(
+        'Selecciona primero el campeonato de destino.'
+      )
+      return
+    }
+
+    const campeonato =
+      campeonatosNuevoSorteo.find(
+        (item) =>
+          item.codigo_campeonato ===
+          codigo
+      )
+
+    setVinculandoSorteo(
+      String(sorteo.id)
+    )
+    setMensajeVinculoSorteo('')
+
+    try {
+      const vinculo =
+        await supabaseCampeonato.rpc(
+          'admin_vincular_sorteo',
+          {
+            p_codigo: codigo,
+            p_sorteo_id:
+              String(sorteo.id),
+            p_sorteo_nombre:
+              sorteo.nombre,
+          }
+        )
+
+      if (
+        vinculo.error ||
+        vinculo.data?.ok !== true
+      ) {
+        throw new Error(
+          vinculo.error?.message ||
+          vinculo.data?.error ||
+          'No se pudo vincular el sorteo.'
+        )
+      }
+
+      const oficial = await supabase
+        .from('ejecuciones_sorteo')
+        .select('id,numero_ejecucion')
+        .eq('sorteo_id', sorteo.id)
+        .eq('es_oficial', true)
+        .order(
+          'numero_ejecucion',
+          { ascending: false }
+        )
+        .limit(1)
+        .maybeSingle()
+
+      if (oficial.error) {
+        throw oficial.error
+      }
+
+      if (oficial.data) {
+        const transferencia =
+          await enviarEjecucionOficialAlCampeonato(
+            oficial.data.id,
+            {
+              sorteo,
+              campeonato: {
+                codigo_campeonato:
+                  codigo,
+              },
+            }
+          )
+
+        setMensajeVinculoSorteo(
+          `✓ «${sorteo.nombre}» se ha vinculado a ${campeonato?.nombre || codigo} y se han enviado ${transferencia.equipos} equipos oficiales.`
+        )
+      } else {
+        setMensajeVinculoSorteo(
+          `✓ «${sorteo.nombre}» se ha vinculado a ${campeonato?.nombre || codigo}. Los equipos se enviarán cuando marques una ejecución como oficial.`
+        )
+      }
+
+      await cargarVinculosCampeonatosSorteos()
+    } catch (error) {
+      setMensajeVinculoSorteo(
+        `Error: ${error.message}`
+      )
+    } finally {
+      setVinculandoSorteo('')
+    }
+  }
+
+
+  async function enviarSorteoOficialDesdeListado(
+    sorteo,
+    vinculo
+  ) {
+    setVinculandoSorteo(
+      String(sorteo.id)
+    )
+    setMensajeVinculoSorteo('')
+
+    try {
+      const oficial = await supabase
+        .from('ejecuciones_sorteo')
+        .select('id,numero_ejecucion')
+        .eq('sorteo_id', sorteo.id)
+        .eq('es_oficial', true)
+        .order(
+          'numero_ejecucion',
+          { ascending: false }
+        )
+        .limit(1)
+        .maybeSingle()
+
+      if (oficial.error) {
+        throw oficial.error
+      }
+
+      if (!oficial.data) {
+        throw new Error(
+          'Este sorteo todavía no tiene una ejecución oficial.'
+        )
+      }
+
+      const transferencia =
+        await enviarEjecucionOficialAlCampeonato(
+          oficial.data.id,
+          {
+            sorteo,
+            campeonato: vinculo,
+          }
+        )
+
+      setMensajeVinculoSorteo(
+        `✓ Se han enviado ${transferencia.equipos} equipos de «${sorteo.nombre}» al campeonato ${transferencia.codigo}.`
+      )
+
+      await cargarVinculosCampeonatosSorteos()
+    } catch (error) {
+      setMensajeVinculoSorteo(
+        `Error: ${error.message}`
+      )
+    } finally {
+      setVinculandoSorteo('')
+    }
   }
 
   /*
@@ -5926,6 +6250,39 @@ async function cargarEjecucionOficialSorteo() {
     throw error
   }
 
+  if (
+    data &&
+    String(
+      sorteoSeleccionado.estado ?? ''
+    ).toLowerCase() !== 'finalizado'
+  ) {
+    const cierre = await supabase
+      .from('sorteos')
+      .update({ estado: 'finalizado' })
+      .eq('id', sorteoSeleccionado.id)
+
+    if (!cierre.error) {
+      setSorteoSeleccionado(
+        (actual) => ({
+          ...actual,
+          estado: 'finalizado',
+        })
+      )
+
+      setSorteos((actuales) =>
+        actuales.map((sorteo) =>
+          String(sorteo.id) ===
+          String(sorteoSeleccionado.id)
+            ? {
+                ...sorteo,
+                estado: 'finalizado',
+              }
+            : sorteo
+        )
+      )
+    }
+  }
+
   setEjecucionOficialSorteo(data ?? null)
   return data ?? null
 }
@@ -5970,11 +6327,217 @@ function solicitarCambioOficialidad(tipo, ejecucion) {
   }
 
   setMensajeOficialidad('')
+  setResultadoOficialidad(null)
+  setCampeonatoDestinoOficialidad(
+    tipo === 'marcar'
+      ? vinculosCampeonatoSorteos[
+          String(sorteoSeleccionado?.id)
+        ]?.codigo_campeonato ?? ''
+      : ''
+  )
   setConfirmacionOficialidad({
     tipo,
     id,
     numero,
   })
+}
+
+
+async function obtenerCampeonatoVinculadoAlSorteo() {
+  const sorteoId = String(
+    sorteoSeleccionado?.id ?? ''
+  )
+
+  if (!sorteoId) {
+    return null
+  }
+
+  const { data, error } =
+    await supabaseCampeonato.rpc(
+      'admin_listar_campeonatos'
+    )
+
+  if (error || data?.ok !== true) {
+    throw new Error(
+      error?.message ||
+      data?.error ||
+      'No se pudo comprobar el campeonato vinculado.'
+    )
+  }
+
+  const campeonatos =
+    data.campeonatos ?? []
+
+  /*
+  Las versiones nuevas de la función de listado pueden devolver el
+  vínculo directamente. Mantenemos además la consulta de detalle para
+  que funcione con la versión ya instalada en Supabase.
+  */
+  const vinculadoEnListado =
+    campeonatos.find(
+      (campeonato) =>
+        String(
+          campeonato.sorteo_id ?? ''
+        ) === sorteoId
+    )
+
+  if (vinculadoEnListado) {
+    return vinculadoEnListado
+  }
+
+  for (const campeonato of campeonatos) {
+    const codigo =
+      campeonato.codigo_campeonato
+
+    if (!codigo) continue
+
+    const detalle =
+      await supabaseCampeonato.rpc(
+        'admin_obtener_equipos_campeonato',
+        { p_codigo: codigo }
+      )
+
+    if (
+      detalle.error ||
+      detalle.data?.ok !== true
+    ) {
+      continue
+    }
+
+    if (
+      String(
+        detalle.data.vinculo
+          ?.sorteo_id ?? ''
+      ) === sorteoId
+    ) {
+      return {
+        ...campeonato,
+        detalle: detalle.data,
+      }
+    }
+  }
+
+  return null
+}
+
+
+async function enviarEjecucionOficialAlCampeonato(
+  ejecucionId,
+  opciones = {}
+) {
+  const sorteoObjetivo =
+    opciones.sorteo ??
+    sorteoSeleccionado
+
+  const campeonato =
+    opciones.campeonato ??
+    await obtenerCampeonatoVinculadoAlSorteo()
+
+  if (!campeonato) {
+    return {
+      transferido: false,
+      motivo: 'sin_vinculo',
+    }
+  }
+
+  const codigo =
+    campeonato.codigo_campeonato
+
+  const { data, error } = await supabase
+    .from('v_equipos_sorteados')
+    .select(`
+      equipo_id,
+      numero_equipo,
+      codigo_grupo,
+      grupo,
+      nombre_equipo,
+      miembros
+    `)
+    .eq('ejecucion_id', ejecucionId)
+    .order('numero_equipo')
+
+  if (error) {
+    throw error
+  }
+
+  const equipos = (data ?? []).map(
+    (equipo) => {
+      const miembros =
+        Array.isArray(equipo.miembros)
+          ? equipo.miembros
+          : []
+
+      if (miembros.length !== 2) {
+        throw new Error(
+          `El equipo ${equipo.numero_equipo ?? '—'} no está formado exactamente por dos jugadores.`
+        )
+      }
+
+      const idJugador1 =
+        miembros[0]?.codigo_jugador
+      const idJugador2 =
+        miembros[1]?.codigo_jugador
+
+      if (!idJugador1 || !idJugador2) {
+        throw new Error(
+          `Falta el código de algún jugador del equipo ${equipo.numero_equipo ?? '—'}.`
+        )
+      }
+
+      return {
+        id_jugador_1: idJugador1,
+        id_jugador_2: idJugador2,
+        codigo_grupo:
+          equipo.codigo_grupo ?? null,
+        grupo:
+          equipo.grupo ?? null,
+        nombre_equipo:
+          equipo.nombre_equipo ?? null,
+        numero_equipo:
+          equipo.numero_equipo ?? null,
+      }
+    }
+  )
+
+  if (equipos.length === 0) {
+    throw new Error(
+      'La ejecución oficial no contiene ningún equipo.'
+    )
+  }
+
+  const respuesta =
+    await supabaseCampeonato.rpc(
+      'admin_reemplazar_equipos_campeonato',
+      {
+        p_codigo: codigo,
+        p_origen: 'Sorteo',
+        p_sorteo_id: String(
+          sorteoObjetivo.id
+        ),
+        p_sorteo_nombre:
+          sorteoObjetivo.nombre || '',
+        p_ejecucion_id:
+          String(ejecucionId),
+        p_equipos: equipos,
+      }
+    )
+
+  if (
+    respuesta.error ||
+    respuesta.data?.ok !== true
+  ) {
+    throw new Error(
+      respuesta.error?.message ||
+      respuesta.data?.error ||
+      'No se pudieron enviar los equipos al campeonato.'
+    )
+  }
+
+  return {
+    transferido: true,
+    codigo,
+    equipos: equipos.length,
+  }
 }
 
 
@@ -6009,6 +6572,44 @@ async function confirmarCambioOficialidad() {
     const esOficial =
       tipo === 'marcar'
 
+    const nuevoEstadoSorteo =
+      esOficial
+        ? 'finalizado'
+        : 'borrador'
+
+    const cambioEstado = await supabase
+      .from('sorteos')
+      .update({
+        estado: nuevoEstadoSorteo,
+      })
+      .eq(
+        'id',
+        sorteoSeleccionado.id
+      )
+
+    if (cambioEstado.error) {
+      throw cambioEstado.error
+    }
+
+    setSorteoSeleccionado(
+      (actual) => ({
+        ...actual,
+        estado: nuevoEstadoSorteo,
+      })
+    )
+
+    setSorteos((actuales) =>
+      actuales.map((sorteo) =>
+        String(sorteo.id) ===
+        String(sorteoSeleccionado.id)
+          ? {
+              ...sorteo,
+              estado: nuevoEstadoSorteo,
+            }
+          : sorteo
+      )
+    )
+
     setEjecucionResultado((actual) =>
       actual?.id === id
         ? {
@@ -6038,7 +6639,84 @@ async function confirmarCambioOficialidad() {
       )
     )
 
+    let resultadoCampeonato = null
+    let errorTransferencia = null
+
     if (esOficial) {
+      try {
+        let campeonatoElegido = null
+
+        if (campeonatoDestinoOficialidad) {
+          campeonatoElegido =
+            campeonatosNuevoSorteo.find(
+              (campeonato) =>
+                campeonato.codigo_campeonato ===
+                campeonatoDestinoOficialidad
+            ) ?? {
+              codigo_campeonato:
+                campeonatoDestinoOficialidad,
+            }
+
+          const vinculoActual =
+            vinculosCampeonatoSorteos[
+              String(sorteoSeleccionado.id)
+            ]
+
+          if (
+            vinculoActual
+              ?.codigo_campeonato !==
+            campeonatoDestinoOficialidad
+          ) {
+            const vinculo =
+              await supabaseCampeonato.rpc(
+                'admin_vincular_sorteo',
+                {
+                  p_codigo:
+                    campeonatoDestinoOficialidad,
+                  p_sorteo_id: String(
+                    sorteoSeleccionado.id
+                  ),
+                  p_sorteo_nombre:
+                    sorteoSeleccionado.nombre,
+                }
+              )
+
+            if (
+              vinculo.error ||
+              vinculo.data?.ok !== true
+            ) {
+              throw new Error(
+                vinculo.error?.message ||
+                vinculo.data?.error ||
+                'No se pudo vincular el campeonato seleccionado.'
+              )
+            }
+          }
+        }
+
+        resultadoCampeonato =
+          campeonatoElegido
+            ? await enviarEjecucionOficialAlCampeonato(
+                id,
+                {
+                  campeonato:
+                    campeonatoElegido,
+                }
+              )
+            : {
+                transferido: false,
+                motivo: 'sin_vinculo',
+              }
+      } catch (error) {
+        /*
+        La ejecución ya ha quedado oficialmente protegida en la base
+        del sorteo. Si falla la segunda base de datos no fingimos que
+        esa primera operación también ha fallado: informamos y queda
+        disponible la importación manual desde Equipos y sorteo.
+        */
+        errorTransferencia = error
+      }
+
       setEjecucionOficialSorteo({
         id,
         sorteo_id:
@@ -6047,11 +6725,54 @@ async function confirmarCambioOficialidad() {
         es_oficial: true,
       })
 
-      setMensajeOficialidad(
-        `🏆 La ejecución ${numero} ya es OFICIAL. Mientras conserve la oficialidad no se podrán generar nuevas combinaciones.`
+      setSorteosOficiales(
+        (actual) => ({
+          ...actual,
+          [String(sorteoSeleccionado.id)]: {
+            id,
+            sorteo_id:
+              sorteoSeleccionado.id,
+            numero_ejecucion: numero,
+          },
+        })
       )
+
+      const textoResultado =
+        errorTransferencia
+          ? `🏆 La ejecución ${numero} ya es OFICIAL, pero no se pudieron actualizar los equipos del campeonato: ${errorTransferencia.message}`
+          : resultadoCampeonato?.transferido
+          ? `🏆 La ejecución ${numero} ya es OFICIAL y sus ${resultadoCampeonato.equipos} equipos se han enviado al campeonato ${resultadoCampeonato.codigo}.`
+          : `🏆 La ejecución ${numero} ya es OFICIAL. Este sorteo no está vinculado a ningún campeonato, por lo que no se han transferido equipos.`
+
+      setMensajeOficialidad(
+        textoResultado
+      )
+
+      setResultadoOficialidad({
+        correcto: !errorTransferencia,
+        titulo: errorTransferencia
+          ? 'Sorteo oficial con aviso'
+          : 'Sorteo oficial',
+        texto: textoResultado,
+      })
+
+      void cargarVinculosCampeonatosSorteos()
     } else {
       setEjecucionOficialSorteo(null)
+
+      setSorteosOficiales(
+        (actual) => {
+          const siguiente = {
+            ...actual,
+          }
+
+          delete siguiente[
+            String(sorteoSeleccionado.id)
+          ]
+
+          return siguiente
+        }
+      )
 
       setMensajeOficialidad(
         `La ejecución ${numero} ha dejado de ser oficial. Ya puedes generar una nueva combinación si lo necesitas.`
@@ -6075,6 +6796,47 @@ async function confirmarCambioOficialidad() {
 
 
 function renderModalOficialidad() {
+  if (
+    resultadoOficialidad &&
+    !confirmacionOficialidad
+  ) {
+    return (
+      <div className="modal-fondo">
+        <div
+          className="modal-confirmacion modal-oficialidad"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-icono">
+            {resultadoOficialidad.correcto
+              ? '✓'
+              : '⚠'}
+          </div>
+
+          <h3>
+            {resultadoOficialidad.titulo}
+          </h3>
+
+          <p>
+            {resultadoOficialidad.texto}
+          </p>
+
+          <div className="modal-acciones">
+            <button
+              type="button"
+              className="boton boton-principal"
+              onClick={() =>
+                setResultadoOficialidad(null)
+              }
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!confirmacionOficialidad) {
     return null
   }
@@ -6111,15 +6873,68 @@ function renderModalOficialidad() {
 
         <p>
           {esMarcar
-            ? `La ejecución ${confirmacionOficialidad.numero} quedará protegida como resultado definitivo. Mientras sea oficial no se podrá generar otra combinación para este sorteo.`
+            ? `La ejecución ${confirmacionOficialidad.numero} quedará cerrada como resultado definitivo y el sorteo pasará a Finalizado · Oficial.`
             : `La ejecución ${confirmacionOficialidad.numero} conservará exactamente sus equipos, pero dejará de estar protegida como oficial y volverás a poder generar otras combinaciones.`}
         </p>
 
         {esMarcar && (
+          <label className="campo-campeonato-oficialidad">
+            <span>
+              DESTINO DEL SORTEO
+            </span>
+
+            <select
+              value={campeonatoDestinoOficialidad}
+              onChange={(evento) =>
+                setCampeonatoDestinoOficialidad(
+                  evento.target.value
+                )
+              }
+            >
+              <option value="">
+                Mantener como sorteo independiente
+              </option>
+
+              {campeonatosNuevoSorteo.map(
+                (campeonato) => {
+                  const otroVinculo =
+                    Object.entries(
+                      vinculosCampeonatoSorteos
+                    ).some(
+                      ([sorteoId, vinculo]) =>
+                        sorteoId !==
+                          String(sorteoSeleccionado?.id) &&
+                        vinculo.codigo_campeonato ===
+                          campeonato.codigo_campeonato
+                    )
+
+                  return (
+                    <option
+                      key={campeonato.codigo_campeonato}
+                      value={campeonato.codigo_campeonato}
+                      disabled={otroVinculo}
+                    >
+                      {campeonato.nombre} · {campeonato.codigo_campeonato}
+                      {otroVinculo
+                        ? ' · ya vinculado'
+                        : ''}
+                    </option>
+                  )
+                }
+              )}
+            </select>
+
+            <small>
+              Si eliges un campeonato, las parejas y sus grupos se
+              enviarán automáticamente al confirmar.
+            </small>
+          </label>
+        )}
+
+        {esMarcar && (
           <div className="aviso-modal-oficial">
-            Esta acción no cambia ningún equipo. Solo declara esta
-            combinación como la válida y la protege frente a cambios
-            accidentales.
+            Podrás realizar la presentación más adelante. Hacer oficial
+            cierra el sorteo, pero no obliga a presentarlo en ese momento.
           </div>
         )}
 
@@ -7951,84 +8766,6 @@ function detenerDuckingMusicaPublica() {
 }
 
 
-function ajustarVolumenMusicaPublica(
-  factor = 1,
-  duracionMs = 320
-) {
-  if (
-    !sonidoPublicoActivoRef.current ||
-    pistaMusicaActivaPublicoRef.current !== 'sorteo'
-  ) {
-    return
-  }
-
-  const audio =
-    audioSorteoPublicoRef.current
-
-  if (!audio) {
-    return
-  }
-
-  detenerDuckingMusicaPublica()
-
-  const volumenBase =
-    volumenObjetivoMusicaPublica(
-      'sorteo'
-    )
-
-  const objetivo =
-    Math.max(
-      0,
-      Math.min(
-        1,
-        volumenBase * factor
-      )
-    )
-
-  const inicial =
-    Number(audio.volume) || 0
-
-  const pasos = 18
-  const intervaloMs =
-    Math.max(
-      12,
-      duracionMs / pasos
-    )
-
-  let paso = 0
-
-  temporizadorDuckingMusicaPublicoRef.current =
-    window.setInterval(
-      () => {
-        paso += 1
-
-        const progreso =
-          Math.min(
-            1,
-            paso / pasos
-          )
-
-        const suavizado =
-          1 -
-          Math.pow(
-            1 - progreso,
-            3
-          )
-
-        audio.volume =
-          inicial +
-          (objetivo - inicial) *
-            suavizado
-
-        if (progreso >= 1) {
-          detenerDuckingMusicaPublica()
-        }
-      },
-      intervaloMs
-    )
-}
-
-
 function detenerMusicaPublica() {
   detenerFadeMusicaPublica()
   detenerDuckingMusicaPublica()
@@ -8613,16 +9350,31 @@ async function cambiarPistaMusicaPublica(
             paso / pasos
           )
 
+        /*
+        Fundido de potencia constante. El fundido lineal anterior
+        dejaba ambas canciones aproximadamente a media potencia en
+        el centro del cambio y se percibía como una bajada general.
+        */
+        const entradaSuave =
+          Math.sin(
+            progreso * Math.PI / 2
+          )
+
+        const salidaSuave =
+          Math.cos(
+            progreso * Math.PI / 2
+          )
+
         audioObjetivo.volume =
           volumenObjetivo *
-          progreso
+          entradaSuave
 
         if (audioActual) {
           audioActual.volume =
             Math.max(
               0,
               volumenInicialAnterior *
-                (1 - progreso)
+                salidaSuave
             )
         }
 
@@ -8808,17 +9560,6 @@ function iniciarSecuenciaEquipoPublico(
           indice + 1
         )
 
-        if (indice === 0) {
-          /*
-          La música principal baja durante la revelación del equipo
-          para que los nombres y los efectos tengan más presencia.
-          */
-          ajustarVolumenMusicaPublica(
-            0.48,
-            360
-          )
-        }
-
         reproducirEfectoPublico('jugador')
       },
       retrasoPrimerJugador +
@@ -8842,15 +9583,6 @@ function iniciarSecuenciaEquipoPublico(
   const temporizadorCierre = window.setTimeout(
     () => {
       setEquipoCompletoPublico(true)
-
-      /*
-      Al formarse el equipo completo, la música recupera suavemente
-      el volumen configurado por el administrador.
-      */
-      ajustarVolumenMusicaPublica(
-        1,
-        720
-      )
 
       reproducirEfectoPublico(
         'equipo'
@@ -11149,6 +11881,7 @@ if (
       <CampeonatoAdmin
         onVolver={() => setPantalla('panel-principal')}
         onAbrirSorteo={gestionarSorteo}
+        onCrearSorteo={prepararSorteoDesdeCampeonato}
       />
     )
   }
@@ -17311,7 +18044,9 @@ if (
             <span
               className={`badge-estado estado-${sorteoSeleccionado.estado}`}
             >
-              {sorteoSeleccionado.estado}
+              {ejecucionOficialSorteo
+                ? 'FINALIZADO · OFICIAL'
+                : sorteoSeleccionado.estado}
             </span>
 
           </header>
@@ -17390,9 +18125,9 @@ if (
               </span>
 
               <strong>
-                {
-                  sorteoSeleccionado.estado
-                }
+                {ejecucionOficialSorteo
+                  ? 'Finalizado · Oficial'
+                  : sorteoSeleccionado.estado}
               </strong>
 
             </div>
@@ -17688,6 +18423,18 @@ if (
 
           </div>
 
+          {mensajeVinculoSorteo && (
+            <p
+              className={`mensaje-vinculo-sorteo ${
+                mensajeVinculoSorteo.startsWith('Error:')
+                  ? 'mensaje-vinculo-error'
+                  : ''
+              }`}
+            >
+              {mensajeVinculoSorteo}
+            </p>
+          )}
+
           {cargandoSorteos && (
             <p className="estado">
               Cargando sorteos...
@@ -17738,7 +18485,9 @@ if (
                     <span
                       className={`badge-estado estado-${sorteo.estado}`}
                     >
-                      {sorteo.estado}
+                      {sorteosOficiales[String(sorteo.id)]
+                        ? 'FINALIZADO · OFICIAL'
+                        : sorteo.estado}
                     </span>
 
                   </div>
@@ -17767,6 +18516,105 @@ if (
                       )}
                     </span>
 
+                  </div>
+
+                  <div
+                    className={`vinculo-campeonato-tarjeta ${
+                      vinculosCampeonatoSorteos[String(sorteo.id)]
+                        ? 'vinculo-campeonato-activo'
+                        : 'vinculo-campeonato-independiente'
+                    }`}
+                  >
+                    {vinculosCampeonatoSorteos[String(sorteo.id)] ? (
+                      <>
+                        <span>CAMPEONATO VINCULADO</span>
+                        <strong>
+                          🏆 {vinculosCampeonatoSorteos[String(sorteo.id)].nombre || vinculosCampeonatoSorteos[String(sorteo.id)].codigo_campeonato}
+                        </strong>
+                        <small>
+                          {vinculosCampeonatoSorteos[String(sorteo.id)].codigo_campeonato}
+                        </small>
+
+                        <button
+                          type="button"
+                          className="boton boton-secundario"
+                          disabled={Boolean(vinculandoSorteo)}
+                          onClick={() =>
+                            enviarSorteoOficialDesdeListado(
+                              sorteo,
+                              vinculosCampeonatoSorteos[String(sorteo.id)]
+                            )
+                          }
+                        >
+                          {vinculandoSorteo === String(sorteo.id)
+                            ? 'Enviando…'
+                            : 'Enviar equipos oficiales'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <span>SORTEO INDEPENDIENTE</span>
+                          <small>
+                            Puedes vincularlo ahora o hacerlo más adelante.
+                          </small>
+                        </div>
+
+                        <div className="acciones-vinculo-campeonato">
+                          <select
+                            value={destinoCampeonatoSorteo[sorteo.id] || ''}
+                            onChange={(evento) =>
+                              setDestinoCampeonatoSorteo(
+                                (actual) => ({
+                                  ...actual,
+                                  [sorteo.id]: evento.target.value,
+                                })
+                              )
+                            }
+                          >
+                            <option value="">
+                              Selecciona campeonato
+                            </option>
+                            {campeonatosNuevoSorteo.map((campeonato) => {
+                              const yaVinculado = Object.values(
+                                vinculosCampeonatoSorteos
+                              ).some(
+                                (vinculo) =>
+                                  vinculo.codigo_campeonato ===
+                                  campeonato.codigo_campeonato
+                              )
+
+                              return (
+                                <option
+                                  key={campeonato.codigo_campeonato}
+                                  value={campeonato.codigo_campeonato}
+                                  disabled={yaVinculado}
+                                >
+                                  {campeonato.nombre} · {campeonato.codigo_campeonato}
+                                  {yaVinculado ? ' · ya vinculado' : ''}
+                                </option>
+                              )
+                            })}
+                          </select>
+
+                          <button
+                            type="button"
+                            className="boton boton-secundario"
+                            disabled={
+                              !destinoCampeonatoSorteo[sorteo.id] ||
+                              Boolean(vinculandoSorteo)
+                            }
+                            onClick={() =>
+                              vincularSorteoConCampeonato(sorteo)
+                            }
+                          >
+                            {vinculandoSorteo === String(sorteo.id)
+                              ? 'Vinculando…'
+                              : 'Vincular y enviar'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="acciones-tarjeta-sorteo">

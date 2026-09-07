@@ -30,7 +30,7 @@ function valorSet(partido, numero, campo) {
   )?.[campo] ?? ''
 }
 
-export default function CampeonatoAdmin({ onVolver, onAbrirSorteo }) {
+export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo }) {
   const [codigo, setCodigo] = useState(() => window.sessionStorage.getItem('sprint-padel-campeonato-seleccionado') || '')
   const [partidos, setPartidos] = useState([])
   const [seccion, setSeccion] = useState(() => {
@@ -410,6 +410,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo }) {
         codigo={codigo}
         onVolver={() => setSeccion('menu')}
         onPanelPrincipal={volverPanelPrincipal}
+        onCrearSorteo={onCrearSorteo}
       />
     )
   }
