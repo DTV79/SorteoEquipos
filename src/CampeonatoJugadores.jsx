@@ -74,6 +74,16 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     bajas: inscripciones.filter((fila) => fila.estado === 'baja').length,
   }), [inscripciones])
 
+  const solicitudesPendientes = useMemo(
+    () => solicitudes.filter((fila) => fila.estado_gestion === 'pendiente'),
+    [solicitudes]
+  )
+
+  const solicitudesGestionadas = useMemo(
+    () => solicitudes.filter((fila) => fila.estado_gestion !== 'pendiente'),
+    [solicitudes]
+  )
+
   async function inscribirExistente(evento) {
     evento.preventDefault()
     if (!jugadorExistente) return
@@ -115,10 +125,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     }
 
     setNuevo({ nombre: '', alias: '', estado: 'inscrito' })
-    setMensaje({
-      tipo: 'correcto',
-      texto: `Jugador creado con el código ${data.id_jugador}.`,
-    })
+    setMensaje({ tipo: 'correcto', texto: `Jugador creado con el código ${data.id_jugador}.` })
     await cargar()
   }
 
@@ -142,49 +149,80 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     setMensaje(null)
 
     try {
-      const resolucion = await supabaseCampeonato.rpc('admin_resolver_solicitud', {
-        p_id_inscripcion: solicitud.id_inscripcion,
-        p_accion: accion,
-        p_id_jugador: edicion.id_jugador || null,
-        p_alias: alias || null,
-      })
-
-      if (resolucion.error || resolucion.data?.ok !== true) {
-        throw new Error(
-          resolucion.error?.message ||
-          resolucion.data?.error ||
-          'No se pudo resolver la solicitud.'
-        )
-      }
-
       if (accion === 'rechazar') {
+        const resolucion = await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+          p_id_inscripcion: solicitud.id_inscripcion,
+          p_accion: 'rechazar',
+          p_id_jugador: null,
+          p_alias: null,
+        })
+
+        if (resolucion.error || resolucion.data?.ok !== true) {
+          throw new Error(
+            resolucion.error?.message ||
+            resolucion.data?.error ||
+            'No se pudo rechazar la solicitud.'
+          )
+        }
+
         setMensaje({ tipo: 'correcto', texto: 'Solicitud rechazada.' })
         await cargar()
         return
       }
 
-      const idJugador = resolucion.data?.id_jugador || edicion.id_jugador
-
-      if (!idJugador) {
-        throw new Error(
-          'La solicitud se ha tramitado, pero no se ha podido identificar el jugador que debe incorporarse al campeonato.'
-        )
-      }
-
       const estadoCampeonato = accion === 'reserva' ? 'reserva' : 'inscrito'
+      let idJugador = edicion.id_jugador || null
 
-      const inscripcion = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
-        p_codigo: codigo,
-        p_id_jugador: idJugador,
-        p_estado: estadoCampeonato,
-        p_observaciones: solicitud.observaciones ?? null,
-      })
+      // Primero incorporamos al jugador al campeonato. La solicitud NO se cierra
+      // hasta que este paso haya terminado correctamente.
+      if (idJugador) {
+        const inscripcion = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
+          p_codigo: codigo,
+          p_id_jugador: idJugador,
+          p_estado: estadoCampeonato,
+          p_observaciones: solicitud.observaciones ?? null,
+        })
 
-      if (inscripcion.error || inscripcion.data?.ok === false) {
-        throw new Error(
-          `La solicitud se ha tramitado, pero no se pudo añadir al campeonato: ${
+        if (inscripcion.error || inscripcion.data?.ok === false) {
+          throw new Error(
             inscripcion.error?.message ||
             inscripcion.data?.error ||
+            'No se pudo añadir el jugador al campeonato.'
+          )
+        }
+      } else {
+        const alta = await supabaseCampeonato.rpc('admin_crear_jugador_inscrito', {
+          p_codigo: codigo,
+          p_nombre: solicitud.nombre_completo,
+          p_alias: alias,
+          p_estado: estadoCampeonato,
+        })
+
+        if (alta.error || alta.data?.ok !== true || !alta.data?.id_jugador) {
+          throw new Error(
+            alta.error?.message ||
+            alta.data?.error ||
+            'No se pudo crear e inscribir al jugador.'
+          )
+        }
+
+        idJugador = alta.data.id_jugador
+        cambiarResolucion(solicitud.id_inscripcion, 'id_jugador', idJugador)
+      }
+
+      // Solo después de estar ya dentro del campeonato cerramos la solicitud.
+      const resolucion = await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+        p_id_inscripcion: solicitud.id_inscripcion,
+        p_accion: accion,
+        p_id_jugador: idJugador,
+        p_alias: alias,
+      })
+
+      if (resolucion.error || resolucion.data?.ok !== true) {
+        throw new Error(
+          `El jugador ya está añadido al campeonato, pero no se pudo cerrar la solicitud: ${
+            resolucion.error?.message ||
+            resolucion.data?.error ||
             'error desconocido'
           }`
         )
@@ -198,10 +236,9 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
 
       setMensaje({
         tipo: 'correcto',
-        texto:
-          accion === 'reserva'
-            ? 'Jugador añadido como reserva del campeonato.'
-            : 'Jugador admitido e inscrito en el campeonato.',
+        texto: accion === 'reserva'
+          ? `Jugador ${idJugador} añadido como reserva.`
+          : `Jugador ${idJugador} admitido e inscrito.`,
       })
 
       await cargar()
@@ -211,6 +248,32 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     } finally {
       setGuardando('')
     }
+  }
+
+  async function volverSolicitudAPendientes(solicitud) {
+    setGuardando(`solicitud-${solicitud.id_inscripcion}`)
+    setMensaje(null)
+
+    const respuesta = await supabaseCampeonato.rpc('admin_deshacer_admision', {
+      p_id_inscripcion: solicitud.id_inscripcion,
+      p_eliminar_jugador: false,
+    })
+
+    setGuardando('')
+
+    if (respuesta.error || respuesta.data?.ok === false) {
+      setMensaje({
+        tipo: 'error',
+        texto:
+          respuesta.error?.message ||
+          respuesta.data?.error ||
+          'No se pudo devolver la solicitud a pendientes.',
+      })
+      return
+    }
+
+    setMensaje({ tipo: 'correcto', texto: 'Solicitud devuelta a pendientes.' })
+    await cargar()
   }
 
   async function guardarFila(evento, fila) {
@@ -319,16 +382,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
           <span>{fila.alias}</span>
         </div>
 
-        <label>
-          <span>Nombre oficial</span>
-          <input name="nombre" defaultValue={fila.nombre_oficial} required />
-        </label>
-
-        <label>
-          <span>Alias</span>
-          <input name="alias" defaultValue={fila.alias} required />
-        </label>
-
+        <label><span>Nombre oficial</span><input name="nombre" defaultValue={fila.nombre_oficial} required /></label>
+        <label><span>Alias</span><input name="alias" defaultValue={fila.alias} required /></label>
         <label>
           <span>Estado en este campeonato</span>
           <select name="estado" defaultValue={fila.estado}>
@@ -337,58 +392,33 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <option value="baja">Baja</option>
           </select>
         </label>
-
-        <label>
-          <span>Observaciones</span>
-          <input name="observaciones" defaultValue={fila.observaciones ?? ''} />
-        </label>
-
+        <label><span>Observaciones</span><input name="observaciones" defaultValue={fila.observaciones ?? ''} /></label>
         <label className="jugador-activo">
           <input type="checkbox" name="activo" defaultChecked={fila.jugador_activo} />
           <span>Activo en el histórico general</span>
         </label>
 
         <div className="acciones-fila-jugador">
-          <button
-            className="boton boton-secundario"
-            disabled={guardando === fila.id_jugador}
-          >
+          <button className="boton boton-secundario" disabled={guardando === fila.id_jugador}>
             {guardando === fila.id_jugador ? 'Guardando…' : 'Guardar cambios'}
           </button>
-
           {fila.estado === 'baja' ? (
-            <button
-              type="button"
-              className="boton boton-principal"
-              onClick={() => setConfirmacion({ tipo: 'reactivar', fila })}
-            >
-              Reactivar
-            </button>
+            <button type="button" className="boton boton-principal" onClick={() => setConfirmacion({ tipo: 'reactivar', fila })}>Reactivar</button>
           ) : (
-            <button
-              type="button"
-              className="boton boton-peligro"
-              onClick={() => setConfirmacion({ tipo: 'baja', fila })}
-            >
-              Dar de baja
-            </button>
+            <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'baja', fila })}>Dar de baja</button>
           )}
-
-          <button
-            type="button"
-            className="boton boton-peligro"
-            onClick={() => setConfirmacion({ tipo: 'quitar', fila })}
-          >
-            Quitar del campeonato
-          </button>
+          <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'quitar', fila })}>Quitar del campeonato</button>
         </div>
       </form>
     )
   }
 
-  const solicitudesPendientes = solicitudes.filter(
-    (fila) => fila.estado_gestion === 'pendiente'
-  )
+  function textoEstadoGestion(estado) {
+    if (estado === 'admitido' || estado === 'admitida') return 'Admitida'
+    if (estado === 'reserva') return 'Reserva'
+    if (estado === 'rechazado' || estado === 'rechazada') return 'Rechazada'
+    return estado || 'Gestionada'
+  }
 
   return (
     <main className="app app-admin app-jugadores-campeonato">
@@ -399,14 +429,9 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <h2>Jugadores e inscripciones</h2>
             <p className="descripcion-admin">{codigo}</p>
           </div>
-
           <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>
-              ← Gestión
-            </button>
-            <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>
-              Panel principal
-            </button>
+            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button>
           </div>
         </header>
 
@@ -420,155 +445,120 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
           <div className="titulo-bandeja">
             <div>
               <h3>Solicitudes del formulario</h3>
-              <p>Vincula a un jugador existente o crea automáticamente el siguiente código Jxxx.</p>
+              <p>Primero se añade el jugador al campeonato y solo después se cierra la solicitud.</p>
             </div>
             <strong>{solicitudesPendientes.length} pendientes</strong>
           </div>
 
           {solicitudesPendientes.length === 0 ? (
             <p className="estado-sin-solicitudes">No hay solicitudes pendientes.</p>
-          ) : (
-            solicitudesPendientes.map((fila) => {
-              const edicion = resoluciones[fila.id_inscripcion] ?? {}
+          ) : solicitudesPendientes.map((fila) => {
+            const edicion = resoluciones[fila.id_inscripcion] ?? {}
+            return (
+              <article className="solicitud-inscripcion" key={fila.id_inscripcion}>
+                <div className="datos-solicitud">
+                  <strong>{fila.nombre_completo}</strong>
+                  <span>Tel. {fila.telefono || 'Sin teléfono'}{fila.posicion ? ` · Solicitud nº ${fila.posicion}` : ''}</span>
+                  {fila.observaciones && <small>{fila.observaciones}</small>}
+                </div>
 
-              return (
-                <article className="solicitud-inscripcion" key={fila.id_inscripcion}>
-                  <div className="datos-solicitud">
+                <label>
+                  <span>Alias</span>
+                  <input
+                    value={edicion.alias ?? fila.nombre_publico ?? ''}
+                    onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  <span>Jugador</span>
+                  <select
+                    value={edicion.id_jugador ?? ''}
+                    onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'id_jugador', e.target.value)}
+                  >
+                    <option value="">Crear jugador nuevo (Jxxx)</option>
+                    {[...inscripciones, ...disponibles]
+                      .sort((a, b) => a.id_jugador.localeCompare(b.id_jugador))
+                      .map((jugador) => (
+                        <option key={jugador.id_jugador} value={jugador.id_jugador}>
+                          {jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <div className="acciones-solicitud">
+                  <button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'admitir')}>
+                    {guardando === fila.id_inscripcion ? 'Procesando…' : 'Admitir'}
+                  </button>
+                  <button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button>
+                  <button type="button" className="boton boton-peligro" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'rechazar')}>Rechazar</button>
+                </div>
+              </article>
+            )
+          })}
+
+          {solicitudesGestionadas.length > 0 && (
+            <div className="solicitudes-gestionadas">
+              <div className="titulo-gestionadas">
+                <h4>Solicitudes ya gestionadas</h4>
+                <span>{solicitudesGestionadas.length}</span>
+              </div>
+              {solicitudesGestionadas.map((fila) => (
+                <article className="solicitud-gestionada" key={`gestionada-${fila.id_inscripcion}`}>
+                  <div>
                     <strong>{fila.nombre_completo}</strong>
                     <span>
-                      Tel. {fila.telefono || 'Sin teléfono'}
-                      {fila.posicion ? ` · Solicitud nº ${fila.posicion}` : ''}
+                      {fila.posicion ? `Solicitud nº ${fila.posicion} · ` : ''}
+                      {textoEstadoGestion(fila.estado_gestion)}
+                      {fila.id_jugador ? ` · ${fila.id_jugador}` : ''}
                     </span>
-                    {fila.observaciones && <small>{fila.observaciones}</small>}
                   </div>
-
-                  <label>
-                    <span>Alias</span>
-                    <input
-                      value={edicion.alias ?? fila.nombre_publico ?? ''}
-                      onChange={(e) =>
-                        cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    <span>Jugador</span>
-                    <select
-                      value={edicion.id_jugador ?? ''}
-                      onChange={(e) =>
-                        cambiarResolucion(fila.id_inscripcion, 'id_jugador', e.target.value)
-                      }
-                    >
-                      <option value="">Crear jugador nuevo (Jxxx)</option>
-                      {[...inscripciones, ...disponibles]
-                        .sort((a, b) => a.id_jugador.localeCompare(b.id_jugador))
-                        .map((jugador) => (
-                          <option key={jugador.id_jugador} value={jugador.id_jugador}>
-                            {jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
-                  <div className="acciones-solicitud">
-                    <button
-                      type="button"
-                      className="boton boton-principal"
-                      disabled={guardando === fila.id_inscripcion}
-                      onClick={() => resolverSolicitud(fila, 'admitir')}
-                    >
-                      {guardando === fila.id_inscripcion ? 'Procesando…' : 'Admitir'}
-                    </button>
-                    <button
-                      type="button"
-                      className="boton boton-secundario"
-                      disabled={guardando === fila.id_inscripcion}
-                      onClick={() => resolverSolicitud(fila, 'reserva')}
-                    >
-                      Reserva
-                    </button>
-                    <button
-                      type="button"
-                      className="boton boton-peligro"
-                      disabled={guardando === fila.id_inscripcion}
-                      onClick={() => resolverSolicitud(fila, 'rechazar')}
-                    >
-                      Rechazar
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={guardando === `solicitud-${fila.id_inscripcion}`}
+                    onClick={() => volverSolicitudAPendientes(fila)}
+                  >
+                    {guardando === `solicitud-${fila.id_inscripcion}` ? 'Recuperando…' : 'Volver a pendientes'}
+                  </button>
                 </article>
-              )
-            })
+              ))}
+            </div>
           )}
         </section>
 
         <div className="altas-inscripciones">
           <form onSubmit={inscribirExistente}>
             <h3>Inscribir jugador existente</h3>
-            <select
-              value={jugadorExistente}
-              onChange={(e) => setJugadorExistente(e.target.value)}
-              required
-            >
+            <select value={jugadorExistente} onChange={(e) => setJugadorExistente(e.target.value)} required>
               <option value="">Selecciona un jugador</option>
-              {disponibles.map((fila) => (
-                <option key={fila.id_jugador} value={fila.id_jugador}>
-                  {fila.alias} · {fila.nombre_oficial}
-                </option>
-              ))}
+              {disponibles.map((fila) => <option key={fila.id_jugador} value={fila.id_jugador}>{fila.alias} · {fila.nombre_oficial}</option>)}
             </select>
-            <select
-              value={estadoExistente}
-              onChange={(e) => setEstadoExistente(e.target.value)}
-            >
+            <select value={estadoExistente} onChange={(e) => setEstadoExistente(e.target.value)}>
               <option value="inscrito">Inscrito</option>
               <option value="reserva">Reserva</option>
             </select>
-            <button className="boton boton-principal" disabled={guardando === 'existente'}>
-              {guardando === 'existente' ? 'Añadiendo…' : 'Añadir'}
-            </button>
+            <button className="boton boton-principal" disabled={guardando === 'existente'}>{guardando === 'existente' ? 'Añadiendo…' : 'Añadir'}</button>
           </form>
 
           <form onSubmit={crearJugador}>
             <h3>Crear jugador nuevo</h3>
-            <input
-              placeholder="Nombre oficial"
-              value={nuevo.nombre}
-              onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
-              required
-            />
-            <input
-              placeholder="Alias visible"
-              value={nuevo.alias}
-              onChange={(e) => setNuevo({ ...nuevo, alias: e.target.value })}
-              required
-            />
-            <select
-              value={nuevo.estado}
-              onChange={(e) => setNuevo({ ...nuevo, estado: e.target.value })}
-            >
+            <input placeholder="Nombre oficial" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} required />
+            <input placeholder="Alias visible" value={nuevo.alias} onChange={(e) => setNuevo({ ...nuevo, alias: e.target.value })} required />
+            <select value={nuevo.estado} onChange={(e) => setNuevo({ ...nuevo, estado: e.target.value })}>
               <option value="inscrito">Inscrito</option>
               <option value="reserva">Reserva</option>
             </select>
-            <button className="boton boton-principal" disabled={guardando === 'nuevo'}>
-              {guardando === 'nuevo' ? 'Creando…' : 'Crear jugador'}
-            </button>
+            <button className="boton boton-principal" disabled={guardando === 'nuevo'}>{guardando === 'nuevo' ? 'Creando…' : 'Crear jugador'}</button>
           </form>
         </div>
 
-        {mensaje && (
-          <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>
-        )}
+        {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
 
         <div className="barra-listado-jugadores">
           <strong>{inscripciones.length} jugadores en el campeonato</strong>
-          <input
-            type="search"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            placeholder="Buscar jugador"
-          />
+          <input type="search" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar jugador" />
         </div>
 
         {cargando ? (
@@ -576,26 +566,15 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         ) : (
           <div className="bloques-jugadores">
             <section>
-              <div className="titulo-listado-estado">
-                <h3>Participantes y reservas</h3>
-                <strong>{participantesVisibles.length}</strong>
-              </div>
+              <div className="titulo-listado-estado"><h3>Participantes y reservas</h3><strong>{participantesVisibles.length}</strong></div>
               <div className="lista-inscripciones">
-                {participantesVisibles.length
-                  ? participantesVisibles.map(pintarJugador)
-                  : <p className="estado-sin-solicitudes">No hay participantes que coincidan.</p>}
+                {participantesVisibles.length ? participantesVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay participantes que coincidan.</p>}
               </div>
             </section>
-
             <section className="bloque-bajas">
-              <div className="titulo-listado-estado">
-                <h3>Bajas</h3>
-                <strong>{bajasVisibles.length}</strong>
-              </div>
+              <div className="titulo-listado-estado"><h3>Bajas</h3><strong>{bajasVisibles.length}</strong></div>
               <div className="lista-inscripciones">
-                {bajasVisibles.length
-                  ? bajasVisibles.map(pintarJugador)
-                  : <p className="estado-sin-solicitudes">No hay bajas que coincidan.</p>}
+                {bajasVisibles.length ? bajasVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay bajas que coincidan.</p>}
               </div>
             </section>
           </div>
@@ -603,29 +582,10 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
       </section>
 
       {confirmacion && (
-        <div
-          className="fondo-modal-jugador"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setConfirmacion(null)
-          }}
-        >
-          <section
-            className="modal-jugador"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="titulo-confirmacion-jugador"
-          >
+        <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
+          <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
             <h3 id="titulo-confirmacion-jugador">
-              {confirmacion.tipo === 'baja'
-                ? 'Dar de baja'
-                : confirmacion.tipo === 'reactivar'
-                  ? 'Reactivar jugador'
-                  : confirmacion.tipo === 'quitar'
-                    ? 'Quitar del campeonato'
-                    : confirmacion.tipo === 'eliminar'
-                      ? 'Eliminar alta equivocada'
-                      : 'Deshacer admisión'}
+              {confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
             </h3>
             <p>
               {confirmacion.tipo === 'baja'
@@ -639,19 +599,8 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                       : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}
             </p>
             <div>
-              <button
-                type="button"
-                className="boton boton-secundario"
-                onClick={() => setConfirmacion(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={`boton ${['deshacer', 'reactivar'].includes(confirmacion.tipo) ? 'boton-principal' : 'boton-peligro'}`}
-                onClick={ejecutarCorreccion}
-                disabled={guardando.startsWith('corregir-')}
-              >
+              <button type="button" className="boton boton-secundario" onClick={() => setConfirmacion(null)}>Cancelar</button>
+              <button type="button" className={`boton ${['deshacer', 'reactivar'].includes(confirmacion.tipo) ? 'boton-principal' : 'boton-peligro'}`} onClick={ejecutarCorreccion} disabled={guardando.startsWith('corregir-')}>
                 {guardando.startsWith('corregir-') ? 'Procesando…' : 'Confirmar'}
               </button>
             </div>
