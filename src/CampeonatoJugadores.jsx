@@ -2,46 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import './CampeonatoJugadores.css'
 
-function normalizarTexto(valor) {
-  return String(valor ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-}
-
-function solicitudYaInscrita(solicitud, inscripciones) {
-  const idResuelto =
-    solicitud.id_jugador ??
-    solicitud.id_jugador_resuelto ??
-    solicitud.jugador_id ??
-    null
-
-  if (
-    idResuelto &&
-    inscripciones.some(
-      (fila) =>
-        String(fila.id_jugador) ===
-        String(idResuelto)
-    )
-  ) {
-    return true
-  }
-
-  const nombreSolicitud = normalizarTexto(
-    solicitud.nombre_completo
-  )
-
-  if (!nombreSolicitud) return false
-
-  return inscripciones.some(
-    (fila) =>
-      normalizarTexto(fila.nombre_oficial) ===
-      nombreSolicitud
-  )
-}
-
 export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal }) {
   const [inscripciones, setInscripciones] = useState([])
   const [disponibles, setDisponibles] = useState([])
@@ -55,6 +15,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
   const [estadoExistente, setEstadoExistente] = useState('inscrito')
   const [nuevo, setNuevo] = useState({ nombre: '', alias: '', estado: 'inscrito' })
   const [confirmacion, setConfirmacion] = useState(null)
+  const [recargandoFormulario, setRecargandoFormulario] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -62,14 +23,25 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
       supabaseCampeonato.rpc('admin_listar_inscripciones', { p_codigo: codigo }),
       supabaseCampeonato.rpc('admin_listar_solicitudes', { p_codigo: codigo }),
     ])
-    if (listado.error || listado.data?.ok !== true || bandeja.error || bandeja.data?.ok !== true) {
-      setMensaje({ tipo: 'error', texto: listado.error?.message || listado.data?.error || bandeja.error?.message || bandeja.data?.error || 'No se pudieron cargar las inscripciones.' })
+
+    if (
+      listado.error || listado.data?.ok !== true ||
+      bandeja.error || bandeja.data?.ok !== true
+    ) {
+      setMensaje({
+        tipo: 'error',
+        texto:
+          listado.error?.message || listado.data?.error ||
+          bandeja.error?.message || bandeja.data?.error ||
+          'No se pudieron cargar las inscripciones.',
+      })
     } else {
       setInscripciones(listado.data.inscripciones ?? [])
       setDisponibles(listado.data.disponibles ?? [])
       setSolicitudes(bandeja.data.solicitudes ?? [])
       setJugadorExistente('')
     }
+
     setCargando(false)
   }, [codigo])
 
@@ -77,6 +49,66 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     const temporizador = window.setTimeout(() => cargar(), 0)
     return () => window.clearTimeout(temporizador)
   }, [cargar])
+
+  async function recargarDesdeGoogleSheets() {
+    setRecargandoFormulario(true)
+    setMensaje(null)
+
+    const solicitud = await supabaseCampeonato.rpc(
+      'admin_solicitar_recarga_formulario',
+      { p_codigo: codigo }
+    )
+
+    if (solicitud.error || solicitud.data?.ok !== true) {
+      setRecargandoFormulario(false)
+      setMensaje({
+        tipo: 'error',
+        texto: solicitud.error?.message || solicitud.data?.error ||
+          'No se pudo solicitar la recarga.',
+      })
+      return
+    }
+
+    setMensaje({
+      tipo: 'correcto',
+      texto: 'Recarga solicitada. Google Sheets la procesará automáticamente.',
+    })
+
+    for (let intento = 0; intento < 30; intento += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 3000))
+      const respuesta = await supabaseCampeonato.rpc(
+        'admin_estado_recarga_formulario',
+        { p_codigo: codigo }
+      )
+
+      if (respuesta.error || respuesta.data?.ok !== true) continue
+
+      if (respuesta.data.estado === 'completada') {
+        await cargar()
+        setRecargandoFormulario(false)
+        setMensaje({
+          tipo: 'correcto',
+          texto: respuesta.data.mensaje || 'Formulario recargado desde Google Sheets.',
+        })
+        return
+      }
+
+      if (respuesta.data.estado === 'error') {
+        setRecargandoFormulario(false)
+        setMensaje({
+          tipo: 'error',
+          texto: respuesta.data.mensaje || 'Google Sheets no pudo completar la recarga.',
+        })
+        return
+      }
+    }
+
+    setRecargandoFormulario(false)
+    setMensaje({
+      tipo: 'error',
+      texto: 'La recarga sigue pendiente. Comprueba el activador de Google Apps Script.',
+    })
+  }
 
   const visibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
@@ -88,10 +120,13 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
   }, [filtro, inscripciones])
 
   const participantesVisibles = useMemo(
-    () => visibles.filter((fila) => fila.estado !== 'baja'), [visibles]
+    () => visibles.filter((fila) => fila.estado !== 'baja'),
+    [visibles]
   )
+
   const bajasVisibles = useMemo(
-    () => visibles.filter((fila) => fila.estado === 'baja'), [visibles]
+    () => visibles.filter((fila) => fila.estado === 'baja'),
+    [visibles]
   )
 
   const totales = useMemo(() => ({
@@ -100,60 +135,36 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     bajas: inscripciones.filter((fila) => fila.estado === 'baja').length,
   }), [inscripciones])
 
-  const solicitudesClasificadas = useMemo(
-    () => solicitudes.map((solicitud) => {
-      const pendienteEnOrigen =
-        normalizarTexto(
-          solicitud.estado_gestion
-        ) === 'pendiente'
-
-      const yaInscrita =
-        pendienteEnOrigen &&
-        solicitudYaInscrita(
-          solicitud,
-          inscripciones
-        )
-
-      return {
-        ...solicitud,
-        estado_gestion_visual: yaInscrita
-          ? 'admitida'
-          : normalizarTexto(
-              solicitud.estado_gestion
-            ) || 'pendiente',
-      }
-    }),
-    [solicitudes, inscripciones]
-  )
-
   const solicitudesPendientes = useMemo(
-    () => solicitudesClasificadas.filter(
-      (fila) =>
-        fila.estado_gestion_visual ===
-        'pendiente'
-    ),
-    [solicitudesClasificadas]
+    () => solicitudes.filter((fila) => fila.estado_gestion === 'pendiente'),
+    [solicitudes]
   )
 
   const solicitudesGestionadas = useMemo(
-    () => solicitudesClasificadas.filter(
-      (fila) =>
-        fila.estado_gestion_visual !==
-        'pendiente'
-    ),
-    [solicitudesClasificadas]
+    () => solicitudes.filter((fila) => fila.estado_gestion !== 'pendiente'),
+    [solicitudes]
   )
 
   async function inscribirExistente(evento) {
     evento.preventDefault()
     if (!jugadorExistente) return
+
     setGuardando('existente')
-    const { error } = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
-      p_codigo: codigo, p_id_jugador: jugadorExistente,
-      p_estado: estadoExistente, p_observaciones: null,
+    const { data, error } = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
+      p_codigo: codigo,
+      p_id_jugador: jugadorExistente,
+      p_estado: estadoExistente,
+      p_observaciones: null,
     })
     setGuardando('')
-    if (error) return setMensaje({ tipo: 'error', texto: error.message })
+
+    if (error || data?.ok === false) {
+      return setMensaje({
+        tipo: 'error',
+        texto: error?.message || data?.error || 'No se pudo añadir el jugador.',
+      })
+    }
+
     setMensaje({ tipo: 'correcto', texto: 'Jugador añadido al campeonato.' })
     await cargar()
   }
@@ -161,44 +172,159 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
   async function crearJugador(evento) {
     evento.preventDefault()
     setGuardando('nuevo')
+
     const { data, error } = await supabaseCampeonato.rpc('admin_crear_jugador_inscrito', {
-      p_codigo: codigo, p_nombre: nuevo.nombre,
-      p_alias: nuevo.alias, p_estado: nuevo.estado,
+      p_codigo: codigo,
+      p_nombre: nuevo.nombre,
+      p_alias: nuevo.alias,
+      p_estado: nuevo.estado,
     })
     setGuardando('')
-    if (error || data?.ok !== true) return setMensaje({ tipo: 'error', texto: error?.message || data?.error })
+
+    if (error || data?.ok !== true) {
+      return setMensaje({ tipo: 'error', texto: error?.message || data?.error })
+    }
+
     setNuevo({ nombre: '', alias: '', estado: 'inscrito' })
     setMensaje({ tipo: 'correcto', texto: `Jugador creado con el código ${data.id_jugador}.` })
     await cargar()
   }
 
   function cambiarResolucion(id, campo, valor) {
-    setResoluciones((actual) => ({ ...actual, [id]: { ...actual[id], [campo]: valor } }))
+    setResoluciones((actual) => ({
+      ...actual,
+      [id]: { ...actual[id], [campo]: valor },
+    }))
+  }
+
+  function seleccionarJugadorSolicitud(solicitud, idJugador) {
+    if (!idJugador) {
+      setResoluciones((actual) => ({
+        ...actual,
+        [solicitud.id_inscripcion]: {
+          ...actual[solicitud.id_inscripcion],
+          id_jugador: '',
+          alias: solicitud.nombre_publico ?? '',
+        },
+      }))
+      return
+    }
+
+    const jugador = [...inscripciones, ...disponibles]
+      .find((fila) => fila.id_jugador === idJugador)
+
+    setResoluciones((actual) => ({
+      ...actual,
+      [solicitud.id_inscripcion]: {
+        ...actual[solicitud.id_inscripcion],
+        id_jugador: idJugador,
+        alias: jugador?.alias ?? actual[solicitud.id_inscripcion]?.alias ?? '',
+      },
+    }))
   }
 
   async function resolverSolicitud(solicitud, accion) {
     const edicion = resoluciones[solicitud.id_inscripcion] ?? {}
     const alias = (edicion.alias ?? solicitud.nombre_publico ?? '').trim()
-    if (accion !== 'rechazar' && !alias) return setMensaje({ tipo: 'error', texto: 'Indica el alias del jugador.' })
+
+    if (accion !== 'rechazar' && !alias) {
+      setMensaje({ tipo: 'error', texto: 'Indica el alias del jugador.' })
+      return
+    }
+
     setGuardando(solicitud.id_inscripcion)
-    const { data, error } = await supabaseCampeonato.rpc('admin_resolver_solicitud', {
-      p_id_inscripcion: solicitud.id_inscripcion, p_accion: accion,
-      p_id_jugador: edicion.id_jugador || null, p_alias: alias || null,
-    })
+    setMensaje(null)
+
+    try {
+      // Esta única función realiza una transacción completa: crea o vincula al
+      // jugador, lo inscribe y saca la solicitud de la bandeja de pendientes.
+      const vinculaExistente = accion !== 'rechazar' && Boolean(edicion.id_jugador)
+      const resolucion = vinculaExistente
+        ? await supabaseCampeonato.rpc('admin_admitir_solicitud_existente', {
+            p_id_inscripcion: solicitud.id_inscripcion,
+            p_id_jugador: edicion.id_jugador,
+            p_estado: accion === 'reserva' ? 'reserva' : 'inscrito',
+          })
+        : await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+            p_id_inscripcion: solicitud.id_inscripcion,
+            p_accion: accion,
+            p_id_jugador: null,
+            p_alias: accion === 'rechazar' ? null : alias,
+          })
+
+      if (resolucion.error || resolucion.data?.ok !== true) {
+        throw new Error(
+          `No se pudo gestionar la solicitud: ${
+            resolucion.error?.message ||
+            resolucion.data?.error ||
+            'error desconocido'
+          }`
+        )
+      }
+
+      setResoluciones((actual) => {
+        const copia = { ...actual }
+        delete copia[solicitud.id_inscripcion]
+        return copia
+      })
+
+      setMensaje({
+        tipo: 'correcto',
+        texto: accion === 'rechazar'
+          ? 'Solicitud rechazada.'
+          : accion === 'reserva'
+            ? `Jugador ${resolucion.data.id_jugador} añadido como reserva.`
+            : `Jugador ${resolucion.data.id_jugador} admitido e inscrito.`,
+      })
+
+      await cargar()
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.message })
+      await cargar()
+    } finally {
+      setGuardando('')
+    }
+  }
+
+  async function volverSolicitudAPendientes(solicitud) {
+    setGuardando(`solicitud-${solicitud.id_inscripcion}`)
+    setMensaje(null)
+
+    const estado = String(solicitud.estado_gestion ?? '').toLowerCase()
+    const fueRechazada = estado === 'rechazado' || estado === 'rechazada'
+
+    // Una solicitud rechazada no tiene una admisión que deshacer.
+    const respuesta = fueRechazada
+      ? await supabaseCampeonato.rpc('admin_resolver_solicitud', {
+          p_id_inscripcion: solicitud.id_inscripcion,
+          p_accion: 'pendiente',
+          p_id_jugador: null,
+          p_alias: null,
+        })
+      : await supabaseCampeonato.rpc('admin_deshacer_admision', {
+          p_id_inscripcion: solicitud.id_inscripcion,
+          p_eliminar_jugador: false,
+        })
+
     setGuardando('')
-    if (error || data?.ok !== true) return setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo resolver la solicitud.' })
-    const estadoResuelto = accion === 'admitir' ? 'admitida' : accion === 'reserva' ? 'reserva' : 'rechazada'
-    setSolicitudes((actuales) => actuales.map((fila) =>
-      fila.id_inscripcion === solicitud.id_inscripcion
-        ? { ...fila, estado_gestion: estadoResuelto, id_jugador: data.id_jugador ?? fila.id_jugador }
-        : fila
-    ))
-    setResoluciones((actuales) => {
-      const siguientes = { ...actuales }
-      delete siguientes[solicitud.id_inscripcion]
-      return siguientes
+
+    if (respuesta.error || respuesta.data?.ok === false) {
+      setMensaje({
+        tipo: 'error',
+        texto:
+          respuesta.error?.message ||
+          respuesta.data?.error ||
+          'No se pudo devolver la solicitud a pendientes.',
+      })
+      return
+    }
+
+    setMensaje({ tipo: 'correcto', texto: 'Solicitud devuelta a pendientes.' })
+    setResoluciones((actual) => {
+      const copia = { ...actual }
+      delete copia[solicitud.id_inscripcion]
+      return copia
     })
-    setMensaje({ tipo: 'correcto', texto: accion === 'rechazar' ? 'Solicitud marcada como rechazada.' : `Solicitud tramitada con el código ${data.id_jugador}.` })
     await cargar()
   }
 
@@ -206,42 +332,56 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     evento.preventDefault()
     const datos = new FormData(evento.currentTarget)
     setGuardando(fila.id_jugador)
+
     const jugador = await supabaseCampeonato.rpc('admin_actualizar_jugador', {
       p_id_jugador: fila.id_jugador,
-      p_nombre: datos.get('nombre'), p_alias: datos.get('alias'),
+      p_nombre: datos.get('nombre'),
+      p_alias: datos.get('alias'),
       p_activo: datos.get('activo') === 'on',
     })
+
     if (jugador.error) {
       setGuardando('')
       return setMensaje({ tipo: 'error', texto: jugador.error.message })
     }
+
     const inscripcion = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
-      p_codigo: codigo, p_id_jugador: fila.id_jugador,
-      p_estado: datos.get('estado'), p_observaciones: datos.get('observaciones'),
+      p_codigo: codigo,
+      p_id_jugador: fila.id_jugador,
+      p_estado: datos.get('estado'),
+      p_observaciones: datos.get('observaciones'),
     })
     setGuardando('')
-    if (inscripcion.error) return setMensaje({ tipo: 'error', texto: inscripcion.error.message })
+
+    if (inscripcion.error || inscripcion.data?.ok === false) {
+      return setMensaje({
+        tipo: 'error',
+        texto: inscripcion.error?.message || inscripcion.data?.error,
+      })
+    }
+
     setMensaje({ tipo: 'correcto', texto: `${datos.get('alias')} actualizado.` })
     await cargar()
   }
 
   async function ejecutarCorreccion() {
     if (!confirmacion) return
+
     const { tipo, fila, solicitud } = confirmacion
     setGuardando(`corregir-${fila.id_jugador}`)
     let respuesta
-    if (tipo === 'eliminar-general') {
-      respuesta = await supabaseCampeonato.rpc('admin_eliminar_jugador_sin_historial', {
-        p_id_jugador: fila.id_jugador,
-      })
-    } else if (tipo === 'baja' || tipo === 'reactivar') {
+
+    if (tipo === 'baja' || tipo === 'reactivar') {
       respuesta = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
-        p_codigo: codigo, p_id_jugador: fila.id_jugador,
-        p_estado: tipo === 'baja' ? 'baja' : 'inscrito', p_observaciones: fila.observaciones,
+        p_codigo: codigo,
+        p_id_jugador: fila.id_jugador,
+        p_estado: tipo === 'baja' ? 'baja' : 'inscrito',
+        p_observaciones: fila.observaciones,
       })
     } else if (tipo === 'quitar') {
       respuesta = await supabaseCampeonato.rpc('admin_quitar_jugador_campeonato', {
-        p_codigo: codigo, p_id_jugador: fila.id_jugador,
+        p_codigo: codigo,
+        p_id_jugador: fila.id_jugador,
       })
     } else {
       respuesta = await supabaseCampeonato.rpc('admin_deshacer_admision', {
@@ -249,38 +389,107 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         p_eliminar_jugador: tipo === 'eliminar',
       })
     }
+
     setGuardando('')
+
     if (respuesta.error || respuesta.data?.ok === false) {
-      setMensaje({ tipo: 'error', texto: respuesta.error?.message || respuesta.data?.error || 'No se pudo realizar la corrección.' })
+      setMensaje({
+        tipo: 'error',
+        texto:
+          respuesta.error?.message ||
+          respuesta.data?.error ||
+          'No se pudo realizar la corrección.',
+      })
       return
     }
+
     setConfirmacion(null)
-    setMensaje({ tipo: 'correcto', texto: tipo === 'baja' ? `${fila.alias} queda de baja en este campeonato.` : tipo === 'reactivar' ? `${fila.alias} vuelve a estar inscrito.` : tipo === 'quitar' ? (respuesta.data?.solicitud_recuperada ? 'Jugador retirado y solicitud devuelta a pendientes.' : 'Jugador retirado del campeonato.') : tipo === 'eliminar' ? 'Alta deshecha y jugador creado por error eliminado.' : tipo === 'eliminar-general' ? `${fila.id_jugador} eliminado. El código queda libre.` : 'Admisión deshecha. La solicitud vuelve a pendientes.' })
+    setMensaje({
+      tipo: 'correcto',
+      texto:
+        tipo === 'baja'
+          ? `${fila.alias} queda de baja en este campeonato.`
+          : tipo === 'reactivar'
+            ? `${fila.alias} vuelve a estar inscrito.`
+            : tipo === 'quitar'
+              ? (respuesta.data?.solicitud_recuperada
+                  ? 'Jugador retirado y solicitud devuelta a pendientes.'
+                  : 'Jugador retirado del campeonato.')
+              : tipo === 'eliminar'
+                ? 'Alta deshecha y jugador creado por error eliminado.'
+                : 'Admisión deshecha. La solicitud vuelve a pendientes.',
+    })
     await cargar()
   }
 
   function pintarJugador(fila) {
-    return <form className={`fila-inscripcion estado-${fila.estado}`} key={fila.id_jugador} onSubmit={(e) => guardarFila(e, fila)}>
-      <div className="identidad-inscripcion"><b>{fila.id_jugador}</b><span>{fila.alias}</span></div>
-      <label><span>Nombre oficial</span><input name="nombre" defaultValue={fila.nombre_oficial} required /></label>
-      <label><span>Alias</span><input name="alias" defaultValue={fila.alias} required /></label>
-      <label><span>Estado en este campeonato</span><select name="estado" defaultValue={fila.estado}><option value="inscrito">Inscrito</option><option value="reserva">Reserva</option><option value="baja">Baja</option></select></label>
-      <label><span>Observaciones</span><input name="observaciones" defaultValue={fila.observaciones ?? ''} /></label>
-      <label className="jugador-activo"><input type="checkbox" name="activo" defaultChecked={fila.jugador_activo} /><span>Activo en el histórico general</span></label>
-      <div className="acciones-fila-jugador">
-        <button className="boton boton-secundario" disabled={guardando === fila.id_jugador}>{guardando === fila.id_jugador ? 'Guardando…' : 'Guardar cambios'}</button>
-        {fila.estado === 'baja' ? <button type="button" className="boton boton-principal" onClick={() => setConfirmacion({ tipo: 'reactivar', fila })}>Reactivar</button> : <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'baja', fila })}>Dar de baja</button>}
-        <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'quitar', fila })}>Quitar del campeonato</button>
-      </div>
-    </form>
+    return (
+      <form
+        className={`fila-inscripcion estado-${fila.estado}`}
+        key={fila.id_jugador}
+        onSubmit={(e) => guardarFila(e, fila)}
+      >
+        <div className="identidad-inscripcion">
+          <b>{fila.id_jugador}</b>
+          <span>{fila.alias}</span>
+        </div>
+
+        <label><span>Nombre oficial</span><input name="nombre" defaultValue={fila.nombre_oficial} required /></label>
+        <label><span>Alias</span><input name="alias" defaultValue={fila.alias} required /></label>
+        <label>
+          <span>Estado en este campeonato</span>
+          <select name="estado" defaultValue={fila.estado}>
+            <option value="inscrito">Inscrito</option>
+            <option value="reserva">Reserva</option>
+            <option value="baja">Baja</option>
+          </select>
+        </label>
+        <label><span>Observaciones</span><input name="observaciones" defaultValue={fila.observaciones ?? ''} /></label>
+        <label className="jugador-activo">
+          <input type="checkbox" name="activo" defaultChecked={fila.jugador_activo} />
+          <span>Activo en el histórico general</span>
+        </label>
+
+        <div className="acciones-fila-jugador">
+          <button className="boton boton-secundario" disabled={guardando === fila.id_jugador}>
+            {guardando === fila.id_jugador ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+          {fila.estado === 'baja' ? (
+            <button type="button" className="boton boton-principal" onClick={() => setConfirmacion({ tipo: 'reactivar', fila })}>Reactivar</button>
+          ) : (
+            <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'baja', fila })}>Dar de baja</button>
+          )}
+          <button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'quitar', fila })}>Quitar del campeonato</button>
+        </div>
+      </form>
+    )
+  }
+
+  function textoEstadoGestion(estado) {
+    if (estado === 'admitido' || estado === 'admitida') return 'Admitida'
+    if (estado === 'reserva') return 'Reserva'
+    if (estado === 'rechazado' || estado === 'rechazada') return 'Rechazada'
+    return estado || 'Gestionada'
   }
 
   return (
     <main className="app app-admin app-jugadores-campeonato">
       <section className="panel-admin panel-jugadores-campeonato">
         <header className="cabecera-admin cabecera-jugadores-campeonato">
-          <div><p className="etiqueta">CAMPEONATO</p><h2>Jugadores e inscripciones</h2><p className="descripcion-admin">{codigo}</p></div>
+          <div>
+            <p className="etiqueta">CAMPEONATO</p>
+            <h2>Jugadores e inscripciones</h2>
+            <p className="descripcion-admin">{codigo}</p>
+          </div>
           <div className="acciones-cabecera-configuracion">
+            <button
+              type="button"
+              className="boton boton-principal"
+              onClick={recargarDesdeGoogleSheets}
+              disabled={recargandoFormulario}
+            >
+              {recargandoFormulario ? 'Recargando…' : '↻ Recargar formulario'}
+            </button>
             <button type="button" className="boton boton-secundario" onClick={onVolver}>← Gestión</button>
             <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button>
           </div>
@@ -293,41 +502,95 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         </div>
 
         <section className="bandeja-solicitudes">
-          <div className="titulo-bandeja"><div><h3>Solicitudes del formulario</h3><p>Vincula a un jugador existente o crea automáticamente el siguiente código Jxxx.</p></div><strong>{solicitudesPendientes.length} pendientes</strong></div>
-          {solicitudesPendientes.length === 0 ? <p className="estado-sin-solicitudes">No hay solicitudes pendientes.</p> : solicitudesPendientes.map((fila) => {
-            const edicion = resoluciones[fila.id_inscripcion] ?? {}
-            return <article className="solicitud-inscripcion" key={fila.id_inscripcion}>
-              <div className="datos-solicitud"><strong>{fila.nombre_completo}</strong><span>{fila.telefono || 'Sin teléfono'} · {fila.estado_origen || 'Sin estado'}{fila.posicion ? ` · Posición ${fila.posicion}` : ''}</span>{fila.observaciones && <small>{fila.observaciones}</small>}</div>
-              <label><span>Alias</span><input value={edicion.alias ?? fila.nombre_publico ?? ''} onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)} /></label>
-              <label><span>Jugador</span><select value={edicion.id_jugador ?? ''} onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'id_jugador', e.target.value)}><option value="">Crear jugador nuevo (Jxxx)</option>{[...inscripciones, ...disponibles].sort((a, b) => a.id_jugador.localeCompare(b.id_jugador)).map((jugador) => <option key={jugador.id_jugador} value={jugador.id_jugador}>{jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}</option>)}</select></label>
-              <div className="acciones-solicitud"><button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'admitir')}>Admitir</button><button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button><button type="button" className="boton boton-peligro" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'rechazar')}>Rechazar</button></div>
-            </article>
-          })}
-        </section>
-
-        {solicitudesGestionadas.length > 0 && (
-          <section className="bandeja-solicitudes solicitudes-gestionadas">
-            <div className="titulo-bandeja">
-              <div>
-                <h3>Solicitudes ya gestionadas</h3>
-                <p>Se conservan como registro y no vuelven a aparecer entre las pendientes.</p>
-              </div>
-              <strong>{solicitudesGestionadas.length}</strong>
+          <div className="titulo-bandeja">
+            <div>
+              <h3>Solicitudes del formulario</h3>
+              <p>Primero se añade el jugador al campeonato y solo después se cierra la solicitud.</p>
             </div>
+            <strong>{solicitudesPendientes.length} pendientes</strong>
+          </div>
 
-            <div className="lista-solicitudes-gestionadas">
+          {solicitudesPendientes.length === 0 ? (
+            <p className="estado-sin-solicitudes">No hay solicitudes pendientes.</p>
+          ) : solicitudesPendientes.map((fila) => {
+            const edicion = resoluciones[fila.id_inscripcion] ?? {}
+            return (
+              <article className="solicitud-inscripcion" key={fila.id_inscripcion}>
+                <div className="datos-solicitud">
+                  <strong>{fila.nombre_completo}</strong>
+                  <span>Tel. {fila.telefono || 'Sin teléfono'}{fila.posicion ? ` · Solicitud nº ${fila.posicion}` : ''}</span>
+                  {fila.observaciones && <small>{fila.observaciones}</small>}
+                </div>
+
+                <label>
+                  <span>Alias</span>
+                  <input
+                    value={edicion.alias ?? fila.nombre_publico ?? ''}
+                    onChange={(e) => cambiarResolucion(fila.id_inscripcion, 'alias', e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  <span>Jugador</span>
+                  <select
+                    value={edicion.id_jugador ?? ''}
+                    onChange={(e) => seleccionarJugadorSolicitud(fila, e.target.value)}
+                  >
+                    <option value="">Crear jugador nuevo (Jxxx)</option>
+                    {[...inscripciones, ...disponibles]
+                      .sort((a, b) => a.id_jugador.localeCompare(b.id_jugador))
+                      .map((jugador) => (
+                        <option key={jugador.id_jugador} value={jugador.id_jugador}>
+                          {jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <div className="acciones-solicitud">
+                  <button type="button" className="boton boton-principal" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'admitir')}>
+                    {guardando === fila.id_inscripcion ? 'Procesando…' : 'Admitir'}
+                  </button>
+                  <button type="button" className="boton boton-secundario" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'reserva')}>Reserva</button>
+                  <button type="button" className="boton boton-peligro" disabled={guardando === fila.id_inscripcion} onClick={() => resolverSolicitud(fila, 'rechazar')}>Rechazar</button>
+                </div>
+              </article>
+            )
+          })}
+
+          {solicitudesGestionadas.length > 0 && (
+            <div className="solicitudes-gestionadas">
+              <div className="titulo-gestionadas">
+                <h4>Solicitudes ya gestionadas</h4>
+                <span>{solicitudesGestionadas.length}</span>
+              </div>
               {solicitudesGestionadas.map((fila) => (
-                <article key={fila.id_inscripcion} className="solicitud-gestionada">
+                <article className="solicitud-gestionada" key={`gestionada-${fila.id_inscripcion}`}>
                   <div>
                     <strong>{fila.nombre_completo}</strong>
-                    <small>{fila.id_inscripcion}</small>
+                    <span>
+                      {fila.posicion ? `Solicitud nº ${fila.posicion} · ` : ''}
+                      {textoEstadoGestion(fila.estado_gestion)}
+                      {fila.id_jugador ? ` · ${fila.id_jugador}` : ''}
+                    </span>
                   </div>
-                  <span>{fila.estado_gestion_visual === 'admitida' ? 'Admitida' : fila.estado_gestion_visual === 'reserva' ? 'Reserva' : fila.estado_gestion_visual === 'rechazada' ? 'Rechazada' : fila.estado_gestion_visual}</span>
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    disabled={guardando === `solicitud-${fila.id_inscripcion}`}
+                    onClick={() => volverSolicitudAPendientes(fila)}
+                  >
+                    {guardando === `solicitud-${fila.id_inscripcion}`
+                      ? 'Recuperando…'
+                      : ['rechazado', 'rechazada'].includes(String(fila.estado_gestion).toLowerCase())
+                        ? 'Anular rechazo'
+                        : 'Volver a pendientes'}
+                  </button>
                 </article>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         <div className="altas-inscripciones">
           <form onSubmit={inscribirExistente}>
@@ -336,7 +599,10 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
               <option value="">Selecciona un jugador</option>
               {disponibles.map((fila) => <option key={fila.id_jugador} value={fila.id_jugador}>{fila.alias} · {fila.nombre_oficial}</option>)}
             </select>
-            <select value={estadoExistente} onChange={(e) => setEstadoExistente(e.target.value)}><option value="inscrito">Inscrito</option><option value="reserva">Reserva</option></select>
+            <select value={estadoExistente} onChange={(e) => setEstadoExistente(e.target.value)}>
+              <option value="inscrito">Inscrito</option>
+              <option value="reserva">Reserva</option>
+            </select>
             <button className="boton boton-principal" disabled={guardando === 'existente'}>{guardando === 'existente' ? 'Añadiendo…' : 'Añadir'}</button>
           </form>
 
@@ -344,33 +610,67 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <h3>Crear jugador nuevo</h3>
             <input placeholder="Nombre oficial" value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} required />
             <input placeholder="Alias visible" value={nuevo.alias} onChange={(e) => setNuevo({ ...nuevo, alias: e.target.value })} required />
-            <select value={nuevo.estado} onChange={(e) => setNuevo({ ...nuevo, estado: e.target.value })}><option value="inscrito">Inscrito</option><option value="reserva">Reserva</option></select>
+            <select value={nuevo.estado} onChange={(e) => setNuevo({ ...nuevo, estado: e.target.value })}>
+              <option value="inscrito">Inscrito</option>
+              <option value="reserva">Reserva</option>
+            </select>
             <button className="boton boton-principal" disabled={guardando === 'nuevo'}>{guardando === 'nuevo' ? 'Creando…' : 'Crear jugador'}</button>
           </form>
         </div>
 
-        {disponibles.length > 0 && <section className="jugadores-no-inscritos">
-          <h3>Jugadores no inscritos en este campeonato</h3>
-          <p>Solo podrán eliminarse si nunca participaron y no existe ninguna referencia histórica.</p>
-          <div>{disponibles.map((fila) => <article key={fila.id_jugador}><span><b>{fila.id_jugador}</b><strong>{fila.alias}</strong><small>{fila.nombre_oficial}</small></span><button type="button" className="boton boton-peligro" onClick={() => setConfirmacion({ tipo: 'eliminar-general', fila })}>Eliminar jugador</button></article>)}</div>
-        </section>}
-
         {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
-        <div className="barra-listado-jugadores"><strong>{inscripciones.length} jugadores en el campeonato</strong><input type="search" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar jugador" /></div>
-        {cargando ? <p className="estado">Cargando jugadores…</p> : (
+
+        <div className="barra-listado-jugadores">
+          <strong>{inscripciones.length} jugadores en el campeonato</strong>
+          <input type="search" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar jugador" />
+        </div>
+
+        {cargando ? (
+          <p className="estado">Cargando jugadores…</p>
+        ) : (
           <div className="bloques-jugadores">
-            <section><div className="titulo-listado-estado"><h3>Participantes y reservas</h3><strong>{participantesVisibles.length}</strong></div><div className="lista-inscripciones">{participantesVisibles.length ? participantesVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay participantes que coincidan.</p>}</div></section>
-            <section className="bloque-bajas"><div className="titulo-listado-estado"><h3>Bajas</h3><strong>{bajasVisibles.length}</strong></div><div className="lista-inscripciones">{bajasVisibles.length ? bajasVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay bajas que coincidan.</p>}</div></section>
+            <section>
+              <div className="titulo-listado-estado"><h3>Participantes y reservas</h3><strong>{participantesVisibles.length}</strong></div>
+              <div className="lista-inscripciones">
+                {participantesVisibles.length ? participantesVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay participantes que coincidan.</p>}
+              </div>
+            </section>
+            <section className="bloque-bajas">
+              <div className="titulo-listado-estado"><h3>Bajas</h3><strong>{bajasVisibles.length}</strong></div>
+              <div className="lista-inscripciones">
+                {bajasVisibles.length ? bajasVisibles.map(pintarJugador) : <p className="estado-sin-solicitudes">No hay bajas que coincidan.</p>}
+              </div>
+            </section>
           </div>
         )}
       </section>
-      {confirmacion && <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
-        <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
-          <h3 id="titulo-confirmacion-jugador">{confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar-general' ? 'Eliminar jugador definitivamente' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}</h3>
-          <p>{confirmacion.tipo === 'baja' ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.` : confirmacion.tipo === 'reactivar' ? `${confirmacion.fila.alias} volverá a figurar como inscrito en este campeonato.` : confirmacion.tipo === 'quitar' ? `${confirmacion.fila.alias} se quitará de este campeonato. Si llegó desde el formulario, su solicitud volverá a pendientes; si llegó desde Excel o manualmente, quedará como jugador general no inscrito.` : confirmacion.tipo === 'eliminar-general' ? `Se intentará eliminar definitivamente a ${confirmacion.fila.alias} (${confirmacion.fila.id_jugador}). La operación se bloqueará si existe cualquier inscripción, equipo, partido, sustitución, histórico o dato ISP relacionado.` : confirmacion.tipo === 'eliminar' ? `Se devolverá la solicitud de ${confirmacion.fila.alias} a pendientes y se eliminará su código porque fue creado por error. Solo se permitirá si todavía no tiene datos relacionados.` : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}</p>
-          <div><button type="button" className="boton boton-secundario" onClick={() => setConfirmacion(null)}>Cancelar</button><button type="button" className={`boton ${['deshacer', 'reactivar'].includes(confirmacion.tipo) ? 'boton-principal' : 'boton-peligro'}`} onClick={ejecutarCorreccion} disabled={guardando.startsWith('corregir-')}>{guardando.startsWith('corregir-') ? 'Procesando…' : 'Confirmar'}</button></div>
-        </section>
-      </div>}
+
+      {confirmacion && (
+        <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
+          <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
+            <h3 id="titulo-confirmacion-jugador">
+              {confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
+            </h3>
+            <p>
+              {confirmacion.tipo === 'baja'
+                ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.`
+                : confirmacion.tipo === 'reactivar'
+                  ? `${confirmacion.fila.alias} volverá a figurar como inscrito en este campeonato.`
+                  : confirmacion.tipo === 'quitar'
+                    ? `${confirmacion.fila.alias} se quitará de este campeonato. Si llegó desde el formulario, su solicitud volverá a pendientes; si llegó desde Excel o manualmente, quedará como jugador general no inscrito.`
+                    : confirmacion.tipo === 'eliminar'
+                      ? `Se devolverá la solicitud de ${confirmacion.fila.alias} a pendientes y se eliminará su código porque fue creado por error. Solo se permitirá si todavía no tiene datos relacionados.`
+                      : `La solicitud de ${confirmacion.fila.alias} volverá a pendientes. Su código de jugador se conservará.`}
+            </p>
+            <div>
+              <button type="button" className="boton boton-secundario" onClick={() => setConfirmacion(null)}>Cancelar</button>
+              <button type="button" className={`boton ${['deshacer', 'reactivar'].includes(confirmacion.tipo) ? 'boton-principal' : 'boton-peligro'}`} onClick={ejecutarCorreccion} disabled={guardando.startsWith('corregir-')}>
+                {guardando.startsWith('corregir-') ? 'Procesando…' : 'Confirmar'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
