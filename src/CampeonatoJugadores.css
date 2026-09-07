@@ -18,7 +18,9 @@
 /* Acciones compactas de cada solicitud */
 .acciones-solicitud{align-items:center;flex-wrap:wrap}.acciones-solicitud .boton{flex:0 0 auto;min-width:108px;width:auto;padding:9px 14px;white-space:nowrap;font-size:13px}.acciones-solicitud .boton:first-child{min-width:128px}
 
-/* Solicitudes gestionadas con el mismo lenguaje visual del mÃ³dulo */
+/* Solicitudes gestionadas con el mismo lenguaje visual del módulo */
 .solicitudes-gestionadas{display:grid;gap:10px;margin-top:20px;padding:18px;border:1px solid #2d4158;border-top:4px solid #f59e0b;border-radius:16px;background:#0a1119}.titulo-gestionadas{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:2px}.titulo-gestionadas h4{margin:0;color:#f9fafb;font-size:18px}.titulo-gestionadas span{display:grid;min-width:32px;height:32px;place-items:center;border-radius:999px;background:#422006;color:#fde68a;font-weight:800}.solicitud-gestionada{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #334155;border-left:4px solid #f59e0b;border-radius:12px;background:#101925}.solicitud-gestionada>div{display:grid;gap:5px}.solicitud-gestionada strong{color:#f9fafb;font-size:15px}.solicitud-gestionada span{color:#a8c5e5;font-size:13px}.solicitud-gestionada .boton{flex:0 0 auto;width:auto;padding:9px 14px;white-space:nowrap}
+.acciones-solicitud-gestionada{display:flex!important;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.acciones-solicitud-gestionada .boton{width:auto;min-width:0;padding:9px 14px;white-space:nowrap}
 
 @media(max-width:800px){.acciones-solicitud .boton{flex:1 1 125px;min-width:0}.solicitud-gestionada{align-items:stretch;flex-direction:column}.solicitud-gestionada .boton{width:100%}}
+@media(max-width:800px){.acciones-solicitud-gestionada{align-items:stretch;flex-direction:column}.acciones-solicitud-gestionada .boton{width:100%}}

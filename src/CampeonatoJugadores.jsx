@@ -320,45 +320,6 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     }
   }
 
-  async function volverSolicitudAPendientes(solicitud) {
-    setGuardando(`solicitud-${solicitud.id_inscripcion}`)
-    setMensaje(null)
-
-    const estado = String(solicitud.estado_gestion ?? '').toLowerCase()
-    const fueRechazada = estado === 'rechazado' || estado === 'rechazada'
-
-    // Una solicitud rechazada no tiene una admisión que deshacer.
-    const respuesta = fueRechazada
-      ? await supabaseCampeonato.rpc('admin_reabrir_solicitud', {
-          p_id_inscripcion: solicitud.id_inscripcion,
-        })
-      : await supabaseCampeonato.rpc('admin_deshacer_admision', {
-          p_id_inscripcion: solicitud.id_inscripcion,
-          p_eliminar_jugador: false,
-        })
-
-    setGuardando('')
-
-    if (respuesta.error || respuesta.data?.ok === false) {
-      setMensaje({
-        tipo: 'error',
-        texto:
-          respuesta.error?.message ||
-          respuesta.data?.error ||
-          'No se pudo devolver la solicitud a pendientes.',
-      })
-      return
-    }
-
-    setMensaje({ tipo: 'correcto', texto: 'Solicitud devuelta a pendientes.' })
-    setResoluciones((actual) => {
-      const copia = { ...actual }
-      delete copia[solicitud.id_inscripcion]
-      return copia
-    })
-    await cargar()
-  }
-
   async function guardarFila(evento, fila) {
     evento.preventDefault()
     const datos = new FormData(evento.currentTarget)
@@ -402,7 +363,19 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     setGuardando(`corregir-${fila.id_jugador}`)
     let respuesta
 
-    if (tipo === 'baja' || tipo === 'reactivar') {
+    if (tipo === 'reabrir-rechazo') {
+      respuesta = await supabaseCampeonato.rpc('admin_reabrir_solicitud', {
+        p_id_inscripcion: solicitud.id_inscripcion,
+      })
+    } else if (tipo === 'volver-solicitud') {
+      respuesta = await supabaseCampeonato.rpc('admin_volver_solicitud_pendiente', {
+        p_id_inscripcion: solicitud.id_inscripcion,
+      })
+    } else if (tipo === 'eliminar-alta-solicitud') {
+      respuesta = await supabaseCampeonato.rpc('admin_eliminar_alta_solicitud', {
+        p_id_inscripcion: solicitud.id_inscripcion,
+      })
+    } else if (tipo === 'baja' || tipo === 'reactivar') {
       respuesta = await supabaseCampeonato.rpc('admin_guardar_inscripcion', {
         p_codigo: codigo,
         p_id_jugador: fila.id_jugador,
@@ -438,7 +411,13 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
     setMensaje({
       tipo: 'correcto',
       texto:
-        tipo === 'baja'
+        tipo === 'reabrir-rechazo'
+          ? 'Rechazo anulado. La solicitud vuelve a pendientes.'
+          : tipo === 'volver-solicitud'
+            ? 'Jugador retirado del campeonato. Su código se conserva.'
+            : tipo === 'eliminar-alta-solicitud'
+              ? 'Alta eliminada. La solicitud vuelve a pendientes y el código queda libre.'
+              : tipo === 'baja'
           ? `${fila.alias} queda de baja en este campeonato.`
           : tipo === 'reactivar'
             ? `${fila.alias} vuelve a estar inscrito.`
@@ -606,18 +585,36 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                       {fila.id_jugador ? ` · ${fila.id_jugador}` : ''}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="boton boton-secundario"
-                    disabled={guardando === `solicitud-${fila.id_inscripcion}`}
-                    onClick={() => volverSolicitudAPendientes(fila)}
-                  >
-                    {guardando === `solicitud-${fila.id_inscripcion}`
-                      ? 'Recuperando…'
-                      : ['rechazado', 'rechazada'].includes(String(fila.estado_gestion).toLowerCase())
+                  <div className="acciones-solicitud-gestionada">
+                    <button
+                      type="button"
+                      className="boton boton-secundario"
+                      onClick={() => setConfirmacion({
+                        tipo: ['rechazado', 'rechazada'].includes(String(fila.estado_gestion).toLowerCase())
+                          ? 'reabrir-rechazo'
+                          : 'volver-solicitud',
+                        fila: { id_jugador: fila.id_jugador || fila.id_inscripcion, alias: fila.nombre_publico || fila.nombre_completo },
+                        solicitud: fila,
+                      })}
+                    >
+                      {['rechazado', 'rechazada'].includes(String(fila.estado_gestion).toLowerCase())
                         ? 'Anular rechazo'
                         : 'Volver a pendientes'}
-                  </button>
+                    </button>
+                    {fila.jugador_creado && ['admitido', 'reserva'].includes(String(fila.estado_gestion).toLowerCase()) && (
+                      <button
+                        type="button"
+                        className="boton boton-peligro"
+                        onClick={() => setConfirmacion({
+                          tipo: 'eliminar-alta-solicitud',
+                          fila: { id_jugador: fila.id_jugador, alias: fila.nombre_publico || fila.nombre_completo },
+                          solicitud: fila,
+                        })}
+                      >
+                        Eliminar alta
+                      </button>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
@@ -702,10 +699,16 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
         <div className="fondo-modal-jugador" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmacion(null) }}>
           <section className="modal-jugador" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion-jugador">
             <h3 id="titulo-confirmacion-jugador">
-              {confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
+              {confirmacion.tipo === 'reabrir-rechazo' ? 'Anular rechazo' : confirmacion.tipo === 'volver-solicitud' ? 'Volver a pendientes' : confirmacion.tipo === 'eliminar-alta-solicitud' ? 'Eliminar alta equivocada' : confirmacion.tipo === 'baja' ? 'Dar de baja' : confirmacion.tipo === 'reactivar' ? 'Reactivar jugador' : confirmacion.tipo === 'quitar' ? 'Quitar del campeonato' : confirmacion.tipo === 'eliminar' ? 'Eliminar alta equivocada' : 'Deshacer admisión'}
             </h3>
             <p>
-              {confirmacion.tipo === 'baja'
+              {confirmacion.tipo === 'reabrir-rechazo'
+                ? `Se anulará el rechazo de ${confirmacion.fila.alias} y su solicitud volverá a pendientes.`
+                : confirmacion.tipo === 'volver-solicitud'
+                  ? `${confirmacion.fila.alias} se retirará del campeonato y su solicitud volverá a pendientes. Su código de jugador se conservará.`
+                  : confirmacion.tipo === 'eliminar-alta-solicitud'
+                    ? `Se retirará a ${confirmacion.fila.alias}, se eliminará el jugador creado desde esta solicitud y su código quedará libre. Solo se permitirá si no tiene datos relacionados.`
+                    : confirmacion.tipo === 'baja'
                 ? `${confirmacion.fila.alias} dejará de participar en este campeonato, pero conservará su código y su histórico.`
                 : confirmacion.tipo === 'reactivar'
                   ? `${confirmacion.fila.alias} volverá a figurar como inscrito en este campeonato.`
