@@ -50,6 +50,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [puntosMaximos, setPuntosMaximos] = useState(15)
   const [estructuraPrimeraFase, setEstructuraPrimeraFase] = useState('Grupos')
   const [partidoAAnular, setPartidoAAnular] = useState(null)
+  const [previaGrupos, setPreviaGrupos] = useState(null)
+  const [generandoGrupos, setGenerandoGrupos] = useState(false)
+  const [mensajeGenerador, setMensajeGenerador] = useState(null)
 
   useEffect(() => {
     window.sessionStorage.setItem(
@@ -386,6 +389,38 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     await cargarPartidos(codigo)
   }
 
+  async function prepararPartidosGrupos() {
+    setGenerandoGrupos(true)
+    setMensajeGenerador(null)
+    const { data, error: errorPrevia } = await supabaseCampeonato.rpc(
+      'admin_previsualizar_partidos_grupos',
+      { p_codigo: codigo }
+    )
+    if (errorPrevia || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorPrevia?.message || data?.error || 'No se pudo preparar la fase de grupos.' })
+    } else {
+      setPreviaGrupos(data)
+    }
+    setGenerandoGrupos(false)
+  }
+
+  async function generarPartidosGrupos() {
+    setGenerandoGrupos(true)
+    const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
+      'admin_generar_partidos_grupos',
+      { p_codigo: codigo }
+    )
+    if (errorGeneracion || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorGeneracion?.message || data?.error || 'No se pudieron generar los partidos.' })
+      setPreviaGrupos(null)
+    } else {
+      setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos} partidos de grupos generados correctamente.` })
+      setPreviaGrupos(null)
+      await cargarPartidos(codigo)
+    }
+    setGenerandoGrupos(false)
+  }
+
   if (seccion === 'campeonatos' || !codigo) {
     return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
   }
@@ -490,6 +525,25 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>← Panel principal</button>
           </div>
         </header>
+
+        {String(estructuraPrimeraFase).toLowerCase().includes('grupo') && (
+          <section className="generador-partidos-grupos">
+            <div>
+              <strong>Fase de grupos</strong>
+              <span>Genera los enfrentamientos, las jornadas, los descansos y una propuesta de pistas.</span>
+            </div>
+            <button
+              type="button"
+              className="boton boton-principal"
+              disabled={generandoGrupos || partidos.length > 0}
+              onClick={prepararPartidosGrupos}
+            >
+              {generandoGrupos ? 'Preparando…' : partidos.length > 0 ? 'Partidos ya generados' : 'Generar partidos de grupos'}
+            </button>
+          </section>
+        )}
+
+        {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
 
         <div className="barra-campeonato">
           <div>
@@ -808,6 +862,35 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <div className="modal-acciones">
                 <button type="button" className="boton boton-secundario" onClick={() => setPartidoAAnular(null)}>Cancelar</button>
                 <button type="button" className="boton boton-peligro" disabled={Boolean(guardando)} onClick={() => anularResultado(partidoAAnular)}>{guardando ? 'Anulando…' : 'Sí, anular resultado'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {previaGrupos && (
+          <div className="modal-fondo" role="presentation" onMouseDown={() => setPreviaGrupos(null)}>
+            <div className="modal-confirmacion modal-generar-grupos" role="dialog" aria-modal="true" aria-labelledby="titulo-generar-grupos" onMouseDown={(evento) => evento.stopPropagation()}>
+              <span className="icono-modal-grupos">🎾</span>
+              <h3 id="titulo-generar-grupos">Generar fase de grupos</h3>
+              <p>Se crearán todos los enfrentamientos a una vuelta.</p>
+              <div className="resumen-generacion-grupos">
+                <div><small>Equipos</small><strong>{previaGrupos.equipos}</strong></div>
+                <div><small>Partidos</small><strong>{previaGrupos.partidos}</strong></div>
+                <div><small>Jornadas</small><strong>{previaGrupos.jornadas}</strong></div>
+                <div><small>Pistas</small><strong>{previaGrupos.pistas}</strong></div>
+              </div>
+              <div className="lista-previa-grupos">
+                {(previaGrupos.grupos ?? []).map((grupo) => (
+                  <div key={grupo.codigo}>
+                    <strong>{grupo.nombre}</strong>
+                    <span>{grupo.equipos} equipos · {grupo.partidos} partidos · {grupo.jornadas} jornadas{grupo.hay_descansos ? ' · habrá descansos' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="nota-modal-grupos">Después podrás modificar manualmente la pista de cualquier partido.</p>
+              <div className="modal-acciones">
+                <button type="button" className="boton boton-secundario" disabled={generandoGrupos} onClick={() => setPreviaGrupos(null)}>Cancelar</button>
+                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosGrupos}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
               </div>
             </div>
           </div>
