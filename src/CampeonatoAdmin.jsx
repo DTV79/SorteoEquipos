@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import CampeonatoJugadores from './CampeonatoJugadores'
@@ -43,6 +43,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   })
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
+  const [filtroJornada, setFiltroJornada] = useState('todas')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
@@ -115,10 +116,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
   const partidosVisibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
-    if (!texto) return partidos
 
-    return partidos.filter((partido) =>
-      [
+    return partidos.filter((partido) => {
+      const coincideJornada = filtroJornada === 'todas' || String(partido.jornada) === filtroJornada
+      const coincideTexto = !texto || [
         partido.id_partido,
         partido.equipo_1,
         partido.equipo_2,
@@ -130,8 +131,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         .join(' ')
         .toLowerCase()
         .includes(texto)
-    )
-  }, [filtro, partidos])
+      return coincideJornada && coincideTexto
+    })
+  }, [filtro, filtroJornada, partidos])
+
+  const jornadasDisponibles = useMemo(() => (
+    [...new Set(partidos.map((partido) => Number(partido.jornada)).filter(Number.isFinite))]
+      .sort((a, b) => a - b)
+  ), [partidos])
 
   async function guardarResultado(evento, partido) {
     evento.preventDefault()
@@ -535,10 +542,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <button
               type="button"
               className="boton boton-principal"
-              disabled={generandoGrupos || partidos.length > 0}
+              disabled={generandoGrupos}
               onClick={prepararPartidosGrupos}
             >
-              {generandoGrupos ? 'Preparando…' : partidos.length > 0 ? 'Partidos ya generados' : 'Generar partidos de grupos'}
+              {generandoGrupos ? 'Preparando…' : partidos.length > 0 ? 'Rehacer jornadas de grupos' : 'Generar partidos de grupos'}
             </button>
           </section>
         )}
@@ -551,15 +558,19 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
-          <input
-            type="search"
-            value={filtro}
-            onChange={(evento) =>
-              setFiltro(evento.target.value)
-            }
-            placeholder="Buscar equipo, grupo o partido"
-            aria-label="Buscar partido"
-          />
+          <div className="filtros-partidos-campeonato">
+            <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
+              <option value="todas">Todas las jornadas</option>
+              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>Jornada {jornada}</option>)}
+            </select>
+            <input
+              type="search"
+              value={filtro}
+              onChange={(evento) => setFiltro(evento.target.value)}
+              placeholder="Buscar equipo, grupo o partido"
+              aria-label="Buscar partido"
+            />
+          </div>
         </div>
 
         {cargando && (
@@ -577,13 +588,15 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         )}
 
         <div className="lista-partidos-campeonato">
-          {partidosVisibles.map((partido) => {
+          {partidosVisibles.map((partido, indice) => {
             const mensaje = mensajes[partido.id_partido]
+            const abreJornada = indice === 0 || partidosVisibles[indice - 1]?.jornada !== partido.jornada
 
             return (
+              <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
+              {abreJornada && <h3 className="separador-jornada">Jornada {partido.jornada}</h3>}
               <form
                 className="tarjeta-partido-campeonato"
-                key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}
                 onSubmit={(evento) =>
                   guardarResultado(evento, partido)
                 }
@@ -847,6 +860,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                   </p>
                 )}
               </form>
+              </Fragment>
             )
           })}
         </div>
