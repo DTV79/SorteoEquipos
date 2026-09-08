@@ -11837,7 +11837,7 @@ if (
 
             <button
               type="button"
-              className="modulo-principal modulo-campeonato"
+              className="modulo-principal modulo-principal-campeonato"
               onClick={() => {
                 if (!accesoCampeonato.disponible) return
                 window.sessionStorage.setItem(
@@ -11852,7 +11852,7 @@ if (
               <strong>Gestión del campeonato</strong>
               <small>
                 {accesoCampeonato.disponible
-                  ? 'Partidos y resultados'
+                  ? 'Configuración, jugadores, equipos, partidos y clasificación'
                   : 'Pendiente de autorizar este usuario'}
               </small>
             </button>
