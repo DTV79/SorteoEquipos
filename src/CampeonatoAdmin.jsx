@@ -4,6 +4,7 @@ import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import CampeonatoJugadores from './CampeonatoJugadores'
 import SelectorCampeonatos from './SelectorCampeonatos'
 import EquiposCampeonato from './EquiposCampeonato'
+import ClasificacionCampeonato from './ClasificacionCampeonato'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -37,7 +38,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     const guardada = window.sessionStorage.getItem(
       'sprint-padel-seccion-campeonato'
     )
-    return ['campeonatos', 'menu', 'resultados', 'configuracion', 'jugadores', 'equipos'].includes(guardada)
+    return ['campeonatos', 'menu', 'resultados', 'configuracion', 'jugadores', 'equipos', 'clasificaciones'].includes(guardada)
       ? guardada
       : 'campeonatos'
   })
@@ -470,6 +471,17 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     )
   }
 
+  if (seccion === 'clasificaciones') {
+    return (
+      <ClasificacionCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
   if (seccion === 'menu') {
     return (
       <main className="app app-admin app-campeonato">
@@ -500,9 +512,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <span>👥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
               <small>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos distribuidos en sus grupos' : 'Todos los equipos de la liga'}</small>
             </button>
-            <button type="button" className="modulo-campeonato" disabled>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('clasificaciones')}>
               <span>📊</span><strong>Clasificaciones</strong>
-              <small>Próximamente</small>
+              <small>Posiciones, puntos y desempates por grupo</small>
             </button>
             <button type="button" className="modulo-campeonato" disabled>
               <span>🏆</span><strong>Fases y cruces</strong>

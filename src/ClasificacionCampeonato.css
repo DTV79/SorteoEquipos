@@ -1,0 +1,23 @@
+.panel-clasificacion { max-width: 1180px; }
+.resumen-clasificacion { display:flex; align-items:center; gap:18px; padding:18px 20px; margin-bottom:18px; border:1px solid #1c8048; border-radius:16px; background:#071a12; }
+.resumen-clasificacion > div:first-child { display:flex; flex:1; flex-direction:column; gap:5px; }
+.resumen-clasificacion span,.resumen-clasificacion small { color:#9db2ca; }
+.resumen-clasificacion > div:nth-child(2) { display:flex; flex-direction:column; min-width:190px; }
+.lista-clasificaciones-grupos { display:grid; gap:20px; }
+.tarjeta-clasificacion-grupo { overflow:hidden; border:1px solid #2a3b50; border-radius:16px; background:#0c131d; }
+.tarjeta-clasificacion-grupo > header { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid #26384d; }
+.tarjeta-clasificacion-grupo h3 { margin:3px 0 0; font-size:1.3rem; }
+.tarjeta-clasificacion-grupo header small { color:#25d06f; font-weight:800; letter-spacing:.12em; }
+.tarjeta-clasificacion-grupo header > span { padding:6px 10px; border-radius:999px; color:#7affad; background:#0b3b22; font-weight:800; }
+.tabla-clasificacion-scroll { overflow-x:auto; }
+.tabla-clasificacion { width:100%; border-collapse:collapse; min-width:850px; }
+.tabla-clasificacion th { padding:11px 9px; color:#8fa6c1; background:#101b29; font-size:.75rem; text-align:center; }
+.tabla-clasificacion th:nth-child(2),.tabla-clasificacion td:nth-child(2) { text-align:left; }
+.tabla-clasificacion td { padding:13px 9px; border-top:1px solid #1d2c3e; text-align:center; }
+.tabla-clasificacion tbody tr:first-child td { border-top:0; }
+.tabla-clasificacion tbody tr:hover { background:#101d2b; }
+.tabla-clasificacion td:nth-child(2) small { display:block; margin-top:3px; color:#7890ac; }
+.posicion-clasificacion { display:inline-grid; width:30px; height:30px; place-items:center; border-radius:50%; background:#173047; }
+.puntos-clasificacion { color:#69f59c; font-size:1.05rem; font-weight:900; }
+.leyenda-clasificacion { margin:0; padding:12px 20px; border-top:1px solid #26384d; color:#8196af; font-size:.78rem; }
+@media (max-width:760px) { .resumen-clasificacion { align-items:stretch; flex-direction:column; } .resumen-clasificacion .boton { width:100%; } }
