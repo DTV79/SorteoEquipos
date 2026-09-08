@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
+import CampeonatoConfiguracion from './CampeonatoConfiguracion'
+import CampeonatoJugadores from './CampeonatoJugadores'
+import SelectorCampeonatos from './SelectorCampeonatos'
+import EquiposCampeonato from './EquiposCampeonato'
+import ClasificacionCampeonato from './ClasificacionCampeonato'
 import './CampeonatoAdmin.css'
-
-const ESTADO_URL =
-  'https://dtv79.github.io/Campeonato/estado_torneo.json'
 
 function tituloFase(partido) {
   const fase = {
@@ -29,15 +31,59 @@ function valorSet(partido, numero, campo) {
   )?.[campo] ?? ''
 }
 
-export default function CampeonatoAdmin({ onVolver }) {
-  const [codigo, setCodigo] = useState('CAMP-2026-01')
+export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo }) {
+  const [codigo, setCodigo] = useState(() => window.sessionStorage.getItem('sprint-padel-campeonato-seleccionado') || '')
   const [partidos, setPartidos] = useState([])
+  const [seccion, setSeccion] = useState(() => {
+    const guardada = window.sessionStorage.getItem(
+      'sprint-padel-seccion-campeonato'
+    )
+    return ['campeonatos', 'menu', 'resultados', 'configuracion', 'jugadores', 'equipos', 'clasificaciones'].includes(guardada)
+      ? guardada
+      : 'campeonatos'
+  })
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
+  const [filtroJornada, setFiltroJornada] = useState('todas')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
   const [mensajes, setMensajes] = useState({})
+  const [puntosMaximos, setPuntosMaximos] = useState(15)
+  const [estructuraPrimeraFase, setEstructuraPrimeraFase] = useState('Grupos')
+  const [partidoAAnular, setPartidoAAnular] = useState(null)
+  const [previaGrupos, setPreviaGrupos] = useState(null)
+  const [generandoGrupos, setGenerandoGrupos] = useState(false)
+  const [mensajeGenerador, setMensajeGenerador] = useState(null)
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      'sprint-padel-seccion-campeonato',
+      seccion
+    )
+  }, [seccion])
+
+  function volverPanelPrincipal() {
+    window.sessionStorage.setItem(
+      'sprint-padel-seccion-campeonato',
+      'menu'
+    )
+    setSeccion('menu')
+    onVolver()
+  }
+
+  async function seleccionarCampeonato(codigoElegido, destino = 'menu') {
+    setCodigo(codigoElegido)
+    window.sessionStorage.setItem('sprint-padel-campeonato-seleccionado', codigoElegido)
+    setSeccion(destino)
+    const [, configuracion] = await Promise.all([
+      cargarPartidos(codigoElegido),
+      supabaseCampeonato.rpc('admin_obtener_configuracion', { p_codigo: codigoElegido }),
+    ])
+    const maximo = Number(configuracion.data?.configuracion?.puntos_maximos_por_set)
+    if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
+    setEstructuraPrimeraFase(configuracion.data?.configuracion?.estructura_primera_fase || 'Grupos')
+  }
 
   const cargarPartidos = useCallback(async (codigoElegido) => {
     setCargando(true)
@@ -69,48 +115,12 @@ export default function CampeonatoAdmin({ onVolver }) {
     setCargando(false)
   }, [])
 
-  useEffect(() => {
-    let cancelado = false
-
-    async function iniciar() {
-      let codigoActual = 'CAMP-2026-01'
-
-      try {
-        const respuesta = await fetch(
-          `${ESTADO_URL}?v=${Date.now()}`,
-          { cache: 'no-store' }
-        )
-        const datos = await respuesta.json()
-
-        codigoActual =
-          datos?.configuracion?.codigo_campeonato ||
-          codigoActual
-      } catch (errorCarga) {
-        console.warn(
-          'No se pudo leer el campeonato activo:',
-          errorCarga
-        )
-      }
-
-      if (cancelado) return
-
-      setCodigo(codigoActual)
-      await cargarPartidos(codigoActual)
-    }
-
-    iniciar()
-
-    return () => {
-      cancelado = true
-    }
-  }, [cargarPartidos])
-
   const partidosVisibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
-    if (!texto) return partidos
 
-    return partidos.filter((partido) =>
-      [
+    return partidos.filter((partido) => {
+      const coincideJornada = filtroJornada === 'todas' || String(partido.jornada) === filtroJornada
+      const coincideTexto = !texto || [
         partido.id_partido,
         partido.equipo_1,
         partido.equipo_2,
@@ -122,8 +132,14 @@ export default function CampeonatoAdmin({ onVolver }) {
         .join(' ')
         .toLowerCase()
         .includes(texto)
-    )
-  }, [filtro, partidos])
+      return coincideJornada && coincideTexto
+    })
+  }, [filtro, filtroJornada, partidos])
+
+  const jornadasDisponibles = useMemo(() => (
+    [...new Set(partidos.map((partido) => Number(partido.jornada)).filter(Number.isFinite))]
+      .sort((a, b) => a - b)
+  ), [partidos])
 
   async function guardarResultado(evento, partido) {
     evento.preventDefault()
@@ -208,6 +224,64 @@ export default function CampeonatoAdmin({ onVolver }) {
     }))
     setGuardando('')
     await cargarPartidos(codigo)
+  }
+
+  async function anularResultado(partido) {
+    const claveGuardando = `anular-${partido.id_partido}`
+    setGuardando(claveGuardando)
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: '',
+        texto: 'Anulando resultado…',
+      },
+    }))
+
+    const { data, error: errorAnulacion } =
+      await supabaseCampeonato.rpc(
+        'admin_anular_resultado',
+        { p_id_partido: partido.id_partido }
+      )
+
+    if (errorAnulacion || data?.ok !== true) {
+      setMensajes((actual) => ({
+        ...actual,
+        [partido.id_partido]: {
+          tipo: 'error',
+          texto:
+            errorAnulacion?.message ||
+            data?.error ||
+            'No se pudo anular el resultado.',
+        },
+      }))
+      setGuardando('')
+      return
+    }
+
+    await cargarPartidos(codigo)
+    setPartidoAAnular(null)
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'correcto',
+        texto: 'Resultado anulado. El partido vuelve a estar pendiente.',
+      },
+    }))
+    setGuardando('')
+  }
+
+  function validarPuntuacion(evento, partido) {
+    const valor = Number(evento.currentTarget.value)
+    if (evento.currentTarget.value === '' || valor <= puntosMaximos) return
+
+    evento.currentTarget.value = ''
+    setMensajes((actual) => ({
+      ...actual,
+      [partido.id_partido]: {
+        tipo: 'error',
+        texto: `El número no puede ser mayor que ${puntosMaximos}. Se ha borrado el valor.`,
+      },
+    }))
   }
 
   async function guardarSustituciones(evento, partido) {
@@ -323,6 +397,135 @@ export default function CampeonatoAdmin({ onVolver }) {
     await cargarPartidos(codigo)
   }
 
+  async function prepararPartidosGrupos() {
+    setGenerandoGrupos(true)
+    setMensajeGenerador(null)
+    const { data, error: errorPrevia } = await supabaseCampeonato.rpc(
+      'admin_previsualizar_partidos_grupos',
+      { p_codigo: codigo }
+    )
+    if (errorPrevia || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorPrevia?.message || data?.error || 'No se pudo preparar la fase de grupos.' })
+    } else {
+      setPreviaGrupos(data)
+    }
+    setGenerandoGrupos(false)
+  }
+
+  async function generarPartidosGrupos() {
+    setGenerandoGrupos(true)
+    const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
+      'admin_generar_partidos_grupos',
+      { p_codigo: codigo }
+    )
+    if (errorGeneracion || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorGeneracion?.message || data?.error || 'No se pudieron generar los partidos.' })
+      setPreviaGrupos(null)
+    } else {
+      setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos} partidos de grupos generados correctamente.` })
+      setPreviaGrupos(null)
+      await cargarPartidos(codigo)
+    }
+    setGenerandoGrupos(false)
+  }
+
+  if (seccion === 'campeonatos' || !codigo) {
+    return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
+  }
+
+  if (seccion === 'configuracion') {
+    return (
+      <CampeonatoConfiguracion
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+        onCampeonatoEliminado={() => {
+          window.sessionStorage.removeItem('sprint-padel-campeonato-seleccionado')
+          setCodigo('')
+          setSeccion('campeonatos')
+        }}
+      />
+    )
+  }
+
+  if (seccion === 'jugadores') {
+    return (
+      <CampeonatoJugadores
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onPanelPrincipal={volverPanelPrincipal}
+        onCrearSorteo={onCrearSorteo}
+      />
+    )
+  }
+
+  if (seccion === 'equipos') {
+    return (
+      <EquiposCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onPanelPrincipal={volverPanelPrincipal}
+        onAbrirSorteo={onAbrirSorteo}
+      />
+    )
+  }
+
+  if (seccion === 'clasificaciones') {
+    return (
+      <ClasificacionCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
+  if (seccion === 'menu') {
+    return (
+      <main className="app app-admin app-campeonato">
+        <section className="panel-admin panel-campeonato panel-inicio-campeonato">
+          <header className="cabecera-admin cabecera-campeonato">
+            <div>
+              <p className="etiqueta">CAMPEONATO</p>
+              <h2>Gestión del campeonato</h2>
+              <p className="descripcion-admin">{codigo}</p>
+            </div>
+            <div className="acciones-cabecera-configuracion"><button type="button" className="boton boton-secundario" onClick={() => setSeccion('campeonatos')}>← Campeonatos</button><button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>Panel principal</button></div>
+          </header>
+
+          <div className="modulos-campeonato">
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('configuracion')}>
+              <span>⚙️</span><strong>Configuración del torneo</strong>
+              <small>Formato, fases, puntuación y contenido de la web</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('resultados')}>
+              <span>🎾</span><strong>Partidos y resultados</strong>
+              <small>Marcadores, pistas, duración y sustituciones</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('jugadores')}>
+              <span>👤</span><strong>Jugadores e inscripciones</strong>
+              <small>Altas, reservas, bajas y datos personales</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('equipos')}>
+              <span>👥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
+              <small>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos distribuidos en sus grupos' : 'Todos los equipos de la liga'}</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('clasificaciones')}>
+              <span>📊</span><strong>Clasificaciones</strong>
+              <small>Posiciones, puntos y desempates por grupo</small>
+            </button>
+            <button type="button" className="modulo-campeonato" disabled>
+              <span>🏆</span><strong>Fases y cruces</strong>
+              <small>Próximamente</small>
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="app app-admin app-campeonato">
       <section className="panel-admin panel-campeonato">
@@ -335,14 +538,31 @@ export default function CampeonatoAdmin({ onVolver }) {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="boton boton-secundario"
-            onClick={onVolver}
-          >
-            ← Panel principal
-          </button>
+          <div className="acciones-cabecera-configuracion">
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('menu')}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>← Panel principal</button>
+          </div>
         </header>
+
+        {String(estructuraPrimeraFase).toLowerCase().includes('grupo') && (
+          <section className="generador-partidos-grupos">
+            <div>
+              <strong>Fase de grupos</strong>
+              <span>Genera los enfrentamientos, las jornadas, los descansos y una propuesta de pistas.</span>
+            </div>
+            <button
+              type="button"
+              className="boton boton-principal"
+              disabled={generandoGrupos}
+              onClick={prepararPartidosGrupos}
+            >
+              {generandoGrupos ? 'Preparando…' : partidos.length > 0 ? 'Rehacer jornadas de grupos' : 'Generar partidos de grupos'}
+            </button>
+          </section>
+        )}
+
+        {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
 
         <div className="barra-campeonato">
           <div>
@@ -350,15 +570,19 @@ export default function CampeonatoAdmin({ onVolver }) {
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
-          <input
-            type="search"
-            value={filtro}
-            onChange={(evento) =>
-              setFiltro(evento.target.value)
-            }
-            placeholder="Buscar equipo, grupo o partido"
-            aria-label="Buscar partido"
-          />
+          <div className="filtros-partidos-campeonato">
+            <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
+              <option value="todas">Todas las jornadas</option>
+              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>Jornada {jornada}</option>)}
+            </select>
+            <input
+              type="search"
+              value={filtro}
+              onChange={(evento) => setFiltro(evento.target.value)}
+              placeholder="Buscar equipo, grupo o partido"
+              aria-label="Buscar partido"
+            />
+          </div>
         </div>
 
         {cargando && (
@@ -376,13 +600,15 @@ export default function CampeonatoAdmin({ onVolver }) {
         )}
 
         <div className="lista-partidos-campeonato">
-          {partidosVisibles.map((partido) => {
+          {partidosVisibles.map((partido, indice) => {
             const mensaje = mensajes[partido.id_partido]
+            const abreJornada = indice === 0 || partidosVisibles[indice - 1]?.jornada !== partido.jornada
 
             return (
+              <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
+              {abreJornada && <h3 className="separador-jornada">Jornada {partido.jornada}</h3>}
               <form
                 className="tarjeta-partido-campeonato"
-                key={partido.id_partido}
                 onSubmit={(evento) =>
                   guardarResultado(evento, partido)
                 }
@@ -566,7 +792,9 @@ export default function CampeonatoAdmin({ onVolver }) {
                           type="number"
                           inputMode="numeric"
                           min="0"
+                          max={puntosMaximos}
                           name={`set${numero}_1`}
+                          onChange={(evento) => validarPuntuacion(evento, partido)}
                           defaultValue={valorSet(
                             partido,
                             numero,
@@ -578,7 +806,9 @@ export default function CampeonatoAdmin({ onVolver }) {
                           type="number"
                           inputMode="numeric"
                           min="0"
+                          max={puntosMaximos}
                           name={`set${numero}_2`}
+                          onChange={(evento) => validarPuntuacion(evento, partido)}
                           defaultValue={valorSet(
                             partido,
                             numero,
@@ -611,15 +841,29 @@ export default function CampeonatoAdmin({ onVolver }) {
                     />
                   </label>
 
-                  <button
-                    className="boton boton-principal"
-                    type="submit"
-                    disabled={guardando === partido.id_partido}
-                  >
-                    {guardando === partido.id_partido
-                      ? 'Guardando…'
-                      : 'Guardar'}
-                  </button>
+                  <div className="acciones-resultado-campeonato">
+                    {partido.estado === 'jugado' && (
+                      <button
+                        className="boton boton-peligro"
+                        type="button"
+                        disabled={Boolean(guardando)}
+                        onClick={() => setPartidoAAnular(partido)}
+                      >
+                        {guardando === `anular-${partido.id_partido}`
+                          ? 'Anulando…'
+                          : 'Anular resultado'}
+                      </button>
+                    )}
+                    <button
+                      className="boton boton-principal"
+                      type="submit"
+                      disabled={Boolean(guardando)}
+                    >
+                      {guardando === partido.id_partido
+                        ? 'Guardando…'
+                        : 'Guardar'}
+                    </button>
+                  </div>
                 </div>
 
                 {mensaje && (
@@ -628,9 +872,55 @@ export default function CampeonatoAdmin({ onVolver }) {
                   </p>
                 )}
               </form>
+              </Fragment>
             )
           })}
         </div>
+
+        {partidoAAnular && (
+          <div className="modal-fondo" role="presentation" onMouseDown={() => setPartidoAAnular(null)}>
+            <div className="modal-confirmacion modal-anular-resultado" role="dialog" aria-modal="true" aria-labelledby="titulo-anular-resultado" onMouseDown={(evento) => evento.stopPropagation()}>
+              <span className="icono-modal-anular">↩</span>
+              <h3 id="titulo-anular-resultado">¿Anular este resultado?</h3>
+              <p><strong>{partidoAAnular.equipo_1}</strong> contra <strong>{partidoAAnular.equipo_2}</strong></p>
+              <p>El partido volverá a Pendiente. Se borrarán automáticamente el marcador, la pista y la duración.</p>
+              <p className="nota-modal-anular">Las sustituciones se conservarán.</p>
+              <div className="modal-acciones">
+                <button type="button" className="boton boton-secundario" onClick={() => setPartidoAAnular(null)}>Cancelar</button>
+                <button type="button" className="boton boton-peligro" disabled={Boolean(guardando)} onClick={() => anularResultado(partidoAAnular)}>{guardando ? 'Anulando…' : 'Sí, anular resultado'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {previaGrupos && (
+          <div className="modal-fondo" role="presentation" onMouseDown={() => setPreviaGrupos(null)}>
+            <div className="modal-confirmacion modal-generar-grupos" role="dialog" aria-modal="true" aria-labelledby="titulo-generar-grupos" onMouseDown={(evento) => evento.stopPropagation()}>
+              <span className="icono-modal-grupos">🎾</span>
+              <h3 id="titulo-generar-grupos">Generar fase de grupos</h3>
+              <p>Se crearán todos los enfrentamientos a una vuelta.</p>
+              <div className="resumen-generacion-grupos">
+                <div><small>Equipos</small><strong>{previaGrupos.equipos}</strong></div>
+                <div><small>Partidos</small><strong>{previaGrupos.partidos}</strong></div>
+                <div><small>Jornadas</small><strong>{previaGrupos.jornadas}</strong></div>
+                <div><small>Pistas</small><strong>{previaGrupos.pistas}</strong></div>
+              </div>
+              <div className="lista-previa-grupos">
+                {(previaGrupos.grupos ?? []).map((grupo) => (
+                  <div key={grupo.codigo}>
+                    <strong>{grupo.nombre}</strong>
+                    <span>{grupo.equipos} equipos · {grupo.partidos} partidos · {grupo.jornadas} jornadas{grupo.hay_descansos ? ' · habrá descansos' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="nota-modal-grupos">Después podrás modificar manualmente la pista de cualquier partido.</p>
+              <div className="modal-acciones">
+                <button type="button" className="boton boton-secundario" disabled={generandoGrupos} onClick={() => setPreviaGrupos(null)}>Cancelar</button>
+                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosGrupos}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   )
