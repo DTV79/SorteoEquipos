@@ -500,10 +500,6 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <span>⚙️</span><strong>Configuración del torneo</strong>
               <small>Formato, fases, puntuación y contenido de la web</small>
             </button>
-            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('resultados')}>
-              <span>🎾</span><strong>Partidos y resultados</strong>
-              <small>Marcadores, pistas, duración y sustituciones</small>
-            </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('jugadores')}>
               <span>👤</span><strong>Jugadores e inscripciones</strong>
               <small>Altas, reservas, bajas y datos personales</small>
@@ -511,6 +507,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('equipos')}>
               <span>👥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
               <small>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos distribuidos en sus grupos' : 'Todos los equipos de la liga'}</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('resultados')}>
+              <span>🎾</span><strong>Partidos y resultados</strong>
+              <small>Marcadores, pistas, duración y sustituciones</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('clasificaciones')}>
               <span>📊</span><strong>Clasificaciones</strong>
