@@ -29,6 +29,8 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const [clasificacion, setClasificacion] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [generando, setGenerando] = useState(false)
+  const [mensaje, setMensaje] = useState('')
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -67,6 +69,22 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const grupoA = grupos[0]?.[1] ?? []
   const grupoB = grupos[1]?.[1] ?? []
   const cuadroCompleto = especial && grupos.length === 2 && grupoA.length >= 4 && grupoB.length >= 4
+
+  async function generarCuadro() {
+    setGenerando(true)
+    setError('')
+    setMensaje('')
+    const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
+      'admin_generar_cuadro_especial',
+      { p_codigo: codigo }
+    )
+    if (errorGeneracion || data?.ok !== true) {
+      setError(errorGeneracion?.message || data?.error || 'No se pudo generar el cuadro.')
+    } else {
+      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de cuartos. Las siguientes rondas aparecerán al guardar los resultados.`)
+    }
+    setGenerando(false)
+  }
 
   return (
     <main className="app app-admin app-campeonato">
@@ -134,8 +152,8 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                 )}
 
                 <section className="barra-generar-cuadro">
-                  <div><strong>Vista previa preparada</strong><span>En el siguiente paso se crearán estos partidos en Supabase y se enlazarán automáticamente sus ganadores y perdedores.</span></div>
-                  <button type="button" className="boton boton-principal" disabled>Generar cuadro definitivo</button>
+                  <div><strong>{mensaje || 'Vista previa preparada'}</strong><span>Los ganadores y perdedores avanzarán automáticamente cuando guardes cada resultado.</span></div>
+                  <button type="button" className="boton boton-principal" disabled={generando} onClick={generarCuadro}>{generando ? 'Generando…' : 'Generar cuadro definitivo'}</button>
                 </section>
               </>
             )}
