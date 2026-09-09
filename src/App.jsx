@@ -111,6 +111,209 @@ function formatearFechaHoraPantalla(valor) {
   ).format(fecha)
 }
 
+function EditorRecorteFoto({ archivo, onCancelar, onGuardar }) {
+  const canvasRef = useRef(null)
+  const imagenRef = useRef(null)
+  const arrastreRef = useRef(null)
+  const [imagenLista, setImagenLista] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [posicion, setPosicion] = useState({ x: 0, y: 0 })
+  const [guardando, setGuardando] = useState(false)
+  const tamaño = 360
+
+  const limitarPosicion = (siguiente, zoomActual = zoom) => {
+    const imagen = imagenRef.current
+    if (!imagen) return siguiente
+
+    const escalaBase = Math.max(
+      tamaño / imagen.naturalWidth,
+      tamaño / imagen.naturalHeight
+    )
+    const ancho = imagen.naturalWidth * escalaBase * zoomActual
+    const alto = imagen.naturalHeight * escalaBase * zoomActual
+    const maxX = Math.max(0, (ancho - tamaño) / 2)
+    const maxY = Math.max(0, (alto - tamaño) / 2)
+
+    return {
+      x: Math.max(-maxX, Math.min(maxX, siguiente.x)),
+      y: Math.max(-maxY, Math.min(maxY, siguiente.y)),
+    }
+  }
+
+  useEffect(() => {
+    if (!archivo) return undefined
+
+    const url = URL.createObjectURL(archivo)
+    const imagen = new Image()
+    imagen.onload = () => {
+      imagenRef.current = imagen
+      setImagenLista(true)
+    }
+    imagen.src = url
+
+    return () => URL.revokeObjectURL(url)
+  }, [archivo])
+
+  useEffect(() => {
+    if (!imagenLista) return
+
+    const canvas = canvasRef.current
+    const imagen = imagenRef.current
+    const contexto = canvas?.getContext('2d')
+    if (!canvas || !imagen || !contexto) return
+
+    const escalaBase = Math.max(
+      tamaño / imagen.naturalWidth,
+      tamaño / imagen.naturalHeight
+    )
+    const escala = escalaBase * zoom
+    const ancho = imagen.naturalWidth * escala
+    const alto = imagen.naturalHeight * escala
+
+    contexto.clearRect(0, 0, tamaño, tamaño)
+    contexto.drawImage(
+      imagen,
+      (tamaño - ancho) / 2 + posicion.x,
+      (tamaño - alto) / 2 + posicion.y,
+      ancho,
+      alto
+    )
+  }, [imagenLista, posicion, zoom])
+
+  const iniciarArrastre = (evento) => {
+    evento.currentTarget.setPointerCapture(evento.pointerId)
+    const escalaPantalla =
+      tamaño / evento.currentTarget.getBoundingClientRect().width
+    arrastreRef.current = {
+      x: evento.clientX,
+      y: evento.clientY,
+      posicion,
+      escalaPantalla,
+    }
+  }
+
+  const moverImagen = (evento) => {
+    const origen = arrastreRef.current
+    if (!origen) return
+
+    setPosicion(
+      limitarPosicion({
+        x: origen.posicion.x +
+          (evento.clientX - origen.x) * origen.escalaPantalla,
+        y: origen.posicion.y +
+          (evento.clientY - origen.y) * origen.escalaPantalla,
+      })
+    )
+  }
+
+  const cambiarZoom = (evento) => {
+    const nuevoZoom = Number(evento.target.value)
+    setZoom(nuevoZoom)
+    setPosicion((actual) => limitarPosicion(actual, nuevoZoom))
+  }
+
+  const guardarRecorte = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    setGuardando(true)
+    try {
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (resultado) =>
+            resultado
+              ? resolve(resultado)
+              : reject(new Error('No se pudo preparar la fotografía.')),
+          'image/webp',
+          0.9
+        )
+      })
+
+      const nombreBase = String(archivo?.name || 'jugador')
+        .replace(/\.[^.]+$/, '')
+      const fotoRecortada = new File(
+        [blob],
+        `${nombreBase}-recortada.webp`,
+        { type: 'image/webp' }
+      )
+
+      onGuardar(fotoRecortada, URL.createObjectURL(blob))
+    } catch (error) {
+      window.alert(error.message)
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="modal-fondo" onClick={onCancelar}>
+      <div
+        className="modal-confirmacion"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ajustar fotografía"
+        onClick={(evento) => evento.stopPropagation()}
+        style={{ width: 'min(94vw, 470px)' }}
+      >
+        <h3>Ajustar fotografía</h3>
+        <p>Arrastra la imagen para centrar la cara y utiliza el zoom.</p>
+
+        <div
+          onPointerDown={iniciarArrastre}
+          onPointerMove={moverImagen}
+          onPointerUp={() => { arrastreRef.current = null }}
+          onPointerCancel={() => { arrastreRef.current = null }}
+          style={{
+            position: 'relative',
+            width: 'min(76vw, 360px)',
+            aspectRatio: '1',
+            margin: '18px auto',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            cursor: 'grab',
+            touchAction: 'none',
+            background: '#101923',
+            border: '3px solid #22c55e',
+            boxShadow: '0 0 0 6px rgba(34, 197, 94, .12)',
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={tamaño}
+            height={tamaño}
+            style={{ width: '100%', height: '100%', display: 'block' }}
+          />
+          {!imagenLista && (
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+              Cargando…
+            </div>
+          )}
+        </div>
+
+        <label style={{ display: 'grid', gap: 8, textAlign: 'left' }}>
+          <span>Zoom</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value={zoom}
+            onChange={cambiarZoom}
+          />
+        </label>
+
+        <div className="modal-acciones">
+          <button type="button" className="boton boton-secundario" onClick={onCancelar} disabled={guardando}>
+            Cancelar
+          </button>
+          <button type="button" className="boton boton-principal" onClick={guardarRecorte} disabled={!imagenLista || guardando}>
+            {guardando ? 'Preparando…' : 'Usar esta foto'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 function generarCodigoBomboAutomatico(indice) {
   let numero = Number(indice) + 1
@@ -361,6 +564,26 @@ const [catalogoNuevaFotoPreview, setCatalogoNuevaFotoPreview] =
   useState('')
 const [catalogoGuardandoNuevo, setCatalogoGuardandoNuevo] =
   useState(false)
+
+const [jugadorCatalogoEditando, setJugadorCatalogoEditando] =
+  useState(null)
+const [catalogoEditarNombre, setCatalogoEditarNombre] =
+  useState('')
+const [catalogoEditarApellidos, setCatalogoEditarApellidos] =
+  useState('')
+const [catalogoEditarAlias, setCatalogoEditarAlias] =
+  useState('')
+const [catalogoEditarFoto, setCatalogoEditarFoto] =
+  useState(null)
+const [catalogoEditarFotoPreview, setCatalogoEditarFotoPreview] =
+  useState('')
+const [catalogoGuardandoEdicion, setCatalogoGuardandoEdicion] =
+  useState(false)
+
+const [fotoPendienteRecorte, setFotoPendienteRecorte] =
+  useState(null)
+const [destinoFotoRecortada, setDestinoFotoRecortada] =
+  useState(null)
 
 const [
   jugadorCatalogoPendienteEliminar,
@@ -4325,6 +4548,168 @@ async function abrirGestionCatalogo() {
     )
   } finally {
     setCatalogoGestionCargando(false)
+  }
+}
+
+function seleccionarFotoParaRecortar(evento, destino) {
+  const archivo = evento.target.files?.[0] ?? null
+  evento.target.value = ''
+
+  if (!archivo) return
+
+  if (!archivo.type.startsWith('image/')) {
+    setCatalogoGestionMensaje('El archivo seleccionado no es una imagen.')
+    return
+  }
+
+  if (archivo.size > 5 * 1024 * 1024) {
+    setCatalogoGestionMensaje('La foto no puede superar 5 MB.')
+    return
+  }
+
+  setCatalogoGestionMensaje('')
+  setDestinoFotoRecortada(destino)
+  setFotoPendienteRecorte(archivo)
+}
+
+function guardarFotoRecortada(archivo, preview) {
+  if (destinoFotoRecortada === 'nuevo-catalogo') {
+    setCatalogoNuevaFoto(archivo)
+    setCatalogoNuevaFotoPreview(preview)
+  } else if (destinoFotoRecortada === 'editar-catalogo') {
+    setCatalogoEditarFoto(archivo)
+    setCatalogoEditarFotoPreview(preview)
+  }
+
+  setFotoPendienteRecorte(null)
+  setDestinoFotoRecortada(null)
+}
+
+function abrirEditarJugadorCatalogo(jugador) {
+  setJugadorCatalogoEditando(jugador)
+  setCatalogoEditarNombre(jugador.nombre ?? '')
+  setCatalogoEditarApellidos(jugador.apellidos ?? '')
+  setCatalogoEditarAlias(jugador.alias ?? '')
+  setCatalogoEditarFoto(null)
+  setCatalogoEditarFotoPreview(
+    jugador.foto_path
+      ? obtenerUrlFoto(jugador.foto_path)
+      : ''
+  )
+  setCatalogoGestionMensaje('')
+}
+
+function cerrarEditarJugadorCatalogo() {
+  if (catalogoGuardandoEdicion) return
+
+  setJugadorCatalogoEditando(null)
+  setCatalogoEditarNombre('')
+  setCatalogoEditarApellidos('')
+  setCatalogoEditarAlias('')
+  setCatalogoEditarFoto(null)
+  setCatalogoEditarFotoPreview('')
+}
+
+async function guardarEdicionJugadorCatalogo(evento) {
+  evento.preventDefault()
+
+  if (!jugadorCatalogoEditando) return
+
+  const nombre = catalogoEditarNombre.trim()
+  if (!nombre) {
+    setCatalogoGestionMensaje('El nombre es obligatorio.')
+    return
+  }
+
+  setCatalogoGuardandoEdicion(true)
+  setCatalogoGestionMensaje('Guardando cambios...')
+
+  let nuevaFotoPath = jugadorCatalogoEditando.foto_path ?? null
+  let fotoNuevaSubida = false
+
+  try {
+    if (catalogoEditarFoto) {
+      nuevaFotoPath =
+        `${jugadorCatalogoEditando.id}/${crypto.randomUUID()}.webp`
+
+      const { error: errorSubida } = await supabase
+        .storage
+        .from('jugadores')
+        .upload(nuevaFotoPath, catalogoEditarFoto, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'image/webp',
+        })
+
+      if (errorSubida) throw errorSubida
+      fotoNuevaSubida = true
+    }
+
+    const cambios = {
+      nombre,
+      apellidos: catalogoEditarApellidos.trim() || null,
+      alias: catalogoEditarAlias.trim() || null,
+      foto_path: nuevaFotoPath,
+    }
+
+    const { data: actualizado, error: errorActualizar } = await supabase
+      .from('jugadores')
+      .update(cambios)
+      .eq('id', jugadorCatalogoEditando.id)
+      .select(`
+        id,
+        codigo_jugador,
+        nombre,
+        apellidos,
+        alias,
+        foto_path,
+        activo
+      `)
+      .single()
+
+    if (errorActualizar) throw errorActualizar
+
+    if (
+      catalogoEditarFoto &&
+      jugadorCatalogoEditando.foto_path &&
+      jugadorCatalogoEditando.foto_path !== nuevaFotoPath
+    ) {
+      const { error: errorBorrarAnterior } = await supabase
+        .storage
+        .from('jugadores')
+        .remove([jugadorCatalogoEditando.foto_path])
+
+      if (errorBorrarAnterior) {
+        console.warn('No se pudo borrar la foto anterior:', errorBorrarAnterior)
+      }
+    }
+
+    setCatalogoJugadores((actuales) =>
+      actuales
+        .map((jugador) =>
+          jugador.id === actualizado.id ? actualizado : jugador
+        )
+        .sort((a, b) =>
+          String(a.nombre).localeCompare(String(b.nombre), 'es')
+        )
+    )
+
+    setJugadorCatalogoEditando(null)
+    setCatalogoEditarNombre('')
+    setCatalogoEditarApellidos('')
+    setCatalogoEditarAlias('')
+    setCatalogoEditarFoto(null)
+    setCatalogoEditarFotoPreview('')
+    setCatalogoGestionMensaje('Jugador actualizado correctamente.')
+  } catch (error) {
+    if (fotoNuevaSubida && nuevaFotoPath) {
+      await supabase.storage.from('jugadores').remove([nuevaFotoPath])
+    }
+
+    console.error('Error editando jugador del catálogo:', error)
+    setCatalogoGestionMensaje(`Error: ${error.message}`)
+  } finally {
+    setCatalogoGuardandoEdicion(false)
   }
 }
 
@@ -13135,35 +13520,12 @@ if (
               <input
                 type="file"
                 accept="image/*"
-                onChange={(evento) => {
-                  const archivo =
-                    evento.target.files?.[0] ??
-                    null
-
-                  if (
-                    archivo &&
-                    archivo.size >
-                      5 * 1024 * 1024
-                  ) {
-                    setCatalogoGestionMensaje(
-                      'La foto no puede superar 5 MB.'
-                    )
-                    evento.target.value = ''
-                    return
-                  }
-
-                  setCatalogoNuevaFoto(
-                    archivo
+                onChange={(evento) =>
+                  seleccionarFotoParaRecortar(
+                    evento,
+                    'nuevo-catalogo'
                   )
-
-                  setCatalogoNuevaFotoPreview(
-                    archivo
-                      ? URL.createObjectURL(
-                          archivo
-                        )
-                      : ''
-                  )
-                }}
+                }
               />
             </label>
 
@@ -13283,22 +13645,139 @@ if (
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="boton-accion-jugador boton-eliminar-catalogo"
-                    onClick={() =>
-                      setJugadorCatalogoPendienteEliminar(
-                        jugador
-                      )
-                    }
-                  >
-                    🗑 Eliminar
-                  </button>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="boton-accion-jugador"
+                      onClick={() =>
+                        abrirEditarJugadorCatalogo(jugador)
+                      }
+                    >
+                      ✏️ Editar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton-accion-jugador boton-eliminar-catalogo"
+                      onClick={() =>
+                        setJugadorCatalogoPendienteEliminar(
+                          jugador
+                        )
+                      }
+                    >
+                      🗑 Eliminar
+                    </button>
+                  </div>
                 </article>
               )
             }
           )}
         </div>
+
+        {jugadorCatalogoEditando && (
+          <div
+            className="modal-fondo"
+            onClick={cerrarEditarJugadorCatalogo}
+          >
+            <div
+              className="modal-confirmacion"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Editar jugador del catálogo"
+              onClick={(evento) => evento.stopPropagation()}
+              style={{ width: 'min(94vw, 620px)', textAlign: 'left' }}
+            >
+              <h3>Editar jugador</h3>
+
+              <form
+                className="formulario-login formulario-sorteo"
+                onSubmit={guardarEdicionJugadorCatalogo}
+              >
+                <div className="foto-jugador-form">
+                  {catalogoEditarFotoPreview ? (
+                    <img
+                      src={catalogoEditarFotoPreview}
+                      alt="Foto del jugador"
+                      className="preview-jugador"
+                    />
+                  ) : (
+                    <div className="preview-jugador preview-vacio">👤</div>
+                  )}
+
+                  <label className="selector-foto">
+                    Cambiar y ajustar foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(evento) =>
+                        seleccionarFotoParaRecortar(
+                          evento,
+                          'editar-catalogo'
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+
+                <label className="campo-formulario">
+                  <span>Código / ID del jugador</span>
+                  <input
+                    type="text"
+                    value={jugadorCatalogoEditando.codigo_jugador}
+                    disabled
+                  />
+                </label>
+
+                <label className="campo-formulario">
+                  <span>Nombre *</span>
+                  <input
+                    type="text"
+                    value={catalogoEditarNombre}
+                    onChange={(evento) => setCatalogoEditarNombre(evento.target.value)}
+                    required
+                  />
+                </label>
+
+                <label className="campo-formulario">
+                  <span>Apellidos</span>
+                  <input
+                    type="text"
+                    value={catalogoEditarApellidos}
+                    onChange={(evento) => setCatalogoEditarApellidos(evento.target.value)}
+                  />
+                </label>
+
+                <label className="campo-formulario">
+                  <span>Alias</span>
+                  <input
+                    type="text"
+                    value={catalogoEditarAlias}
+                    onChange={(evento) => setCatalogoEditarAlias(evento.target.value)}
+                    placeholder="Opcional"
+                  />
+                </label>
+
+                <div className="modal-acciones">
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    onClick={cerrarEditarJugadorCatalogo}
+                    disabled={catalogoGuardandoEdicion}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="boton boton-principal"
+                    disabled={catalogoGuardandoEdicion}
+                  >
+                    {catalogoGuardandoEdicion ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {jugadorCatalogoPendienteEliminar && (
           <div
@@ -13369,6 +13848,17 @@ if (
               </div>
             </div>
           </div>
+        )}
+
+        {fotoPendienteRecorte && (
+          <EditorRecorteFoto
+            archivo={fotoPendienteRecorte}
+            onCancelar={() => {
+              setFotoPendienteRecorte(null)
+              setDestinoFotoRecortada(null)
+            }}
+            onGuardar={guardarFotoRecortada}
+          />
         )}
 
       </section>
