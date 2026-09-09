@@ -28,6 +28,7 @@ const VALORES_INICIALES = {
   puntos_partido_arrastrado: 2,
   num_pistas_disponibles: 4,
   ronda_inicial_eliminatorias: 'Cuartos',
+  formato_acceso_eliminatorias: 'Cruces normales',
   criterio_generar_cruces: 'No Enfrentados',
   hay_copa_palas_playa: false,
   criterio_palas_playa: 'No Enfrentados',
@@ -299,9 +300,22 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Eliminatorias</legend>
             <div className="rejilla-configuracion">
+              <Campo etiqueta="Formato de acceso">
+                <select name="formato_acceso_eliminatorias" value={config.formato_acceso_eliminatorias} onChange={cambiar}>
+                  <option>Cruces normales</option>
+                  <option>Campeones de ReGrupo directos a semifinales</option>
+                </select>
+              </Campo>
               <Campo etiqueta="Ronda inicial"><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias} onChange={cambiar}><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
               <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>
             </div>
+            {config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales' && (
+              <div className="resumen-formato-especial">
+                <strong>Formato especial de ReGrupos</strong>
+                <span>Los campeones pasan directamente a semifinales. Los segundos y terceros juegan cuartos cruzados.</span>
+                <span>Si activas Palas de Playa, la disputan los cuartos clasificados y los perdedores de esos cuartos.</span>
+              </div>
+            )}
             <label className="interruptor-configuracion"><input type="checkbox" name="hay_copa_palas_playa" checked={config.hay_copa_palas_playa} onChange={cambiar} /><span>Hay Copa Palas de Playa</span></label>
             {config.hay_copa_palas_playa && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
           </fieldset>

@@ -5,6 +5,7 @@ import CampeonatoJugadores from './CampeonatoJugadores'
 import SelectorCampeonatos from './SelectorCampeonatos'
 import EquiposCampeonato from './EquiposCampeonato'
 import ClasificacionCampeonato from './ClasificacionCampeonato'
+import FasesCrucesCampeonato from './FasesCrucesCampeonato'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -534,6 +535,18 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     )
   }
 
+  if (seccion === 'fases') {
+    return (
+      <FasesCrucesCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onConfiguracion={() => setSeccion('configuracion')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
   if (seccion === 'menu') {
     return (
       <main className="app app-admin app-campeonato">
@@ -568,9 +581,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <span>📊</span><strong>Clasificaciones</strong>
               <small>Posiciones, puntos y desempates por grupo</small>
             </button>
-            <button type="button" className="modulo-campeonato" disabled>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('fases')}>
               <span>🏆</span><strong>Fases y cruces</strong>
-              <small>Próximamente</small>
+              <small>Cuadro principal y Copa Palas de Playa</small>
             </button>
           </div>
         </section>
