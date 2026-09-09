@@ -17,8 +17,8 @@ const VALORES_INICIALES = {
   horario_campeonato: '',
   version_web: '',
   estado_torneo: 'Pretorneo',
-  tipo_campeonato: 'Grupos',
-  estructura_primera_fase: '2 Grupos',
+  tipo_campeonato: null,
+  estructura_primera_fase: null,
   num_grupos_iniciales: 2,
   equipos_por_grupo: 4,
   hay_regrupos: false,
@@ -26,9 +26,9 @@ const VALORES_INICIALES = {
   equipos_pasan_a_cruces_por_grupo: 4,
   puntos_partido_arrastrado: 2,
   num_pistas_disponibles: 4,
-  ronda_inicial_eliminatorias: 'Cuartos',
+  ronda_inicial_eliminatorias: null,
   criterio_generar_cruces: 'No Enfrentados',
-  hay_copa_palas_playa: false,
+  hay_copa_palas_playa: null,
   criterio_palas_playa: 'No Enfrentados',
   posicion_inicio_palas_playa: 9,
   puntos_objetivo_set: 10,
@@ -55,7 +55,6 @@ const VALORES_INICIALES = {
 
 const CAMPOS_BOOLEANOS = new Set([
   'hay_regrupos',
-  'hay_copa_palas_playa',
   'mostrar_ranking_historico',
   'mostrar_estadisticas',
   'mostrar_fotos',
@@ -84,6 +83,13 @@ function aBooleano(valor) {
   return valor === true || texto === 'true' || texto === 'sí' || texto === 'si'
 }
 
+function aBooleanoONull(valor) {
+  const texto = String(valor ?? '').trim().toLowerCase()
+  if (valor === true || ['true', 'sí', 'si', '1'].includes(texto)) return true
+  if (valor === false || ['false', 'no', '0'].includes(texto)) return false
+  return null
+}
+
 function normalizarConfiguracion(datos) {
   const config = { ...VALORES_INICIALES, ...(datos ?? {}) }
   config.sistemas_puntuacion = Object.fromEntries(
@@ -95,6 +101,7 @@ function normalizarConfiguracion(datos) {
   CAMPOS_BOOLEANOS.forEach((campo) => {
     config[campo] = aBooleano(config[campo])
   })
+  config.hay_copa_palas_playa = aBooleanoONull(config.hay_copa_palas_playa)
   return config
 }
 
@@ -145,26 +152,44 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   function cambiar(evento) {
     const { name, type, checked, value } = evento.target
     let nuevoValor = type === 'checkbox' ? checked : value
+
+    if (['tipo_campeonato', 'estructura_primera_fase', 'ronda_inicial_eliminatorias'].includes(name)) {
+      nuevoValor = value === '' ? null : value
+    }
+
     if (CAMPOS_NUMERICOS.has(name)) {
       nuevoValor = value === '' ? '' : Number(value)
     }
 
     setConfig((actual) => {
       const siguiente = { ...actual, [name]: nuevoValor }
+
       if (name === 'tipo_campeonato') {
-        if (value === 'Liguilla') {
+        if (value === '') {
+          siguiente.estructura_primera_fase = null
+        } else if (value === 'Liguilla') {
           siguiente.estructura_primera_fase = 'Liguilla Única'
           siguiente.num_grupos_iniciales = 1
-        } else if (actual.estructura_primera_fase === 'Liguilla Única') {
+        } else if (value === 'Grupos' && !['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)) {
           siguiente.estructura_primera_fase = '2 Grupos'
           siguiente.num_grupos_iniciales = 2
         }
       }
+
       if (name === 'estructura_primera_fase') {
         siguiente.num_grupos_iniciales = value === '4 Grupos' ? 4 : value === '2 Grupos' ? 2 : 1
       }
+
       return siguiente
     })
+  }
+
+  function cambiarCopaPalas(evento) {
+    const valor = evento.target.value
+    setConfig((actual) => ({
+      ...actual,
+      hay_copa_palas_playa: valor === 'si' ? true : valor === 'no' ? false : null,
+    }))
   }
 
   function cambiarPuntuacion(evento) {
@@ -245,6 +270,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   const esGrupos = config.tipo_campeonato === 'Grupos'
+  const valorCopaPalas = config.hay_copa_palas_playa === true
+    ? 'si'
+    : config.hay_copa_palas_playa === false
+      ? 'no'
+      : ''
 
   return (
     <main className="app app-admin app-configuracion-campeonato">
@@ -284,8 +314,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Estructura del torneo</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Tipo de campeonato"><select name="tipo_campeonato" value={config.tipo_campeonato} onChange={cambiar}><option>Liguilla</option><option>Grupos</option></select></Campo>
-              <Campo etiqueta="Primera fase"><select name="estructura_primera_fase" value={config.estructura_primera_fase} onChange={cambiar} disabled={!esGrupos}><option>Liguilla Única</option><option>2 Grupos</option><option>4 Grupos</option></select></Campo>
+              <Campo etiqueta="Tipo de campeonato">
+                <select name="tipo_campeonato" value={config.tipo_campeonato ?? ''} onChange={cambiar}>
+                  <option value="">—</option><option>Liguilla</option><option>Grupos</option>
+                </select>
+              </Campo>
+              <Campo etiqueta="Primera fase">
+                <select name="estructura_primera_fase" value={config.estructura_primera_fase ?? ''} onChange={cambiar} disabled={!esGrupos}>
+                  <option value="">—</option><option>Liguilla Única</option><option>2 Grupos</option><option>4 Grupos</option>
+                </select>
+              </Campo>
               {esGrupos && <Campo etiqueta="Equipos por grupo"><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
               <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
               <Campo etiqueta="Equipos que pasan a eliminatorias"><input type="number" min="1" name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
@@ -297,11 +335,19 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Eliminatorias</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Ronda inicial"><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias} onChange={cambiar}><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
+              <Campo etiqueta="Ronda inicial">
+                <select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias ?? ''} onChange={cambiar}>
+                  <option value="">—</option><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option>
+                </select>
+              </Campo>
               <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>
+              <Campo etiqueta="Copa Palas Playa">
+                <select name="hay_copa_palas_playa" value={valorCopaPalas} onChange={cambiarCopaPalas}>
+                  <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
+                </select>
+              </Campo>
             </div>
-            <label className="interruptor-configuracion"><input type="checkbox" name="hay_copa_palas_playa" checked={config.hay_copa_palas_playa} onChange={cambiar} /><span>Hay Copa Palas de Playa</span></label>
-            {config.hay_copa_palas_playa && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
+            {config.hay_copa_palas_playa === true && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
           </fieldset>
 
           <fieldset>
