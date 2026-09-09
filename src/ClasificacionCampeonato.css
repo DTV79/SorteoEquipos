@@ -1,4 +1,5 @@
 .panel-clasificacion { max-width: 1180px; }
+.selector-fase-clasificacion{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;padding:6px;border:1px solid #2a3b50;border-radius:14px;background:#0a1016}.selector-fase-clasificacion button{padding:13px;border:0;border-radius:10px;background:transparent;color:#91a5bd;font:inherit;font-weight:800;cursor:pointer}.selector-fase-clasificacion button.activo{background:#12351f;color:#86efac}
 .resumen-clasificacion { display:flex; align-items:center; gap:18px; padding:18px 20px; margin-bottom:18px; border:1px solid #1c8048; border-radius:16px; background:#071a12; }
 .resumen-clasificacion > div:first-child { display:flex; flex:1; flex-direction:column; gap:5px; }
 .resumen-clasificacion span,.resumen-clasificacion small { color:#9db2ca; }
@@ -20,4 +21,4 @@
 .posicion-clasificacion { display:inline-grid; width:30px; height:30px; place-items:center; border-radius:50%; background:#173047; }
 .puntos-clasificacion { color:#69f59c; font-size:1.05rem; font-weight:900; }
 .leyenda-clasificacion { margin:0; padding:12px 20px; border-top:1px solid #26384d; color:#8196af; font-size:.78rem; }
-@media (max-width:760px) { .resumen-clasificacion { align-items:stretch; flex-direction:column; } .resumen-clasificacion .boton { width:100%; } }
+@media (max-width:760px) { .resumen-clasificacion { align-items:stretch; flex-direction:column; } .resumen-clasificacion .boton { width:100%; } .selector-fase-clasificacion{grid-template-columns:1fr} }

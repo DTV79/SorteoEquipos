@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import './CampeonatoConfiguracion.css'
 
-const SISTEMAS_PUNTUACION_INICIALES = {
-  Normal: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 0 },
-  Equitativo: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 2 },
-  Competitivo: { ganador_3_0: 3, ganador_2_1: 2, perdedor_1_2: 1, perdedor_0_3: 0, descanso: 2 },
-}
-
 const VALORES_INICIALES = {
   id_campeonato: '',
   nombre_campeonato: '',
@@ -17,8 +11,8 @@ const VALORES_INICIALES = {
   horario_campeonato: '',
   version_web: '',
   estado_torneo: 'Pretorneo',
-  tipo_campeonato: null,
-  estructura_primera_fase: null,
+  tipo_campeonato: 'Grupos',
+  estructura_primera_fase: '2 Grupos',
   num_grupos_iniciales: 2,
   equipos_por_grupo: 4,
   hay_regrupos: false,
@@ -26,15 +20,14 @@ const VALORES_INICIALES = {
   equipos_pasan_a_cruces_por_grupo: 4,
   puntos_partido_arrastrado: 2,
   num_pistas_disponibles: 4,
-  ronda_inicial_eliminatorias: null,
+  ronda_inicial_eliminatorias: 'Cuartos',
   criterio_generar_cruces: 'No Enfrentados',
-  hay_copa_palas_playa: null,
+  hay_copa_palas_playa: false,
   criterio_palas_playa: 'No Enfrentados',
   posicion_inicio_palas_playa: 9,
   puntos_objetivo_set: 10,
   puntos_maximos_por_set: 15,
   sistema_puntuacion: 'Competitivo',
-  sistemas_puntuacion: SISTEMAS_PUNTUACION_INICIALES,
   ordenar_clasificacion: '',
   modo_generar_jornadas: '',
   url_inscripcion: '',
@@ -55,6 +48,7 @@ const VALORES_INICIALES = {
 
 const CAMPOS_BOOLEANOS = new Set([
   'hay_regrupos',
+  'hay_copa_palas_playa',
   'mostrar_ranking_historico',
   'mostrar_estadisticas',
   'mostrar_fotos',
@@ -83,25 +77,11 @@ function aBooleano(valor) {
   return valor === true || texto === 'true' || texto === 'sí' || texto === 'si'
 }
 
-function aBooleanoONull(valor) {
-  const texto = String(valor ?? '').trim().toLowerCase()
-  if (valor === true || ['true', 'sí', 'si', '1'].includes(texto)) return true
-  if (valor === false || ['false', 'no', '0'].includes(texto)) return false
-  return null
-}
-
 function normalizarConfiguracion(datos) {
   const config = { ...VALORES_INICIALES, ...(datos ?? {}) }
-  config.sistemas_puntuacion = Object.fromEntries(
-    Object.entries(SISTEMAS_PUNTUACION_INICIALES).map(([nombre, valores]) => [
-      nombre,
-      { ...valores, ...(datos?.sistemas_puntuacion?.[nombre] ?? {}) },
-    ])
-  )
   CAMPOS_BOOLEANOS.forEach((campo) => {
     config[campo] = aBooleano(config[campo])
   })
-  config.hay_copa_palas_playa = aBooleanoONull(config.hay_copa_palas_playa)
   return config
 }
 
@@ -115,17 +95,11 @@ function Campo({ etiqueta, children, ayuda }) {
   )
 }
 
-export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados, onPanelPrincipal, onCampeonatoEliminado }) {
+export default function CampeonatoConfiguracion({ codigo, onResultados, onPanelPrincipal }) {
   const [config, setConfig] = useState(VALORES_INICIALES)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
-  const [accionMantenimiento, setAccionMantenimiento] = useState(null)
-  const [resumenMantenimiento, setResumenMantenimiento] = useState(null)
-  const [confirmacionMantenimiento, setConfirmacionMantenimiento] = useState('')
-  const [procesandoMantenimiento, setProcesandoMantenimiento] = useState(false)
-  const [mostrarPuntuaciones, setMostrarPuntuaciones] = useState(false)
-  const [sistemaPuntuacionEditado, setSistemaPuntuacionEditado] = useState('Competitivo')
 
   useEffect(() => {
     let cancelado = false
@@ -152,59 +126,26 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   function cambiar(evento) {
     const { name, type, checked, value } = evento.target
     let nuevoValor = type === 'checkbox' ? checked : value
-
-    if (['tipo_campeonato', 'estructura_primera_fase', 'ronda_inicial_eliminatorias'].includes(name)) {
-      nuevoValor = value === '' ? null : value
-    }
-
     if (CAMPOS_NUMERICOS.has(name)) {
       nuevoValor = value === '' ? '' : Number(value)
     }
 
     setConfig((actual) => {
       const siguiente = { ...actual, [name]: nuevoValor }
-
       if (name === 'tipo_campeonato') {
-        if (value === '') {
-          siguiente.estructura_primera_fase = null
-        } else if (value === 'Liguilla') {
+        if (value === 'Liguilla') {
           siguiente.estructura_primera_fase = 'Liguilla Única'
           siguiente.num_grupos_iniciales = 1
-        } else if (value === 'Grupos' && !['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)) {
+        } else if (actual.estructura_primera_fase === 'Liguilla Única') {
           siguiente.estructura_primera_fase = '2 Grupos'
           siguiente.num_grupos_iniciales = 2
         }
       }
-
       if (name === 'estructura_primera_fase') {
         siguiente.num_grupos_iniciales = value === '4 Grupos' ? 4 : value === '2 Grupos' ? 2 : 1
       }
-
       return siguiente
     })
-  }
-
-  function cambiarCopaPalas(evento) {
-    const valor = evento.target.value
-    setConfig((actual) => ({
-      ...actual,
-      hay_copa_palas_playa: valor === 'si' ? true : valor === 'no' ? false : null,
-    }))
-  }
-
-  function cambiarPuntuacion(evento) {
-    const { name, value } = evento.target
-    const puntos = value === '' ? '' : Math.max(0, Number(value))
-    setConfig((actual) => ({
-      ...actual,
-      sistemas_puntuacion: {
-        ...actual.sistemas_puntuacion,
-        [sistemaPuntuacionEditado]: {
-          ...actual.sistemas_puntuacion[sistemaPuntuacionEditado],
-          [name]: puntos,
-        },
-      },
-    }))
   }
 
   async function guardar(evento) {
@@ -225,56 +166,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setGuardando(false)
   }
 
-  async function abrirMantenimiento(tipo) {
-    setAccionMantenimiento(tipo)
-    setResumenMantenimiento(null)
-    setConfirmacionMantenimiento('')
-    const { data, error } = await supabaseCampeonato.rpc(
-      'admin_resumen_mantenimiento_campeonato',
-      { p_codigo: codigo }
-    )
-    if (error || data?.ok !== true) {
-      setAccionMantenimiento(null)
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo revisar el campeonato.' })
-      return
-    }
-    setResumenMantenimiento(data)
-  }
-
-  async function ejecutarMantenimiento() {
-    if (confirmacionMantenimiento !== codigo) return
-    setProcesandoMantenimiento(true)
-    const funcion = accionMantenimiento === 'vaciar'
-      ? 'admin_vaciar_datos_deportivos'
-      : 'admin_eliminar_campeonato_definitivamente'
-    const { data, error } = await supabaseCampeonato.rpc(funcion, {
-      p_codigo: codigo,
-      p_confirmacion: confirmacionMantenimiento,
-    })
-    setProcesandoMantenimiento(false)
-    if (error || data?.ok !== true) {
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo completar la operación.' })
-      return
-    }
-    setAccionMantenimiento(null)
-    if (funcion === 'admin_eliminar_campeonato_definitivamente') {
-      onCampeonatoEliminado()
-      return
-    }
-    setConfig((actual) => ({ ...actual, estado_torneo: 'Inscripciones' }))
-    setMensaje({ tipo: 'correcto', texto: `Datos deportivos eliminados. ${codigo} se conserva con su configuración e inscripciones.` })
-  }
-
   if (cargando) {
     return <main className="app app-admin"><p className="estado">Cargando configuración…</p></main>
   }
 
   const esGrupos = config.tipo_campeonato === 'Grupos'
-  const valorCopaPalas = config.hay_copa_palas_playa === true
-    ? 'si'
-    : config.hay_copa_palas_playa === false
-      ? 'no'
-      : ''
 
   return (
     <main className="app app-admin app-configuracion-campeonato">
@@ -286,8 +182,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <p className="descripcion-admin">{codigo} · Fuente maestra Supabase</p>
           </div>
           <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Gestión</button>
-            <button type="button" className="boton boton-secundario" onClick={onResultados}>Partidos y resultados</button>
+            <button type="button" className="boton boton-secundario" onClick={onResultados}>← Resultados</button>
             <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button>
           </div>
         </header>
@@ -314,16 +209,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Estructura del torneo</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Tipo de campeonato">
-                <select name="tipo_campeonato" value={config.tipo_campeonato ?? ''} onChange={cambiar}>
-                  <option value="">—</option><option>Liguilla</option><option>Grupos</option>
-                </select>
-              </Campo>
-              <Campo etiqueta="Primera fase">
-                <select name="estructura_primera_fase" value={config.estructura_primera_fase ?? ''} onChange={cambiar} disabled={!esGrupos}>
-                  <option value="">—</option><option>Liguilla Única</option><option>2 Grupos</option><option>4 Grupos</option>
-                </select>
-              </Campo>
+              <Campo etiqueta="Tipo de campeonato"><select name="tipo_campeonato" value={config.tipo_campeonato} onChange={cambiar}><option>Liguilla</option><option>Grupos</option></select></Campo>
+              <Campo etiqueta="Primera fase"><select name="estructura_primera_fase" value={config.estructura_primera_fase} onChange={cambiar} disabled={!esGrupos}><option>Liguilla Única</option><option>2 Grupos</option><option>4 Grupos</option></select></Campo>
               {esGrupos && <Campo etiqueta="Equipos por grupo"><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
               <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
               <Campo etiqueta="Equipos que pasan a eliminatorias"><input type="number" min="1" name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
@@ -335,19 +222,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Eliminatorias</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Ronda inicial">
-                <select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias ?? ''} onChange={cambiar}>
-                  <option value="">—</option><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option>
-                </select>
-              </Campo>
+              <Campo etiqueta="Ronda inicial"><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias} onChange={cambiar}><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
               <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>
-              <Campo etiqueta="Copa Palas Playa">
-                <select name="hay_copa_palas_playa" value={valorCopaPalas} onChange={cambiarCopaPalas}>
-                  <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
-                </select>
-              </Campo>
             </div>
-            {config.hay_copa_palas_playa === true && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
+            <label className="interruptor-configuracion"><input type="checkbox" name="hay_copa_palas_playa" checked={config.hay_copa_palas_playa} onChange={cambiar} /><span>Hay Copa Palas de Playa</span></label>
+            {config.hay_copa_palas_playa && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
           </fieldset>
 
           <fieldset>
@@ -355,45 +234,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <div className="rejilla-configuracion">
               <Campo etiqueta="Puntos objetivo del set"><input type="number" min="1" name="puntos_objetivo_set" value={config.puntos_objetivo_set} onChange={cambiar} /></Campo>
               <Campo etiqueta="Puntos máximos del set"><input type="number" min={config.puntos_objetivo_set || 1} name="puntos_maximos_por_set" value={config.puntos_maximos_por_set} onChange={cambiar} /></Campo>
-              <div className="campo-sistema-puntuacion">
-                <Campo etiqueta="Sistema de puntuación"><select name="sistema_puntuacion" value={config.sistema_puntuacion} onChange={cambiar}><option>Normal</option><option>Equitativo</option><option>Competitivo</option></select></Campo>
-                <button
-                  type="button"
-                  className="boton-configurar-puntuacion"
-                  aria-expanded={mostrarPuntuaciones}
-                  onClick={() => {
-                    setSistemaPuntuacionEditado(config.sistema_puntuacion)
-                    setMostrarPuntuaciones((visible) => !visible)
-                  }}
-                >
-                  ⚙ Configurar puntos
-                </button>
-              </div>
+              <Campo etiqueta="Sistema de puntuación"><select name="sistema_puntuacion" value={config.sistema_puntuacion} onChange={cambiar}><option>Normal</option><option>Equitativo</option><option>Competitivo</option></select></Campo>
               {config.tipo_campeonato === 'Liguilla' && <><Campo etiqueta="Ordenar clasificación"><input name="ordenar_clasificacion" value={config.ordenar_clasificacion || ''} onChange={cambiar} placeholder="Sin definir" /></Campo><Campo etiqueta="Generación de jornadas"><input name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar} placeholder="Sin definir" /></Campo></>}
             </div>
-            {mostrarPuntuaciones && (
-              <div className="configurador-puntuaciones">
-                <div className="cabecera-configurador-puntuaciones">
-                  <div>
-                    <strong>Puntuación por resultado</strong>
-                    <small>Estos valores se guardan únicamente para este campeonato.</small>
-                  </div>
-                  <select value={sistemaPuntuacionEditado} onChange={(evento) => setSistemaPuntuacionEditado(evento.target.value)}>
-                    <option>Normal</option>
-                    <option>Equitativo</option>
-                    <option>Competitivo</option>
-                  </select>
-                </div>
-                <div className="rejilla-puntuaciones">
-                  <Campo etiqueta="Ganador 3–0 (o 2–0)"><input type="number" min="0" step="1" name="ganador_3_0" value={config.sistemas_puntuacion[sistemaPuntuacionEditado].ganador_3_0} onChange={cambiarPuntuacion} /></Campo>
-                  <Campo etiqueta="Ganador 2–1"><input type="number" min="0" step="1" name="ganador_2_1" value={config.sistemas_puntuacion[sistemaPuntuacionEditado].ganador_2_1} onChange={cambiarPuntuacion} /></Campo>
-                  <Campo etiqueta="Perdedor 1–2"><input type="number" min="0" step="1" name="perdedor_1_2" value={config.sistemas_puntuacion[sistemaPuntuacionEditado].perdedor_1_2} onChange={cambiarPuntuacion} /></Campo>
-                  <Campo etiqueta="Perdedor 0–3 (o 0–2)"><input type="number" min="0" step="1" name="perdedor_0_3" value={config.sistemas_puntuacion[sistemaPuntuacionEditado].perdedor_0_3} onChange={cambiarPuntuacion} /></Campo>
-                  <Campo etiqueta="Descanso"><input type="number" min="0" step="1" name="descanso" value={config.sistemas_puntuacion[sistemaPuntuacionEditado].descanso} onChange={cambiarPuntuacion} /></Campo>
-                </div>
-                <p className="aviso-sistema-activo">Sistema aplicado actualmente: <strong>{config.sistema_puntuacion}</strong></p>
-              </div>
-            )}
           </fieldset>
 
           <fieldset>
@@ -420,49 +263,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             {config.modo_mantenimiento && <div className="campos-texto-configuracion bloque-dependiente"><Campo etiqueta="Título"><input name="titulo_mantenimiento" value={config.titulo_mantenimiento || ''} onChange={cambiar} /></Campo><Campo etiqueta="Mensaje"><textarea name="mensaje_mantenimiento" value={config.mensaje_mantenimiento || ''} onChange={cambiar} rows="3" /></Campo></div>}
           </fieldset>
 
-          <fieldset className="zona-peligro-campeonato">
-            <legend>Mantenimiento del campeonato</legend>
-            <p>Estas acciones eliminan datos de Supabase. Los jugadores generales y sus códigos Jxxx se conservan.</p>
-            <div className="acciones-mantenimiento-campeonato">
-              <div>
-                <strong>Vaciar datos deportivos</strong>
-                <span>Borra equipos, partidos, resultados, clasificaciones, Histórico e ISP de esta edición. Conserva el campeonato, su configuración, solicitudes e inscripciones.</span>
-                <button type="button" className="boton boton-advertencia" onClick={() => abrirMantenimiento('vaciar')}>Vaciar datos deportivos</button>
-              </div>
-              <div>
-                <strong>Eliminar campeonato definitivamente</strong>
-                <span>Borra toda la edición, incluidas configuración, solicitudes e inscripciones. No deja datos del campeonato en Histórico ni en ISP.</span>
-                <button type="button" className="boton boton-peligro" onClick={() => abrirMantenimiento('eliminar')}>Eliminar campeonato</button>
-              </div>
-            </div>
-          </fieldset>
-
           {mensaje && <p className={`mensaje-configuracion ${mensaje.tipo}`}>{mensaje.texto}</p>}
           <div className="barra-guardar-configuracion"><span>Al guardar, Supabase será la fuente maestra y Excel no podrá sobrescribir estos valores.</span><button className="boton boton-principal" type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar configuración'}</button></div>
         </form>
       </section>
-      {accionMantenimiento && (
-        <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !procesandoMantenimiento && setAccionMantenimiento(null)}>
-          <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-mantenimiento-campeonato" onMouseDown={(evento) => evento.stopPropagation()}>
-            <span className="icono-peligro">!</span>
-            <h3 id="titulo-mantenimiento-campeonato">{accionMantenimiento === 'vaciar' ? 'Vaciar datos deportivos' : 'Eliminar campeonato definitivamente'}</h3>
-            {!resumenMantenimiento ? <p>Revisando los datos relacionados…</p> : <>
-              <p>{accionMantenimiento === 'vaciar' ? `Se conservarán la configuración y las ${resumenMantenimiento.inscripciones} inscripciones.` : 'Esta edición desaparecerá completamente y no podrá recuperarse.'}</p>
-              <dl className="resumen-borrado">
-                <div><dt>Equipos</dt><dd>{resumenMantenimiento.equipos}</dd></div>
-                <div><dt>Partidos</dt><dd>{resumenMantenimiento.partidos}</dd></div>
-                <div><dt>Sets</dt><dd>{resumenMantenimiento.sets}</dd></div>
-                <div><dt>Clasificaciones</dt><dd>{resumenMantenimiento.clasificaciones}</dd></div>
-                <div><dt>Histórico</dt><dd>{resumenMantenimiento.ranking_historico}</dd></div>
-                <div><dt>ISP</dt><dd>{resumenMantenimiento.isp_partidos}</dd></div>
-                {accionMantenimiento === 'eliminar' && <><div><dt>Inscripciones</dt><dd>{resumenMantenimiento.inscripciones}</dd></div><div><dt>Solicitudes</dt><dd>{resumenMantenimiento.solicitudes}</dd></div></>}
-              </dl>
-              <label className="confirmacion-escrita"><span>Para confirmar, escribe <b>{codigo}</b></span><input value={confirmacionMantenimiento} onChange={(evento) => setConfirmacionMantenimiento(evento.target.value)} autoComplete="off" /></label>
-            </>}
-            <div className="botones-modal-mantenimiento"><button type="button" className="boton boton-secundario" onClick={() => setAccionMantenimiento(null)} disabled={procesandoMantenimiento}>Cancelar</button><button type="button" className={`boton ${accionMantenimiento === 'vaciar' ? 'boton-advertencia' : 'boton-peligro'}`} onClick={ejecutarMantenimiento} disabled={!resumenMantenimiento || confirmacionMantenimiento !== codigo || procesandoMantenimiento}>{procesandoMantenimiento ? 'Procesando…' : accionMantenimiento === 'vaciar' ? 'Vaciar definitivamente' : 'Eliminar definitivamente'}</button></div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

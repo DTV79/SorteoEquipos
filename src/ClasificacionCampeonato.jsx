@@ -10,6 +10,8 @@ function numero(valor) {
 export default function ClasificacionCampeonato({ codigo, onVolver, onResultados, onPanelPrincipal }) {
   const [filas, setFilas] = useState([])
   const [sistema, setSistema] = useState('')
+  const [hayRegrupos, setHayRegrupos] = useState(false)
+  const [faseActiva, setFaseActiva] = useState('GR')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
@@ -17,8 +19,8 @@ export default function ClasificacionCampeonato({ codigo, onVolver, onResultados
     setCargando(true)
     setError('')
     const { data, error: errorConsulta } = await supabaseCampeonato.rpc(
-      'admin_listar_clasificacion_grupos',
-      { p_codigo: codigo }
+      'admin_listar_clasificaciones',
+      { p_codigo: codigo, p_fase: faseActiva }
     )
 
     if (errorConsulta || data?.ok !== true) {
@@ -29,8 +31,9 @@ export default function ClasificacionCampeonato({ codigo, onVolver, onResultados
 
     setFilas(data.clasificacion ?? [])
     setSistema(data.sistema_puntuacion ?? '')
+    setHayRegrupos(Boolean(data.hay_regrupos))
     setCargando(false)
-  }, [codigo])
+  }, [codigo, faseActiva])
 
   useEffect(() => {
     cargar()
@@ -62,8 +65,15 @@ export default function ClasificacionCampeonato({ codigo, onVolver, onResultados
           </div>
         </header>
 
+        {hayRegrupos && (
+          <div className="selector-fase-clasificacion" role="group" aria-label="Fase de la clasificación">
+            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => setFaseActiva('GR')}>Primera fase · Grupos</button>
+            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => setFaseActiva('RG')}>Segunda fase · ReGrupos</button>
+          </div>
+        )}
+
         <section className="resumen-clasificacion">
-          <div><strong>Fase de grupos</strong><span>Se actualiza automáticamente al guardar o anular un resultado.</span></div>
+          <div><strong>{faseActiva === 'RG' ? 'Segunda fase · ReGrupos' : 'Primera fase · Grupos'}</strong><span>Se actualiza automáticamente al guardar o anular un resultado.</span></div>
           <div><small>Sistema de puntuación</small><b>{sistema || 'Sin definir'}</b></div>
           <button type="button" className="boton boton-secundario" disabled={cargando} onClick={cargar}>
             {cargando ? 'Actualizando…' : '↻ Actualizar'}
@@ -72,14 +82,14 @@ export default function ClasificacionCampeonato({ codigo, onVolver, onResultados
 
         {error && <p className="mensaje-login">Error: {error}</p>}
         {!cargando && !error && grupos.length === 0 && (
-          <p className="estado tarjeta-partido-campeonato">Todavía no hay equipos distribuidos en grupos.</p>
+          <p className="estado tarjeta-partido-campeonato">{faseActiva === 'RG' ? 'Los ReGrupos todavía no se han generado.' : 'Todavía no hay equipos distribuidos en grupos.'}</p>
         )}
 
         <div className="lista-clasificaciones-grupos">
           {grupos.map(([codigoGrupo, equipos]) => (
             <section className="tarjeta-clasificacion-grupo" key={codigoGrupo}>
               <header>
-                <div><small>FASE DE GRUPOS</small><h3>{equipos[0]?.nombre_grupo || `Grupo ${codigoGrupo}`}</h3></div>
+                <div><small>{faseActiva === 'RG' ? 'SEGUNDA FASE' : 'PRIMERA FASE'}</small><h3>{equipos[0]?.nombre_grupo || `Grupo ${codigoGrupo}`}</h3></div>
                 <span>{equipos.length} equipos</span>
               </header>
               <div className="tabla-clasificacion-scroll">
