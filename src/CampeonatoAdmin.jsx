@@ -1,4 +1,4 @@
-﻿import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoConfiguracion from './CampeonatoConfiguracion'
 import CampeonatoJugadores from './CampeonatoJugadores'
@@ -22,7 +22,7 @@ function tituloFase(partido) {
       ? `Jornada ${partido.jornada}`
       : '')
 
-  return [fase, detalle].filter(Boolean).join(' Â· ')
+  return [fase, detalle].filter(Boolean).join(' · ')
 }
 
 function valorSet(partido, numero, campo) {
@@ -203,7 +203,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       ...actual,
       [partido.id_partido]: {
         tipo: '',
-        texto: 'Guardandoâ€¦',
+        texto: 'Guardando…',
       },
     }))
 
@@ -253,7 +253,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       ...actual,
       [partido.id_partido]: {
         tipo: '',
-        texto: 'Anulando resultadoâ€¦',
+        texto: 'Anulando resultado…',
       },
     }))
 
@@ -299,7 +299,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       ...actual,
       [partido.id_partido]: {
         tipo: 'error',
-        texto: `El nÃºmero no puede ser mayor que ${puntosMaximos}. Se ha borrado el valor.`,
+        texto: `El número no puede ser mayor que ${puntosMaximos}. Se ha borrado el valor.`,
       },
     }))
   }
@@ -541,36 +541,36 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           <header className="cabecera-admin cabecera-campeonato">
             <div>
               <p className="etiqueta">CAMPEONATO</p>
-              <h2>GestiÃ³n del campeonato</h2>
+              <h2>Gestión del campeonato</h2>
               <p className="descripcion-admin">{codigo}</p>
             </div>
-            <div className="acciones-cabecera-configuracion"><button type="button" className="boton boton-secundario" onClick={() => setSeccion('campeonatos')}>â† Campeonatos</button><button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>Panel principal</button></div>
+            <div className="acciones-cabecera-configuracion"><button type="button" className="boton boton-secundario" onClick={() => setSeccion('campeonatos')}>← Campeonatos</button><button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>Panel principal</button></div>
           </header>
 
           <div className="modulos-campeonato">
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('configuracion')}>
-              <span>âš™ï¸</span><strong>ConfiguraciÃ³n del torneo</strong>
-              <small>Formato, fases, puntuaciÃ³n y contenido de la web</small>
+              <span>⚙️</span><strong>Configuración del torneo</strong>
+              <small>Formato, fases, puntuación y contenido de la web</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('jugadores')}>
-              <span>ðŸ‘¤</span><strong>Jugadores e inscripciones</strong>
+              <span>👤</span><strong>Jugadores e inscripciones</strong>
               <small>Altas, reservas, bajas y datos personales</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('equipos')}>
-              <span>ðŸ‘¥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
+              <span>👥</span><strong>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos y grupos' : 'Equipos y liga'}</strong>
               <small>{String(estructuraPrimeraFase).toLowerCase().includes('grupo') ? 'Equipos distribuidos en sus grupos' : 'Todos los equipos de la liga'}</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('resultados')}>
-              <span>ðŸŽ¾</span><strong>Partidos y resultados</strong>
-              <small>Marcadores, pistas, duraciÃ³n y sustituciones</small>
+              <span>🎾</span><strong>Partidos y resultados</strong>
+              <small>Marcadores, pistas, duración y sustituciones</small>
             </button>
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('clasificaciones')}>
-              <span>ðŸ“Š</span><strong>Clasificaciones</strong>
+              <span>📊</span><strong>Clasificaciones</strong>
               <small>Posiciones, puntos y desempates por grupo</small>
             </button>
             <button type="button" className="modulo-campeonato" disabled>
-              <span>ðŸ†</span><strong>Fases y cruces</strong>
-              <small>PrÃ³ximamente</small>
+              <span>🏆</span><strong>Fases y cruces</strong>
+              <small>Próximamente</small>
             </button>
           </div>
         </section>
@@ -591,16 +591,16 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </div>
 
           <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>âš™ ConfiguraciÃ³n</button>
-            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('menu')}>â† GestiÃ³n</button>
-            <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>â† Panel principal</button>
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('configuracion')}>⚙ Configuración</button>
+            <button type="button" className="boton boton-secundario" onClick={() => setSeccion('menu')}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={volverPanelPrincipal}>← Panel principal</button>
           </div>
         </header>
 
         {hayRegrupos && (
           <div className="selector-fase-campeonato" role="group" aria-label="Fase de los partidos">
-            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Primera fase Â· Grupos</button>
-            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Segunda fase Â· ReGrupos</button>
+            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
+            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
           </div>
         )}
 
@@ -616,7 +616,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               disabled={generandoGrupos}
               onClick={prepararPartidosGrupos}
             >
-              {generandoGrupos ? 'Preparandoâ€¦' : partidosFaseActiva.length > 0 ? 'Rehacer jornadas de grupos' : 'Generar partidos de grupos'}
+              {generandoGrupos ? 'Preparando…' : partidosFaseActiva.length > 0 ? 'Rehacer jornadas de grupos' : 'Generar partidos de grupos'}
             </button>
           </section>
         )}
@@ -624,11 +624,11 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         {hayRegrupos && faseActiva === 'RG' && (
           <section className="generador-partidos-grupos generador-regrupos">
             <div>
-              <strong>Segunda fase Â· ReGrupos</strong>
-              <span>Forma los ReGrupos desde la clasificaciÃ³n y genera sus jornadas.</span>
+              <strong>Segunda fase · ReGrupos</strong>
+              <span>Forma los ReGrupos desde la clasificación y genera sus jornadas.</span>
             </div>
             <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={prepararPartidosRegrupos}>
-              {generandoGrupos ? 'Preparandoâ€¦' : partidosFaseActiva.length > 0 ? 'Rehacer ReGrupos' : 'Generar ReGrupos'}
+              {generandoGrupos ? 'Preparando…' : partidosFaseActiva.length > 0 ? 'Rehacer ReGrupos' : 'Generar ReGrupos'}
             </button>
           </section>
         )}
@@ -657,7 +657,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         </div>
 
         {cargando && (
-          <p className="estado">Cargando partidosâ€¦</p>
+          <p className="estado">Cargando partidos…</p>
         )}
 
         {error && (
@@ -686,7 +686,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               >
                 <div className="partido-cabecera-campeonato">
                   <span>
-                    {tituloFase(partido)} Â· {partido.id_partido}
+                    {tituloFase(partido)} · {partido.id_partido}
                   </span>
                   <b className={`badge-partido ${partido.estado}`}>
                     {partido.estado === 'jugado'
@@ -792,7 +792,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                                 }
                                 disabled={cedido}
                               />
-                              Ranking HistÃ³rico
+                              Ranking Histórico
                             </label>
                             <label>
                               <input
@@ -814,7 +814,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                   </div>
 
                   <div className="alta-sustituto">
-                    <strong>Â¿No aparece el sustituto?</strong>
+                    <strong>¿No aparece el sustituto?</strong>
                     <div>
                       <input
                         type="text"
@@ -833,14 +833,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                         onClick={(evento) => crearJugador(evento, partido)}
                       >
                         {guardando === `${partido.id_partido}-jugador`
-                          ? 'Dando de altaâ€¦'
+                          ? 'Dando de alta…'
                           : 'Dar de alta'}
                       </button>
                     </div>
                   </div>
 
                   <p className="ayuda-sustituciones">
-                    Si eliges â€œCedidoâ€, no computarÃ¡ individualmente para Ranking ni ISP.
+                    Si eliges “Cedido”, no computará individualmente para Ranking ni ISP.
                   </p>
                   <button
                     type="button"
@@ -849,7 +849,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                     onClick={(evento) => guardarSustituciones(evento, partido)}
                   >
                     {guardando === `${partido.id_partido}-sustituciones`
-                      ? 'Guardandoâ€¦'
+                      ? 'Guardando…'
                       : 'Guardar sustituciones'}
                   </button>
                 </details>
@@ -872,7 +872,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                             'juegos_equipo_1'
                           )}
                         />
-                        <b>â€“</b>
+                        <b>–</b>
                         <input
                           type="number"
                           inputMode="numeric"
@@ -903,7 +903,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                   </label>
 
                   <label>
-                    <span>DuraciÃ³n (min)</span>
+                    <span>Duración (min)</span>
                     <input
                       type="number"
                       min="1"
@@ -921,7 +921,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                         onClick={() => setPartidoAAnular(partido)}
                       >
                         {guardando === `anular-${partido.id_partido}`
-                          ? 'Anulandoâ€¦'
+                          ? 'Anulando…'
                           : 'Anular resultado'}
                       </button>
                     )}
@@ -931,7 +931,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                       disabled={Boolean(guardando)}
                     >
                       {guardando === partido.id_partido
-                        ? 'Guardandoâ€¦'
+                        ? 'Guardando…'
                         : 'Guardar'}
                     </button>
                   </div>
@@ -951,14 +951,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         {partidoAAnular && (
           <div className="modal-fondo" role="presentation" onMouseDown={() => setPartidoAAnular(null)}>
             <div className="modal-confirmacion modal-anular-resultado" role="dialog" aria-modal="true" aria-labelledby="titulo-anular-resultado" onMouseDown={(evento) => evento.stopPropagation()}>
-              <span className="icono-modal-anular">â†©</span>
-              <h3 id="titulo-anular-resultado">Â¿Anular este resultado?</h3>
+              <span className="icono-modal-anular">↩</span>
+              <h3 id="titulo-anular-resultado">¿Anular este resultado?</h3>
               <p><strong>{partidoAAnular.equipo_1}</strong> contra <strong>{partidoAAnular.equipo_2}</strong></p>
-              <p>El partido volverÃ¡ a Pendiente. Se borrarÃ¡n automÃ¡ticamente el marcador, la pista y la duraciÃ³n.</p>
-              <p className="nota-modal-anular">Las sustituciones se conservarÃ¡n.</p>
+              <p>El partido volverá a Pendiente. Se borrarán automáticamente el marcador, la pista y la duración.</p>
+              <p className="nota-modal-anular">Las sustituciones se conservarán.</p>
               <div className="modal-acciones">
                 <button type="button" className="boton boton-secundario" onClick={() => setPartidoAAnular(null)}>Cancelar</button>
-                <button type="button" className="boton boton-peligro" disabled={Boolean(guardando)} onClick={() => anularResultado(partidoAAnular)}>{guardando ? 'Anulandoâ€¦' : 'SÃ­, anular resultado'}</button>
+                <button type="button" className="boton boton-peligro" disabled={Boolean(guardando)} onClick={() => anularResultado(partidoAAnular)}>{guardando ? 'Anulando…' : 'Sí, anular resultado'}</button>
               </div>
             </div>
           </div>
@@ -967,9 +967,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         {previaGrupos && (
           <div className="modal-fondo" role="presentation" onMouseDown={() => setPreviaGrupos(null)}>
             <div className="modal-confirmacion modal-generar-grupos" role="dialog" aria-modal="true" aria-labelledby="titulo-generar-grupos" onMouseDown={(evento) => evento.stopPropagation()}>
-              <span className="icono-modal-grupos">ðŸŽ¾</span>
+              <span className="icono-modal-grupos">🎾</span>
               <h3 id="titulo-generar-grupos">Generar fase de grupos</h3>
-              <p>Se crearÃ¡n todos los enfrentamientos a una vuelta.</p>
+              <p>Se crearán todos los enfrentamientos a una vuelta.</p>
               <div className="resumen-generacion-grupos">
                 <div><small>Equipos</small><strong>{previaGrupos.equipos}</strong></div>
                 <div><small>Partidos</small><strong>{previaGrupos.partidos}</strong></div>
@@ -980,14 +980,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                 {(previaGrupos.grupos ?? []).map((grupo) => (
                   <div key={grupo.codigo}>
                     <strong>{grupo.nombre}</strong>
-                    <span>{grupo.equipos} equipos Â· {grupo.partidos} partidos Â· {grupo.jornadas} jornadas{grupo.hay_descansos ? ' Â· habrÃ¡ descansos' : ''}</span>
+                    <span>{grupo.equipos} equipos · {grupo.partidos} partidos · {grupo.jornadas} jornadas{grupo.hay_descansos ? ' · habrá descansos' : ''}</span>
                   </div>
                 ))}
               </div>
-              <p className="nota-modal-grupos">DespuÃ©s podrÃ¡s modificar manualmente la pista de cualquier partido.</p>
+              <p className="nota-modal-grupos">Después podrás modificar manualmente la pista de cualquier partido.</p>
               <div className="modal-acciones">
                 <button type="button" className="boton boton-secundario" disabled={generandoGrupos} onClick={() => setPreviaGrupos(null)}>Cancelar</button>
-                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosGrupos}>{generandoGrupos ? 'Generandoâ€¦' : 'Confirmar y generar'}</button>
+                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosGrupos}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
               </div>
             </div>
           </div>
@@ -996,9 +996,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         {previaRegrupos && (
           <div className="modal-fondo" role="presentation" onMouseDown={() => setPreviaRegrupos(null)}>
             <div className="modal-confirmacion modal-generar-grupos" role="dialog" aria-modal="true" aria-labelledby="titulo-generar-regrupos" onMouseDown={(evento) => evento.stopPropagation()}>
-              <span className="icono-modal-grupos">ðŸ”</span>
-              <h3 id="titulo-generar-regrupos">Generar segunda fase Â· ReGrupos</h3>
-              <p>{previaRegrupos.repetir_enfrentamientos ? 'Se jugarÃ¡ una liguilla completa.' : 'Los enfrentamientos previos se arrastrarÃ¡n y no se repetirÃ¡n.'}</p>
+              <span className="icono-modal-grupos">🔁</span>
+              <h3 id="titulo-generar-regrupos">Generar segunda fase · ReGrupos</h3>
+              <p>{previaRegrupos.repetir_enfrentamientos ? 'Se jugará una liguilla completa.' : 'Los enfrentamientos previos se arrastrarán y no se repetirán.'}</p>
               <div className="resumen-generacion-grupos">
                 <div><small>Equipos</small><strong>{previaRegrupos.equipos}</strong></div>
                 <div><small>Nuevos</small><strong>{previaRegrupos.partidos_nuevos}</strong></div>
@@ -1007,13 +1007,13 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               </div>
               <div className="lista-previa-grupos">
                 {(previaRegrupos.regrupos ?? []).map((grupo) => (
-                  <div key={grupo.codigo}><strong>{grupo.nombre}</strong><span>{(grupo.equipos ?? []).join(' Â· ')}</span></div>
+                  <div key={grupo.codigo}><strong>{grupo.nombre}</strong><span>{(grupo.equipos ?? []).join(' · ')}</span></div>
                 ))}
               </div>
-              <p className="nota-modal-grupos">La primera fase y sus resultados se conservarÃ¡n.</p>
+              <p className="nota-modal-grupos">La primera fase y sus resultados se conservarán.</p>
               <div className="modal-acciones">
                 <button type="button" className="boton boton-secundario" disabled={generandoGrupos} onClick={() => setPreviaRegrupos(null)}>Cancelar</button>
-                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosRegrupos}>{generandoGrupos ? 'Generandoâ€¦' : 'Confirmar y generar'}</button>
+                <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarPartidosRegrupos}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
               </div>
             </div>
           </div>
@@ -1022,4 +1022,3 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     </main>
   )
 }
-
