@@ -59,6 +59,9 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [previaRegrupos, setPreviaRegrupos] = useState(null)
   const [generandoGrupos, setGenerandoGrupos] = useState(false)
   const [mensajeGenerador, setMensajeGenerador] = useState(null)
+  const [previaBorradoFase, setPreviaBorradoFase] = useState(null)
+  const [confirmacionBorradoFase, setConfirmacionBorradoFase] = useState('')
+  const [borrandoFase, setBorrandoFase] = useState(false)
 
   useEffect(() => {
     window.sessionStorage.setItem(
@@ -505,6 +508,40 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(false)
   }
 
+  async function prepararBorradoFase() {
+    setBorrandoFase(true)
+    setMensajeGenerador(null)
+    const { data, error: errorPrevia } = await supabaseCampeonato.rpc(
+      'admin_previsualizar_borrado_fase',
+      { p_codigo: codigo, p_fase: faseActiva }
+    )
+    if (errorPrevia || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorPrevia?.message || data?.error || 'No se pudo preparar el borrado.' })
+    } else {
+      setConfirmacionBorradoFase('')
+      setPreviaBorradoFase(data)
+    }
+    setBorrandoFase(false)
+  }
+
+  async function borrarFaseCampeonato() {
+    if (!previaBorradoFase) return
+    setBorrandoFase(true)
+    const { data, error: errorBorrado } = await supabaseCampeonato.rpc(
+      'admin_borrar_fase_campeonato',
+      { p_codigo: codigo, p_fase: previaBorradoFase.fase_solicitada, p_confirmacion: confirmacionBorradoFase }
+    )
+    if (errorBorrado || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorBorrado?.message || data?.error || 'No se pudo borrar la fase.' })
+    } else {
+      setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos_borrados} partidos eliminados. Clasificaciones e ISP recalculados.` })
+      setPreviaBorradoFase(null)
+      setConfirmacionBorradoFase('')
+      await cargarPartidos(codigo)
+    }
+    setBorrandoFase(false)
+  }
+
   if (seccion === 'campeonatos' || !codigo) {
     return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
   }
@@ -710,6 +747,11 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               placeholder="Buscar equipo, grupo o partido"
               aria-label="Buscar partido"
             />
+            {partidosFaseActiva.length > 0 && (
+              <button type="button" className="boton boton-peligro" disabled={borrandoFase} onClick={prepararBorradoFase}>
+                {borrandoFase ? 'Preparando…' : 'Borrar fase'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1007,6 +1049,37 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             )
           })}
         </div>
+
+
+        {previaBorradoFase && (
+          <div className="modal-fondo" role="presentation" onMouseDown={() => !borrandoFase && setPreviaBorradoFase(null)}>
+            <div className="modal-confirmacion modal-anular-resultado" role="dialog" aria-modal="true" aria-labelledby="titulo-borrar-fase" onMouseDown={(evento) => evento.stopPropagation()}>
+              <span className="icono-modal-anular">⚠️</span>
+              <h3 id="titulo-borrar-fase">¿Borrar esta fase y las dependientes?</h3>
+              {previaBorradoFase.campeonato_cerrado ? (
+                <p className="mensaje-partido error">Este campeonato está cerrado. Debes reabrirlo antes de borrar una fase.</p>
+              ) : (
+                <>
+                  <p>Se eliminarán <strong>{previaBorradoFase.partidos} partidos</strong>, incluidos <strong>{previaBorradoFase.partidos_jugados} resultados</strong>.</p>
+                  <p>Fases afectadas: <strong>{(previaBorradoFase.fases_afectadas ?? []).join(', ')}</strong>.</p>
+                  <p className="nota-modal-anular">También se borrarán sets y cálculos provisionales asociados. El ISP se recalculará automáticamente.</p>
+                  <label className="campo">
+                    <span>Escribe exactamente: <strong>{previaBorradoFase.confirmacion}</strong></span>
+                    <input type="text" value={confirmacionBorradoFase} onChange={(evento) => setConfirmacionBorradoFase(evento.target.value)} autoComplete="off" />
+                  </label>
+                </>
+              )}
+              <div className="modal-acciones">
+                <button type="button" className="boton boton-secundario" disabled={borrandoFase} onClick={() => setPreviaBorradoFase(null)}>Cancelar</button>
+                {!previaBorradoFase.campeonato_cerrado && (
+                  <button type="button" className="boton boton-peligro" disabled={borrandoFase || confirmacionBorradoFase !== previaBorradoFase.confirmacion} onClick={borrarFaseCampeonato}>
+                    {borrandoFase ? 'Borrando…' : 'Borrar definitivamente'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {partidoAAnular && (
           <div className="modal-fondo" role="presentation" onMouseDown={() => setPartidoAAnular(null)}>
