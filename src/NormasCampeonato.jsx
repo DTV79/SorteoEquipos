@@ -6,9 +6,7 @@ const TIPOS_ELEMENTO = [
   'Título',
   'Subtítulo',
   'Párrafo',
-  'Descripción',
   'Viñeta',
-  'Viñeta dinámica',
   'Paso',
   'Criterio',
   'Etiqueta',
@@ -16,8 +14,22 @@ const TIPOS_ELEMENTO = [
   'Destacado',
   'Nota',
   'Ejemplo',
-  'Mensaje',
 ]
+
+const EQUIVALENCIAS_TIPO = {
+  'Título dinámico': 'Título',
+  'Subtítulo dinámico': 'Subtítulo',
+  Descripción: 'Párrafo',
+  'Viñeta dinámica': 'Viñeta',
+  Mensaje: 'Destacado',
+}
+
+function normalizarElemento(elemento) {
+  return {
+    ...elemento,
+    tipo: EQUIVALENCIAS_TIPO[elemento.tipo] || elemento.tipo,
+  }
+}
 
 function numero(valor, respaldo = 0) {
   const convertido = Number(valor)
@@ -70,7 +82,9 @@ export default function NormasCampeonato({
 
     setContenido({
       ...data,
-      elementos: ordenarElementos(data.elementos),
+      elementos: ordenarElementos(
+        data.elementos.map(normalizarElemento)
+      ),
       puntuacion: Array.isArray(data.puntuacion) ? data.puntuacion : [],
     })
     setCargando(false)
@@ -204,7 +218,9 @@ export default function NormasCampeonato({
       ...contenido,
       version: numero(contenido.version, 0) + 1,
       generado: new Date().toISOString(),
-      elementos: ordenarElementos(contenido.elementos),
+      elementos: ordenarElementos(
+        contenido.elementos.map(normalizarElemento)
+      ),
     }
 
     const { data, error: errorGuardado } = await supabaseCampeonato.rpc(
@@ -341,7 +357,12 @@ export default function NormasCampeonato({
                       <select
                         value={elemento.tipo || 'Párrafo'}
                         onChange={(evento) => actualizarElemento(elemento.id, 'tipo', evento.target.value)}
+                        disabled={!TIPOS_ELEMENTO.includes(elemento.tipo)}
+                        title={!TIPOS_ELEMENTO.includes(elemento.tipo) ? 'Tipo técnico protegido' : undefined}
                       >
+                        {!TIPOS_ELEMENTO.includes(elemento.tipo) ? (
+                          <option value={elemento.tipo}>{elemento.tipo} · técnico</option>
+                        ) : null}
                         {TIPOS_ELEMENTO.map((tipo) => <option key={tipo}>{tipo}</option>)}
                       </select>
                     </label>
