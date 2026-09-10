@@ -44,6 +44,42 @@ function ordenarElementos(elementos) {
   ))
 }
 
+const SISTEMAS_PUNTUACION_PREDETERMINADOS = {
+  Normal: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 0 },
+  Equitativo: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 2 },
+  Competitivo: { ganador_3_0: 3, ganador_2_1: 2, perdedor_1_2: 1, perdedor_0_3: 0, descanso: 2 },
+}
+
+function crearReglasPuntuacion(configuracion = {}) {
+  return Object.entries(SISTEMAS_PUNTUACION_PREDETERMINADOS).flatMap(([sistema, valoresIniciales]) => {
+    const valores = {
+      ...valoresIniciales,
+      ...(configuracion.sistemas_puntuacion?.[sistema] || {}),
+    }
+
+    return [
+      {
+        sistema,
+        situacion: 'Victoria sin ceder sets',
+        ganador: String(valores.ganador_3_0),
+        perdedor: String(valores.perdedor_0_3),
+      },
+      {
+        sistema,
+        situacion: 'Victoria cediendo algún set',
+        ganador: String(valores.ganador_2_1),
+        perdedor: String(valores.perdedor_1_2),
+      },
+      {
+        sistema,
+        situacion: 'Descanso programado',
+        ganador: String(valores.descanso),
+        perdedor: '—',
+      },
+    ]
+  })
+}
+
 export default function NormasCampeonato({
   codigo,
   onVolver,
@@ -63,13 +99,20 @@ export default function NormasCampeonato({
     setError('')
     setMensaje('')
 
-    const { data, error: errorCarga } = await supabaseCampeonato.rpc(
-      'web_normas',
-      { p_codigo: codigo }
-    )
+    const [respuestaNormas, respuestaConfiguracion] = await Promise.all([
+      supabaseCampeonato.rpc('web_normas', { p_codigo: codigo }),
+      supabaseCampeonato.rpc('admin_obtener_configuracion', { p_codigo: codigo }),
+    ])
+    const { data, error: errorCarga } = respuestaNormas
+    const configuracion = respuestaConfiguracion.data?.configuracion || {}
 
-    if (errorCarga) {
-      setError(errorCarga.message)
+    if (errorCarga || respuestaConfiguracion.error || respuestaConfiguracion.data?.ok !== true) {
+      setError(
+        errorCarga?.message ||
+        respuestaConfiguracion.error?.message ||
+        respuestaConfiguracion.data?.error ||
+        'No se pudo cargar la configuración de puntuación.'
+      )
       setCargando(false)
       return
     }
@@ -85,7 +128,8 @@ export default function NormasCampeonato({
       elementos: ordenarElementos(
         data.elementos.map(normalizarElemento)
       ),
-      puntuacion: Array.isArray(data.puntuacion) ? data.puntuacion : [],
+      puntuacion: crearReglasPuntuacion(configuracion),
+      configuracionPuntuacion: configuracion,
     })
     setCargando(false)
   }, [codigo])
@@ -177,50 +221,20 @@ export default function NormasCampeonato({
     }))
   }
 
-  function actualizarPuntuacion(indice, campo, valor) {
-    setContenido((actual) => ({
-      ...actual,
-      puntuacion: actual.puntuacion.map((fila, posicion) => (
-        posicion === indice ? { ...fila, [campo]: valor } : fila
-      )),
-    }))
-    setMensaje('')
-  }
-
-  function anadirPuntuacion() {
-    setContenido((actual) => ({
-      ...actual,
-      puntuacion: [
-        ...actual.puntuacion,
-        {
-          sistema: 'Competitivo',
-          situacion: 'Nueva situación',
-          ganador: '0',
-          perdedor: '0',
-        },
-      ],
-    }))
-  }
-
-  function eliminarPuntuacion(indice) {
-    setContenido((actual) => ({
-      ...actual,
-      puntuacion: actual.puntuacion.filter((_, posicion) => posicion !== indice),
-    }))
-  }
-
   async function guardar() {
     setGuardando(true)
     setError('')
     setMensaje('')
 
+    const { configuracionPuntuacion, ...contenidoPublicable } = contenido
     const siguiente = {
-      ...contenido,
+      ...contenidoPublicable,
       version: numero(contenido.version, 0) + 1,
       generado: new Date().toISOString(),
       elementos: ordenarElementos(
         contenido.elementos.map(normalizarElemento)
       ),
+      puntuacion: crearReglasPuntuacion(contenido.configuracionPuntuacion),
     }
 
     const { data, error: errorGuardado } = await supabaseCampeonato.rpc(
@@ -241,7 +255,7 @@ export default function NormasCampeonato({
       return
     }
 
-    setContenido(siguiente)
+    setContenido({ ...siguiente, configuracionPuntuacion })
     setMensaje(`Reglamento guardado: ${data.elementos} elementos publicados.`)
     setGuardando(false)
   }
@@ -410,10 +424,8 @@ export default function NormasCampeonato({
                 <div>
                   <p className="etiqueta">PUNTUACIÓN</p>
                   <h3>Reglas por sistema</h3>
+                  <p>Datos obtenidos automáticamente de la configuración del campeonato.</p>
                 </div>
-                <button type="button" className="boton boton-secundario" onClick={anadirPuntuacion}>
-                  + Añadir regla
-                </button>
               </div>
 
               <div className="tabla-puntuacion-admin">
@@ -422,19 +434,9 @@ export default function NormasCampeonato({
                     {['sistema', 'situacion', 'ganador', 'perdedor'].map((campo) => (
                       <label key={campo}>
                         <span>{campo === 'situacion' ? 'Situación' : campo[0].toUpperCase() + campo.slice(1)}</span>
-                        <input
-                          value={fila[campo] ?? ''}
-                          onChange={(evento) => actualizarPuntuacion(indice, campo, evento.target.value)}
-                        />
+                        <output>{fila[campo] ?? ''}</output>
                       </label>
                     ))}
-                    <button
-                      type="button"
-                      className="boton-eliminar-norma"
-                      onClick={() => eliminarPuntuacion(indice)}
-                    >
-                      Eliminar
-                    </button>
                   </div>
                 ))}
               </div>
