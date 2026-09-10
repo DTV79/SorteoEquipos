@@ -147,6 +147,7 @@ export default function NormasCampeonato({
           orden_elemento:
             actual.elementos.filter((item) => item.seccion === seccion).length + 1,
           icono: '',
+          visible: true,
           texto: 'Nueva norma',
         },
       ],
@@ -297,17 +298,34 @@ export default function NormasCampeonato({
 
             <section className="lista-normas-admin" aria-label="Elementos del reglamento">
               {elementosVisibles.map((elemento) => (
-                <article className="elemento-norma-admin" key={elemento.id}>
+                <article
+                  className={`elemento-norma-admin ${elemento.visible === false ? 'norma-oculta-admin' : ''}`}
+                  key={elemento.id}
+                >
                   <div className="cabecera-elemento-norma">
                     <strong>{elemento.id}</strong>
-                    <button
-                      type="button"
-                      className="boton-eliminar-norma"
-                      onClick={() => eliminarElemento(elemento.id)}
-                      aria-label={`Eliminar ${elemento.id}`}
-                    >
-                      Eliminar
-                    </button>
+                    <div className="acciones-elemento-norma">
+                      <button
+                        type="button"
+                        className={`boton-visibilidad-norma ${elemento.visible === false ? 'oculta' : 'visible'}`}
+                        onClick={() => actualizarElemento(
+                          elemento.id,
+                          'visible',
+                          elemento.visible === false
+                        )}
+                        aria-pressed={elemento.visible !== false}
+                      >
+                        {elemento.visible === false ? '🙈 Oculta' : '👁 Visible'}
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-eliminar-norma"
+                        onClick={() => eliminarElemento(elemento.id)}
+                        aria-label={`Eliminar ${elemento.id}`}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
 
                   <div className="campos-elemento-norma">
