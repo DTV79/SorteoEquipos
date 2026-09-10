@@ -6,6 +6,7 @@ import SelectorCampeonatos from './SelectorCampeonatos'
 import EquiposCampeonato from './EquiposCampeonato'
 import ClasificacionCampeonato from './ClasificacionCampeonato'
 import FasesCrucesCampeonato from './FasesCrucesCampeonato'
+import CierreCampeonato from './CierreCampeonato'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -43,6 +44,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [jugadores, setJugadores] = useState([])
   const [filtro, setFiltro] = useState('')
   const [filtroJornada, setFiltroJornada] = useState('todas')
+  const [filtroRonda, setFiltroRonda] = useState('todas')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState('')
@@ -50,6 +52,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [puntosMaximos, setPuntosMaximos] = useState(15)
   const [estructuraPrimeraFase, setEstructuraPrimeraFase] = useState('Grupos')
   const [hayRegrupos, setHayRegrupos] = useState(false)
+  const [hayPalas, setHayPalas] = useState(false)
   const [faseActiva, setFaseActiva] = useState('GR')
   const [partidoAAnular, setPartidoAAnular] = useState(null)
   const [previaGrupos, setPreviaGrupos] = useState(null)
@@ -123,6 +126,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
         setEstructuraPrimeraFase(configuracion.estructura_primera_fase || 'Grupos')
         setHayRegrupos(Boolean(configuracion.hay_regrupos))
+        setHayPalas(Boolean(configuracion.hay_copa_palas_playa))
       })
 
     return () => {
@@ -136,6 +140,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     return partidos.filter((partido) => {
       const coincideFase = partido.codigo_fase === faseActiva
       const coincideJornada = filtroJornada === 'todas' || String(partido.jornada) === filtroJornada
+      const coincideRonda = filtroRonda === 'todas' || partido.codigo_ronda === filtroRonda
       const coincideTexto = !texto || [
         partido.id_partido,
         partido.equipo_1,
@@ -148,9 +153,13 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         .join(' ')
         .toLowerCase()
         .includes(texto)
-      return coincideFase && coincideJornada && coincideTexto
+      return coincideFase && coincideJornada && coincideRonda && coincideTexto
+    }).sort((a, b) => {
+      if (!['MM', 'PP'].includes(faseActiva)) return 0
+      const ordenRondas = { CUA: 1, SEM: 2, FIN: 3 }
+      return (ordenRondas[a.codigo_ronda] ?? 99) - (ordenRondas[b.codigo_ronda] ?? 99) || Number(a.orden ?? 0) - Number(b.orden ?? 0)
     })
-  }, [faseActiva, filtro, filtroJornada, partidos])
+  }, [faseActiva, filtro, filtroJornada, filtroRonda, partidos])
 
   const partidosFaseActiva = useMemo(
     () => partidos.filter((partido) => partido.codigo_fase === faseActiva),
@@ -161,6 +170,11 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     [...new Set(partidosFaseActiva.map((partido) => Number(partido.jornada)).filter(Number.isFinite))]
       .sort((a, b) => a - b)
   ), [partidosFaseActiva])
+
+  const rondasDisponibles = useMemo(() => {
+    const existentes = new Set(partidosFaseActiva.map((partido) => partido.codigo_ronda).filter(Boolean))
+    return ['CUA', 'SEM', 'FIN'].filter((ronda) => existentes.has(ronda))
+  }, [partidosFaseActiva])
 
   async function guardarResultado(evento, partido) {
     evento.preventDefault()
@@ -243,6 +257,15 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         texto: 'Resultado guardado.',
       },
     }))
+    if (['MM', 'PP'].includes(partido.codigo_fase)) {
+      const { error: errorAvance } = await supabaseCampeonato.rpc(
+        'admin_actualizar_cuadro_especial',
+        { p_codigo: codigo }
+      )
+      if (errorAvance) {
+        setMensajes((actual) => ({ ...actual, [partido.id_partido]: { tipo: 'error', texto: `Resultado guardado, pero no se pudo avanzar el cuadro: ${errorAvance.message}` } }))
+      }
+    }
     setGuardando('')
     await cargarPartidos(codigo)
   }
@@ -547,6 +570,17 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     )
   }
 
+  if (seccion === 'cierre') {
+    return (
+      <CierreCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
   if (seccion === 'menu') {
     return (
       <main className="app app-admin app-campeonato">
@@ -585,6 +619,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <span>🏆</span><strong>Fases y cruces</strong>
               <small>Cuadro principal y Copa Palas de Playa</small>
             </button>
+            <button type="button" className="modulo-campeonato activo modulo-cierre-campeonato" onClick={() => setSeccion('cierre')}>
+              <span>🏁</span><strong>Cierre e históricos</strong>
+              <small>Estadísticas, Ranking Histórico, ISP y correcciones</small>
+            </button>
           </div>
         </section>
       </main>
@@ -610,10 +648,12 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </div>
         </header>
 
-        {hayRegrupos && (
+        {(hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
           <div className="selector-fase-campeonato" role="group" aria-label="Fase de los partidos">
-            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
-            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
+            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
+            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
+            {partidos.some((partido) => partido.codigo_fase === 'MM') && <button type="button" className={faseActiva === 'MM' ? 'activo' : ''} onClick={() => { setFaseActiva('MM'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Eliminatorias</button>}
+            {hayPalas && partidos.some((partido) => partido.codigo_fase === 'PP') && <button type="button" className={faseActiva === 'PP' ? 'activo' : ''} onClick={() => { setFaseActiva('PP'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Palas de Playa</button>}
           </div>
         )}
 
@@ -650,15 +690,19 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
         <div className="barra-campeonato">
           <div>
-            <strong>{partidosFaseActiva.length} partidos {faseActiva === 'RG' ? 'de ReGrupos' : 'de grupos'}</strong>
+            <strong>{partidosFaseActiva.length} partidos {({ GR: 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
           <div className="filtros-partidos-campeonato">
-            <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
+            {['GR', 'RG'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
               <option value="todas">Todas las jornadas</option>
               {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>Jornada {jornada}</option>)}
-            </select>
+            </select>}
+            {['MM', 'PP'].includes(faseActiva) && <select value={filtroRonda} onChange={(evento) => setFiltroRonda(evento.target.value)} aria-label="Filtrar por ronda">
+              <option value="todas">Todos los cruces</option>
+              {rondasDisponibles.map((ronda) => <option key={ronda} value={ronda}>{({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[ronda]}</option>)}
+            </select>}
             <input
               type="search"
               value={filtro}
@@ -686,11 +730,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         <div className="lista-partidos-campeonato">
           {partidosVisibles.map((partido, indice) => {
             const mensaje = mensajes[partido.id_partido]
-            const abreJornada = indice === 0 || partidosVisibles[indice - 1]?.jornada !== partido.jornada
+            const claveRonda = ['MM', 'PP'].includes(faseActiva) ? partido.codigo_ronda : partido.jornada
+            const claveRondaAnterior = ['MM', 'PP'].includes(faseActiva) ? partidosVisibles[indice - 1]?.codigo_ronda : partidosVisibles[indice - 1]?.jornada
+            const abreJornada = indice === 0 || claveRondaAnterior !== claveRonda
+            const nombreRonda = ({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
 
             return (
               <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
-              {abreJornada && <h3 className="separador-jornada">Jornada {partido.jornada}</h3>}
+              {abreJornada && <h3 className="separador-jornada">{['MM', 'PP'].includes(faseActiva) ? nombreRonda : `Jornada ${partido.jornada}`}</h3>}
               <form
                 className="tarjeta-partido-campeonato"
                 onSubmit={(evento) =>
