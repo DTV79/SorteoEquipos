@@ -7,6 +7,18 @@ const numero = (valor, decimales = 0) => Number(valor ?? 0).toLocaleString('es-E
   maximumFractionDigits: decimales,
 })
 
+const BAREMO_RECOMENDADO = {
+  puntos_participacion: 50,
+  puntos_campeon: 600,
+  puntos_subcampeon: 450,
+  puntos_semifinalista: 350,
+  puntos_cuartos: 250,
+  puntos_octavos: 150,
+  max_bonus_victorias: 100,
+  max_bonus_sets: 50,
+  maximo_puntos_edicion: 800,
+}
+
 function Movimiento({ valor }) {
   const cambio = Number(valor ?? 0)
   if (!cambio) return <span className="movimiento neutro">—</span>
@@ -23,18 +35,27 @@ export default function CierreCampeonato({ codigo, onVolver, onResultados, onPan
   const [confirmarCierre, setConfirmarCierre] = useState(false)
   const [confirmarReapertura, setConfirmarReapertura] = useState(false)
   const [motivo, setMotivo] = useState('')
+  const [baremo, setBaremo] = useState(BAREMO_RECOMENDADO)
+  const [baremoModificado, setBaremoModificado] = useState(false)
+  const [guardandoBaremo, setGuardandoBaremo] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     setError('')
-    const { data, error: errorConsulta } = await supabaseCampeonato.rpc(
-      'admin_resumen_historicos',
-      { p_codigo: codigo }
-    )
-    if (errorConsulta || data?.ok !== true) {
-      setError(errorConsulta?.message || data?.error || 'No se pudo cargar el cierre del campeonato.')
+    const [respuestaResumen, respuestaBaremo] = await Promise.all([
+      supabaseCampeonato.rpc('admin_resumen_historicos', { p_codigo: codigo }),
+      supabaseCampeonato.rpc('admin_obtener_baremo_ranking', { p_codigo: codigo }),
+    ])
+    const data = respuestaResumen.data
+    const datosBaremo = respuestaBaremo.data
+    if (respuestaResumen.error || data?.ok !== true) {
+      setError(respuestaResumen.error?.message || data?.error || 'No se pudo cargar el cierre del campeonato.')
+    } else if (respuestaBaremo.error || datosBaremo?.ok !== true) {
+      setError(respuestaBaremo.error?.message || datosBaremo?.error || 'No se pudo cargar el baremo del Ranking Histórico.')
     } else {
       setDatos(data)
+      setBaremo({ ...BAREMO_RECOMENDADO, ...datosBaremo.baremo })
+      setBaremoModificado(false)
     }
     setCargando(false)
   }, [codigo])
@@ -74,6 +95,30 @@ export default function CierreCampeonato({ codigo, onVolver, onResultados, onPan
       await cargar()
     }
     setProcesando(false)
+  }
+
+  function cambiarBaremo(campo, valor) {
+    const valorNumerico = Math.max(0, Number.parseInt(valor || '0', 10) || 0)
+    setBaremo((actual) => ({ ...actual, [campo]: valorNumerico }))
+    setBaremoModificado(true)
+  }
+
+  async function guardarBaremo() {
+    setGuardandoBaremo(true)
+    setError('')
+    setMensaje('')
+    const { data, error: errorGuardado } = await supabaseCampeonato.rpc(
+      'admin_guardar_baremo_ranking',
+      { p_codigo: codigo, p_baremo: baremo }
+    )
+    if (errorGuardado || data?.ok !== true) {
+      setError(errorGuardado?.message || data?.error || 'No se pudo guardar el baremo del Ranking Histórico.')
+    } else {
+      setBaremo({ ...BAREMO_RECOMENDADO, ...data.baremo })
+      setBaremoModificado(false)
+      setMensaje('Baremo del Ranking Histórico guardado.')
+    }
+    setGuardandoBaremo(false)
   }
 
   async function reabrirCampeonato() {
@@ -135,7 +180,7 @@ export default function CierreCampeonato({ codigo, onVolver, onResultados, onPan
                 <button type="button" className="boton boton-secundario" disabled={procesando} onClick={cargar}>↻ Actualizar</button>
                 {cerrado
                   ? <button type="button" className="boton boton-peligro" disabled={procesando} onClick={() => setConfirmarReapertura(true)}>Reabrir para corregir</button>
-                  : <button type="button" className="boton boton-principal" disabled={!previa.ok || procesando} onClick={() => setConfirmarCierre(true)}>Cerrar campeonato</button>}
+                  : <button type="button" className="boton boton-principal" disabled={!previa.ok || procesando || baremoModificado} onClick={() => setConfirmarCierre(true)}>Cerrar campeonato</button>}
               </div>
             </section>
 
@@ -145,6 +190,38 @@ export default function CierreCampeonato({ codigo, onVolver, onResultados, onPan
               <div className={previa.final_principal_jugada ? '' : 'pendiente'}><small>Final principal</small><strong>{previa.final_principal_jugada ? 'Jugado' : 'Pendiente'}</strong></div>
               <div className={Number(previa.partidos_sin_ganador) ? 'pendiente' : ''}><small>Sin ganador</small><strong>{previa.partidos_sin_ganador ?? 0}</strong></div>
             </div>
+
+            <section className={`baremo-ranking ${cerrado ? 'bloqueado' : ''}`}>
+              <div className="cabecera-baremo">
+                <div>
+                  <small>RANKING HISTÓRICO</small>
+                  <h3>Baremo de esta edición</h3>
+                  <p>Se aplicará al cerrar el campeonato. El máximo es un tope real, no una suma automática.</p>
+                </div>
+                <span>{cerrado ? '🔒 Cerrado' : 'Editable'}</span>
+              </div>
+              <div className="campos-baremo">
+                {[
+                  ['puntos_participacion', 'Participación'],
+                  ['puntos_campeon', 'Campeón'],
+                  ['puntos_subcampeon', 'Subcampeón'],
+                  ['puntos_semifinalista', 'Semifinalista'],
+                  ['puntos_cuartos', 'Cuartos'],
+                  ['puntos_octavos', 'Octavos'],
+                  ['max_bonus_victorias', 'Bonus máximo por victorias'],
+                  ['max_bonus_sets', 'Bonus máximo por sets'],
+                  ['maximo_puntos_edicion', 'Máximo por edición'],
+                ].map(([campo, etiqueta]) => (
+                  <label key={campo}>{etiqueta}<input type="number" min={campo === 'maximo_puntos_edicion' ? 1 : 0} step="1" value={baremo[campo]} disabled={cerrado || guardandoBaremo} onChange={(evento) => cambiarBaremo(campo, evento.target.value)} /></label>
+                ))}
+              </div>
+              <p className="nota-baremo">ℹ️ Los partidos de Palas de Playa no computan en el Ranking Histórico ni en el ISP oficial.</p>
+              {!cerrado && <div className="acciones-baremo">
+                <button type="button" className="boton boton-secundario" disabled={guardandoBaremo} onClick={() => { setBaremo(BAREMO_RECOMENDADO); setBaremoModificado(true) }}>Restaurar recomendados</button>
+                <button type="button" className="boton boton-principal" disabled={!baremoModificado || guardandoBaremo || baremo.maximo_puntos_edicion < 1} onClick={guardarBaremo}>{guardandoBaremo ? 'Guardando…' : 'Guardar baremo'}</button>
+              </div>}
+              {baremoModificado && <p className="aviso-baremo">Guarda el baremo antes de cerrar el campeonato.</p>}
+            </section>
 
             <nav className="selector-historicos" aria-label="Datos históricos">
               <button type="button" className={vista === 'edicion' ? 'activo' : ''} onClick={() => setVista('edicion')}>Esta edición</button>
