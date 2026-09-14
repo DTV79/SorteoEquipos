@@ -357,7 +357,7 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
       {musicaUrl && <audio ref={audioRef} src={musicaUrl} loop preload="auto" />}
       <div className="fondo-presentacion-equipos" aria-hidden="true"><span /><span /><span /></div>
       <header className="cabecera-presentacion-equipos">
-        <div><small>PRESENTACIÓN OFICIAL</small><h1>{datos.sorteo}</h1></div>
+        <h1><span>PRESENTACIÓN OFICIAL · </span>{datos.sorteo}</h1>
         <strong>Equipo {indiceEquipo + 1} de {equipos.length}</strong>
       </header>
       <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${control?.presentacion_equipos_version ?? 0}`}>
