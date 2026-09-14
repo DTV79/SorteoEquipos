@@ -124,6 +124,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [mensaje, setMensaje] = useState(null)
   const [accionMantenimiento, setAccionMantenimiento] = useState(null)
   const [resumenMantenimiento, setResumenMantenimiento] = useState(null)
+  const [errorMantenimiento, setErrorMantenimiento] = useState('')
   const [confirmacionMantenimiento, setConfirmacionMantenimiento] = useState('')
   const [procesandoMantenimiento, setProcesandoMantenimiento] = useState(false)
   const [mostrarPuntuaciones, setMostrarPuntuaciones] = useState(false)
@@ -212,14 +213,14 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   async function abrirMantenimiento(tipo) {
     setAccionMantenimiento(tipo)
     setResumenMantenimiento(null)
+    setErrorMantenimiento('')
     setConfirmacionMantenimiento('')
     const { data, error } = await supabaseCampeonato.rpc(
       'admin_resumen_mantenimiento_campeonato',
       { p_codigo: codigo }
     )
     if (error || data?.ok !== true) {
-      setAccionMantenimiento(null)
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo revisar el campeonato.' })
+      setErrorMantenimiento(error?.message || data?.error || 'No se pudo revisar el campeonato.')
       return
     }
     setResumenMantenimiento(data)
@@ -228,6 +229,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   async function ejecutarMantenimiento() {
     if (confirmacionMantenimiento !== codigo) return
     setProcesandoMantenimiento(true)
+    setErrorMantenimiento('')
     const funcion = accionMantenimiento === 'vaciar'
       ? 'admin_vaciar_datos_deportivos'
       : 'admin_eliminar_campeonato_definitivamente'
@@ -237,7 +239,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     })
     setProcesandoMantenimiento(false)
     if (error || data?.ok !== true) {
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo completar la operación.' })
+      setErrorMantenimiento(error?.message || data?.error || 'No se pudo completar la operación.')
       return
     }
     setAccionMantenimiento(null)
@@ -440,7 +442,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-mantenimiento-campeonato" onMouseDown={(evento) => evento.stopPropagation()}>
             <span className="icono-peligro">!</span>
             <h3 id="titulo-mantenimiento-campeonato">{accionMantenimiento === 'vaciar' ? 'Vaciar datos deportivos' : 'Eliminar campeonato definitivamente'}</h3>
-            {!resumenMantenimiento ? <p>Revisando los datos relacionados…</p> : <>
+            {errorMantenimiento ? <p className="error-modal-mantenimiento">{errorMantenimiento}</p> : !resumenMantenimiento ? <p>Revisando los datos relacionados…</p> : <>
               <p>{accionMantenimiento === 'vaciar' ? `Se conservarán la configuración y las ${resumenMantenimiento.inscripciones} inscripciones.` : 'Esta edición desaparecerá completamente y no podrá recuperarse.'}</p>
               <dl className="resumen-borrado">
                 <div><dt>Equipos</dt><dd>{resumenMantenimiento.equipos}</dd></div>
