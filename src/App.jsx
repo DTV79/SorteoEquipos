@@ -314,168 +314,78 @@ function EditorRecorteFoto({ archivo, onCancelar, onGuardar }) {
   )
 }
 
-function PresentacionEquiposPublica({ sorteoId, ejecucionId }) {
-  const [datos, setDatos] = useState(null)
-  const [indiceEquipo, setIndiceEquipo] = useState(0)
-  const [automatico, setAutomatico] = useState(true)
+function PresentacionEquiposPublica({ datos, control }) {
   const [sonidoActivo, setSonidoActivo] = useState(false)
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState('')
-  const [animacion, setAnimacion] = useState(0)
+  const [reloj, setReloj] = useState(Date.now())
   const audioRef = useRef(null)
-
-  useEffect(() => {
-    let cancelado = false
-
-    async function cargar() {
-      const { data, error: errorCarga } = await supabase.rpc(
-        'obtener_presentacion_publica_v3',
-        { p_sorteo_id: sorteoId, p_ejecucion_id: ejecucionId }
-      )
-
-      if (cancelado) return
-
-      if (errorCarga) {
-        setError(errorCarga.message)
-      } else if (!data || String(data.estado).toLowerCase() !== 'finalizada') {
-        setError('La presentación de equipos estará disponible cuando termine el sorteo.')
-      } else {
-        setDatos(data)
-      }
-      setCargando(false)
-    }
-
-    void cargar()
-    return () => { cancelado = true }
-  }, [sorteoId, ejecucionId])
-
   const equipos = datos?.equipos ?? []
-  const duracion = limitarNumero(
-    datos?.presentacion_equipos_duracion_ms,
-    3000,
-    60000,
-    8000
-  )
+  const duracion = limitarNumero(datos?.presentacion_equipos_duracion_ms, 3000, 60000, 8000)
 
   useEffect(() => {
-    if (!automatico || equipos.length < 2 || indiceEquipo >= equipos.length - 1) {
-      return undefined
-    }
+    if (!control?.presentacion_equipos_automatica) return undefined
+    const temporizador = window.setInterval(() => setReloj(Date.now()), 250)
+    return () => window.clearInterval(temporizador)
+  }, [control?.presentacion_equipos_automatica])
 
-    const temporizador = window.setTimeout(() => {
-      setIndiceEquipo((actual) => Math.min(actual + 1, equipos.length - 1))
-      setAnimacion((actual) => actual + 1)
-    }, duracion)
-
-    return () => window.clearTimeout(temporizador)
-  }, [automatico, equipos.length, indiceEquipo, duracion])
+  const indiceBase = Number(control?.presentacion_equipos_indice ?? 0)
+  const inicioAutomatico = control?.presentacion_equipos_iniciada_en
+    ? new Date(control.presentacion_equipos_iniciada_en).getTime()
+    : 0
+  const avanceAutomatico = control?.presentacion_equipos_automatica && inicioAutomatico
+    ? Math.max(0, Math.floor((reloj - inicioAutomatico) / duracion))
+    : 0
+  const indiceEquipo = Math.max(0, Math.min(equipos.length - 1, indiceBase + avanceAutomatico))
 
   useEffect(() => {
     if (!sonidoActivo || !audioRef.current) return
-    audioRef.current.volume = limitarNumero(
-      datos?.presentacion_equipos_musica_volumen,
-      0,
-      100,
-      65
-    ) / 100
+    audioRef.current.volume = limitarNumero(datos?.presentacion_equipos_musica_volumen, 0, 100, 65) / 100
     audioRef.current.play().catch(() => {})
   }, [sonidoActivo, datos])
 
-  function moverEquipo(direccion) {
-    setAutomatico(false)
-    setIndiceEquipo((actual) =>
-      Math.max(0, Math.min(equipos.length - 1, actual + direccion))
-    )
-    setAnimacion((actual) => actual + 1)
-  }
-
-  function activarSonido() {
-    setSonidoActivo(true)
-    audioRef.current?.play().catch(() => {})
-  }
-
-  if (cargando) {
-    return <main className="presentacion-equipos-tv estado-presentacion-equipos">Preparando presentación…</main>
-  }
-
-  if (error || equipos.length === 0) {
-    return <main className="presentacion-equipos-tv estado-presentacion-equipos">{error || 'No hay equipos para presentar.'}</main>
+  if (equipos.length === 0) {
+    return <main className="presentacion-equipos-tv estado-presentacion-equipos">No hay equipos para presentar.</main>
   }
 
   const equipo = equipos[indiceEquipo]
   const miembros = Array.isArray(equipo?.miembros) ? equipo.miembros : []
   const musicaUrl = datos.presentacion_equipos_musica_path
-    ? supabase.storage.from('musica-sorteos').getPublicUrl(
-        datos.presentacion_equipos_musica_path
-      ).data.publicUrl
+    ? supabase.storage.from('musica-sorteos').getPublicUrl(datos.presentacion_equipos_musica_path).data.publicUrl
     : ''
 
   return (
     <main className="presentacion-equipos-tv">
       {musicaUrl && <audio ref={audioRef} src={musicaUrl} loop preload="auto" />}
-
-      <div className="fondo-presentacion-equipos" aria-hidden="true">
-        <span /><span /><span />
-      </div>
-
+      <div className="fondo-presentacion-equipos" aria-hidden="true"><span /><span /><span /></div>
       <header className="cabecera-presentacion-equipos">
-        <div>
-          <small>PRESENTACIÓN OFICIAL</small>
-          <h1>{datos.sorteo}</h1>
-        </div>
+        <div><small>PRESENTACIÓN OFICIAL</small><h1>{datos.sorteo}</h1></div>
         <strong>Equipo {indiceEquipo + 1} de {equipos.length}</strong>
       </header>
-
-      <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${animacion}`}>
-        <p className="grupo-presentacion-equipos">
-          {equipo.grupo || 'EQUIPO SORTEADO'}
-        </p>
+      <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${control?.presentacion_equipos_version ?? 0}`}>
+        <p className="grupo-presentacion-equipos">{equipo.grupo || 'EQUIPO SORTEADO'}</p>
         <h2>{equipo.nombre_equipo}</h2>
-
         <div className="jugadores-presentacion-equipos" data-miembros={miembros.length}>
           {miembros.map((miembro, indice) => {
             const imagen = miembro.caricatura_path || miembro.foto_path
             return (
-              <article
-                className={`jugador-presentacion-equipos ${indice % 2 === 0 ? 'entra-izquierda' : 'entra-derecha'}`}
-                key={miembro.codigo_jugador || indice}
-                style={{ '--retraso-jugador': `${indice * 220}ms` }}
-              >
+              <article className={`jugador-presentacion-equipos ${indice % 2 === 0 ? 'entra-izquierda' : 'entra-derecha'}`} key={miembro.codigo_jugador || indice} style={{ '--retraso-jugador': `${indice * 220}ms` }}>
                 <div className={`imagen-presentacion-equipos ${miembro.caricatura_path ? 'imagen-caricatura' : ''}`}>
-                  {imagen ? (
-                    <img
-                      src={supabase.storage.from('jugadores').getPublicUrl(imagen).data.publicUrl}
-                      alt={miembro.nombre}
-                    />
-                  ) : (
-                    <span>{String(miembro.nombre || '?').slice(0, 1)}</span>
-                  )}
+                  {imagen ? <img src={supabase.storage.from('jugadores').getPublicUrl(imagen).data.publicUrl} alt={miembro.nombre} /> : <span>{String(miembro.nombre || '?').slice(0, 1)}</span>}
                 </div>
                 <h3>{miembro.nombre}</h3>
-                {datos.mostrar_bombos_publico !== false && (
-                  <small>{miembro.bombo || 'Jugador'}</small>
-                )}
+                {datos.mostrar_bombos_publico !== false && <small>{miembro.bombo || 'Jugador'}</small>}
               </article>
             )
           })}
         </div>
       </section>
-
       <footer className="controles-presentacion-equipos">
-        <button type="button" onClick={() => moverEquipo(-1)} disabled={indiceEquipo === 0}>← Anterior</button>
-        <button type="button" onClick={() => setAutomatico((valor) => !valor)}>
-          {automatico ? '⏸ Pausar' : '▶ Automático'}
-        </button>
-        <button type="button" onClick={() => moverEquipo(1)} disabled={indiceEquipo === equipos.length - 1}>Siguiente →</button>
-        {musicaUrl && !sonidoActivo && (
-          <button type="button" className="activar-sonido-equipos" onClick={activarSonido}>🔊 Activar música</button>
-        )}
+        {musicaUrl && !sonidoActivo && <button type="button" className="activar-sonido-equipos" onClick={() => { setSonidoActivo(true); audioRef.current?.play().catch(() => {}) }}>🔊 Activar música</button>}
+        <span className="estado-remoto-equipos">📱 Control desde el móvil o el panel</span>
         <button type="button" onClick={() => document.documentElement.requestFullscreen?.()}>⛶ Pantalla completa</button>
       </footer>
     </main>
   )
 }
-
 
 function generarCodigoBomboAutomatico(indice) {
   let numero = Number(indice) + 1
@@ -2014,6 +1924,7 @@ CONTROL DE PRESENTACIÓN
 */
 
 const [estadoPresentacion, setEstadoPresentacion] = useState(null)
+const [controlEquipos, setControlEquipos] = useState(null)
 const [equiposReveladosControl, setEquiposReveladosControl] = useState([])
 const [fotosControlPresentacion, setFotosControlPresentacion] = useState({})
 const [cargandoControlPresentacion, setCargandoControlPresentacion] =
@@ -2088,11 +1999,6 @@ const [modoPublico] = useState(() => {
     new URLSearchParams(window.location.search)
 
   return parametros.get('publico') === '1'
-})
-
-const [modoPresentacionEquipos] = useState(() => {
-  const parametros = new URLSearchParams(window.location.search)
-  return parametros.get('presentacionEquipos') === '1'
 })
 
 const [sorteoPublicoId] = useState(() => {
@@ -2390,6 +2296,14 @@ const temporizadorRepeticionAdminRef = useRef(null)
     ejecucionPublicaId,
   ])
 
+  useEffect(() => {
+    const ejecucionId = modoPublico ? ejecucionPublicaId : estadoPresentacion?.ejecucion_id
+    if (!ejecucionId || (!modoPublico && pantalla !== 'control-presentacion' && pantalla !== 'control-movil')) return undefined
+    void cargarControlEquipos(ejecucionId)
+    const intervalo = window.setInterval(() => void cargarControlEquipos(ejecucionId), 750)
+    return () => window.clearInterval(intervalo)
+  }, [modoPublico, ejecucionPublicaId, estadoPresentacion?.ejecucion_id, pantalla])
+
 
   /*
   ============================================================
@@ -2445,6 +2359,10 @@ const temporizadorRepeticionAdminRef = useRef(null)
     estadoPrecargaMusicaPublica.espera,
     estadoPrecargaMusicaPublica.sorteo,
   ])
+
+  useEffect(() => {
+    if (modoPublico && controlEquipos?.presentacion_equipos_activa) detenerMusicaPublica()
+  }, [modoPublico, controlEquipos?.presentacion_equipos_activa])
 
 
   /*
@@ -10332,6 +10250,29 @@ function iniciarRepeticionCompletaPublica(equipos) {
 }
 
 
+async function cargarControlEquipos(ejecucionId = ejecucionPublicaId || estadoPresentacion?.ejecucion_id) {
+  if (!ejecucionId) return
+  const { data, error } = await supabase.rpc('obtener_control_presentacion_equipos', { p_ejecucion_id: ejecucionId })
+  if (!error && data) setControlEquipos(data)
+}
+
+async function controlarPresentacionEquipos(accion) {
+  const ejecucionId = estadoPresentacion?.ejecucion_id
+  if (!ejecucionId || accionPresentacion) return
+  setAccionPresentacion(true)
+  setMensajePresentacion('Actualizando la presentación de equipos…')
+  const { data, error } = await supabase.rpc('controlar_presentacion_equipos', { p_ejecucion_id: ejecucionId, p_accion: accion })
+  setAccionPresentacion(false)
+  if (error || data?.ok === false) {
+    const mensaje = error?.message || data?.error || 'No se pudo actualizar la presentación.'
+    setMensajePresentacion(`Error: ${mensaje}`)
+    setErrorControlMovil(mensaje)
+    return
+  }
+  if (data?.control) setControlEquipos(data.control)
+  setMensajePresentacion(accion === 'iniciar' ? '✓ La presentación de equipos ya aparece en la misma pantalla de TV.' : accion === 'cerrar' ? '✓ La TV ha vuelto al resultado del sorteo.' : '✓ Control enviado a la TV.')
+}
+
 async function cargarPresentacionPublica() {
   if (
     !sorteoPublicoId ||
@@ -10894,17 +10835,7 @@ function abrirPresentacionEquipos() {
     setMensajePresentacion('No se ha podido identificar la ejecución finalizada.')
     return
   }
-
-  const url = new URL(window.location.href)
-  url.search = ''
-  url.searchParams.set('presentacionEquipos', '1')
-  url.searchParams.set('sorteo', sorteoSeleccionado.id)
-  url.searchParams.set('ejecucion', estadoPresentacion.ejecucion_id)
-
-  window.open(
-    url.toString(),
-    `presentacion-equipos-${sorteoSeleccionado.id}-${estadoPresentacion.ejecucion_id}`
-  )
+  void controlarPresentacionEquipos('iniciar')
 }
 
 async function guardarOpcionPresentacionEquipos(cambios, mensaje) {
@@ -11063,21 +10994,15 @@ PANTALLA PÚBLICA / TV
 ============================================================
 */
 
-if (modoPresentacionEquipos) {
-  const parametros = new URLSearchParams(window.location.search)
-  return (
-    <PresentacionEquiposPublica
-      sorteoId={parametros.get('sorteo') ?? ''}
-      ejecucionId={parametros.get('ejecucion') ?? ''}
-    />
-  )
-}
-
 if (
   modoPublico &&
   sorteoPublicoId &&
   ejecucionPublicaId
 ) {
+  if (controlEquipos?.presentacion_equipos_activa && presentacionPublica) {
+    return <PresentacionEquiposPublica datos={presentacionPublica} control={controlEquipos} />
+  }
+
   const equiposPublicos =
     presentacionPublica?.equipos ?? []
 
@@ -12323,6 +12248,17 @@ if (
                     )}
 
                   <div className="acciones-final-control-movil">
+                    {!controlEquipos?.presentacion_equipos_activa ? (
+                      <button type="button" disabled={accionPresentacion} onClick={abrirPresentacionEquipos}>🎭 Presentar equipos en TV</button>
+                    ) : (
+                      <div className="control-equipos-movil"><strong>🎭 Presentación de equipos en TV</strong><div>
+                        <button type="button" disabled={accionPresentacion} onClick={() => controlarPresentacionEquipos('anterior')}>← Anterior</button>
+                        <button type="button" disabled={accionPresentacion} onClick={() => controlarPresentacionEquipos(controlEquipos.presentacion_equipos_automatica ? 'pausa' : 'reproducir')}>{controlEquipos.presentacion_equipos_automatica ? '⏸ Pausa' : '▶ Automático'}</button>
+                        <button type="button" disabled={accionPresentacion} onClick={() => controlarPresentacionEquipos('siguiente')}>Siguiente →</button>
+                        <button type="button" disabled={accionPresentacion} onClick={() => controlarPresentacionEquipos('reiniciar')}>↺ Inicio</button>
+                        <button type="button" disabled={accionPresentacion} onClick={() => controlarPresentacionEquipos('cerrar')}>Cerrar</button>
+                      </div></div>
+                    )}
                     <button
                       type="button"
                       disabled={
@@ -17522,6 +17458,30 @@ if (
           )}
         </div>
 
+        <section className="config-presentacion-equipos config-presentacion-equipos-previa">
+          <div className="cabecera-config-presentacion-equipos">
+            <div><small>PRESENTACIÓN DE EQUIPOS</small><h3>Canción y ritmo del segundo acto</h3><p>Déjalo preparado antes del sorteo. Se reproducirá en la misma pantalla de TV.</p></div><span>🎭</span>
+          </div>
+          <div className="campos-config-presentacion-equipos">
+            <label><span>Tiempo de exposición por equipo</span>
+              <select value={String(sorteoSeleccionado.presentacion_equipos_duracion_ms ?? 8000)} onChange={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_duracion_ms: Number(e.target.value) }, '✓ Tiempo por equipo guardado.')}>
+                <option value="5000">5 segundos</option><option value="8000">8 segundos</option><option value="10000">10 segundos</option><option value="15000">15 segundos</option><option value="20000">20 segundos</option>
+              </select>
+            </label>
+            <label><span>Volumen: {sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}%</span>
+              <input type="range" min="0" max="100" value={sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}
+                onChange={(e) => setSorteoSeleccionado((actual) => ({ ...actual, presentacion_equipos_musica_volumen: Number(e.target.value) }))}
+                onMouseUp={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_musica_volumen: Number(e.currentTarget.value) }, '✓ Volumen guardado.')}
+                onTouchEnd={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_musica_volumen: Number(e.currentTarget.value) }, '✓ Volumen guardado.')} />
+            </label>
+          </div>
+          <div className="musica-config-presentacion-equipos">
+            <div><small>CANCIÓN DE LA PRESENTACIÓN DE EQUIPOS</small><strong>{sorteoSeleccionado.presentacion_equipos_musica_nombre || 'Sin canción configurada'}</strong></div>
+            <label className="boton boton-secundario">{sorteoSeleccionado.presentacion_equipos_musica_path ? 'Cambiar MP3' : 'Seleccionar MP3'}<input type="file" accept=".mp3,audio/mpeg" onChange={subirMusicaPresentacionEquipos} hidden /></label>
+            {sorteoSeleccionado.presentacion_equipos_musica_path && <button type="button" className="boton boton-secundario" onClick={eliminarMusicaPresentacionEquipos}>Eliminar canción</button>}
+          </div>
+        </section>
+
         <div className="cabecera-seccion-efectos">
           <div>
             <span>EFECTOS DE SONIDO</span>
@@ -18678,14 +18638,17 @@ if (
                 </div>
 
                 <div className="acciones-final-presentacion">
-                  <button
-                    type="button"
-                    className="boton boton-principal boton-presentacion-principal"
-                    onClick={abrirPresentacionEquipos}
-                    disabled={accionPresentacion || bloqueoSecuenciaPresentacion}
-                  >
-                    🎭 Presentación de los equipos
-                  </button>
+                  {!controlEquipos?.presentacion_equipos_activa ? (
+                    <button type="button" className="boton boton-principal boton-presentacion-principal" onClick={abrirPresentacionEquipos} disabled={accionPresentacion || bloqueoSecuenciaPresentacion}>🎭 Presentación de los equipos en TV</button>
+                  ) : (
+                    <div className="controles-remotos-equipos"><strong>🎭 Presentación de equipos activa</strong><div>
+                      <button type="button" className="boton boton-secundario" onClick={() => controlarPresentacionEquipos('anterior')} disabled={accionPresentacion}>← Anterior</button>
+                      <button type="button" className="boton boton-principal" onClick={() => controlarPresentacionEquipos(controlEquipos.presentacion_equipos_automatica ? 'pausa' : 'reproducir')} disabled={accionPresentacion}>{controlEquipos.presentacion_equipos_automatica ? '⏸ Pausar' : '▶ Automático'}</button>
+                      <button type="button" className="boton boton-secundario" onClick={() => controlarPresentacionEquipos('siguiente')} disabled={accionPresentacion}>Siguiente →</button>
+                      <button type="button" className="boton boton-secundario" onClick={() => controlarPresentacionEquipos('reiniciar')} disabled={accionPresentacion}>↺ Inicio</button>
+                      <button type="button" className="boton boton-secundario" onClick={() => controlarPresentacionEquipos('cerrar')} disabled={accionPresentacion}>Cerrar presentación</button>
+                    </div></div>
+                  )}
 
                   <button
                     type="button"
