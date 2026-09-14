@@ -9716,3 +9716,181 @@ body:has(.presentacion-equipos-tv) {
   .imagen-presentacion-equipos { height: min(39dvh, 420px); }
   .jugadores-presentacion-equipos { height: min(50dvh, 500px); }
 }
+
+
+/* Corrección TV: resumen completo y caricaturas sin recorte. */
+.pantalla-publica-tv:has(.resumen-final-publico-tv) {
+  padding-block: clamp(10px, 1.4dvh, 20px);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.pantalla-publica-tv:has(.resumen-final-publico-tv) .cabecera-publica-tv {
+  margin-bottom: clamp(6px, 1dvh, 12px);
+}
+
+.resumen-final-publico-tv {
+  width: min(1600px, 100%);
+  height: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: clamp(5px, .7dvh, 10px);
+  overflow: hidden;
+}
+
+.resumen-final-publico-tv .cabecera-resumen-final-tv {
+  gap: 12px;
+  margin: 0;
+}
+
+.resumen-final-publico-tv .sello-resumen-final {
+  width: clamp(42px, 4dvh, 62px);
+  height: clamp(42px, 4dvh, 62px);
+  font-size: clamp(22px, 2.5dvh, 32px);
+}
+
+.resumen-final-publico-tv .cabecera-resumen-final-tv h2 {
+  font-size: clamp(28px, 4dvh, 48px);
+}
+
+.resumen-final-publico-tv .separador-resumen-final-tv {
+  margin: 0;
+}
+
+.resumen-final-publico-tv .metricas-resumen-final-tv {
+  gap: 10px;
+  margin: 0 auto;
+}
+
+.resumen-final-publico-tv .metricas-resumen-final-tv > div {
+  padding: clamp(5px, .7dvh, 9px) 12px;
+}
+
+.resumen-final-publico-tv .grid-grupos-resumen-final {
+  min-height: 0;
+  height: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: clamp(8px, 1vw, 14px);
+  align-items: stretch;
+}
+
+.resumen-final-publico-tv .tarjeta-grupo-resumen-final {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-radius: 14px;
+}
+
+.resumen-final-publico-tv .tarjeta-grupo-resumen-final > header {
+  gap: 9px;
+  padding: clamp(6px, .8dvh, 10px) 12px;
+}
+
+.resumen-final-publico-tv .icono-grupo-resumen-final {
+  width: clamp(32px, 3.7dvh, 42px);
+  height: clamp(32px, 3.7dvh, 42px);
+  flex-basis: clamp(32px, 3.7dvh, 42px);
+}
+
+.resumen-final-publico-tv .equipos-grupo-resumen-final {
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.resumen-final-publico-tv .equipo-resumen-final {
+  min-height: 0;
+  padding: clamp(4px, .65dvh, 9px) 10px;
+  display: flex;
+  align-items: center;
+}
+
+.resumen-final-publico-tv .avatar-resumen-final {
+  width: clamp(34px, 4.5dvh, 50px);
+  height: clamp(34px, 4.5dvh, 50px);
+}
+
+.resumen-final-publico-tv .jugador-resumen-final strong {
+  font-size: clamp(12px, 1.5dvh, 17px);
+}
+
+.resumen-final-publico-tv .union-resumen-final {
+  min-width: clamp(28px, 3vw, 55px);
+  font-size: clamp(22px, 3dvh, 32px);
+}
+
+.resumen-final-publico-tv .miembros-equipo-resumen-final[data-miembros="2"] {
+  grid-template-columns: minmax(0, 1fr) clamp(28px, 4vw, 55px) minmax(0, 1fr);
+  gap: clamp(5px, .8vw, 12px);
+}
+
+.resumen-final-publico-tv .miembros-equipo-resumen-final[data-miembros="2"] .union-resumen-final {
+  width: clamp(28px, 4vw, 55px);
+  min-width: clamp(28px, 4vw, 55px);
+}
+
+.resumen-final-publico-tv .pie-resumen-final-tv {
+  display: none;
+}
+
+.presentacion-equipos-tv {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.presentacion-equipos-tv .escenario-presentacion-equipos {
+  padding: clamp(5px, 1dvh, 12px) 4vw clamp(8px, 1.2dvh, 16px);
+  justify-content: stretch;
+}
+
+.presentacion-equipos-tv .grupo-presentacion-equipos {
+  flex: 0 0 auto;
+  margin-bottom: clamp(4px, .7dvh, 9px);
+}
+
+.presentacion-equipos-tv .jugadores-presentacion-equipos {
+  width: min(1450px, 94vw);
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos h3 {
+  margin: 0 0 clamp(4px, .7dvh, 9px);
+  font-size: clamp(1.3rem, 3.1dvh, 2.35rem);
+  line-height: 1;
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  place-items: end center;
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos.imagen-caricatura img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos small {
+  padding-top: 4px;
+}
+
+.presentacion-equipos-tv .controles-presentacion-equipos {
+  display: none;
+}
