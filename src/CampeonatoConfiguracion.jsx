@@ -27,7 +27,7 @@ const VALORES_INICIALES = {
   equipos_pasan_a_cruces_por_grupo: 4,
   puntos_partido_arrastrado: 2,
   num_pistas_disponibles: 4,
-  ronda_inicial_eliminatorias: 'Cuartos',
+  ronda_inicial_eliminatorias: '',
   formato_acceso_eliminatorias: 'Cruces normales',
   criterio_generar_cruces: 'No Enfrentados',
   hay_copa_palas_playa: '',
@@ -317,7 +317,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   <option>Campeones de ReGrupo directos a semifinales</option>
                 </select>
               </Campo>
-              <Campo etiqueta="Ronda inicial"><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias} onChange={cambiar}><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
+              <Campo etiqueta="Ronda inicial" ayuda="Elige — mientras todavía no esté decidida."><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias || ''} onChange={cambiar}><option value="">—</option><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
               <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>
             </div>
             {config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales' && (
