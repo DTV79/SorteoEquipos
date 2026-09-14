@@ -9643,3 +9643,76 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
   .caricatura-jugador-form { grid-template-columns: 110px 1fr; }
   .preview-caricatura-jugador { height: 150px; }
 }
+
+
+/* Ajuste definitivo para televisión: ocupa el lienzo sin barras. */
+body:has(.pantalla-publica-tv),
+body:has(.presentacion-equipos-tv) {
+  overflow: hidden;
+}
+
+.pantalla-publica-tv,
+.presentacion-equipos-tv {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.presentacion-equipos-tv {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.pantalla-publica-tv > *,
+.presentacion-equipos-tv > *,
+.escenario-publico-tv,
+.escenario-presentacion-equipos,
+.resumen-final-publico-tv {
+  min-height: 0;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.escenario-publico-tv,
+.escenario-presentacion-equipos,
+.resumen-final-publico-tv {
+  overflow: hidden;
+}
+
+.jugadores-presentacion-equipos {
+  min-height: 0;
+  height: min(56dvh, 560px);
+}
+
+.imagen-presentacion-equipos {
+  height: min(45dvh, 500px);
+}
+
+.controles-remotos-equipos,
+.control-equipos-movil {
+  display: grid;
+  gap: .65rem;
+  width: 100%;
+}
+
+.controles-remotos-equipos > div,
+.control-equipos-movil > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+
+.estado-remoto-equipos {
+  align-self: center;
+  padding: .45rem .8rem;
+  opacity: .8;
+  font-size: .85rem;
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .imagen-presentacion-equipos { height: min(39dvh, 420px); }
+  .jugadores-presentacion-equipos { height: min(50dvh, 500px); }
+}
