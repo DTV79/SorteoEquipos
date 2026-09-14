@@ -8,6 +8,7 @@ import ClasificacionCampeonato from './ClasificacionCampeonato'
 import FasesCrucesCampeonato from './FasesCrucesCampeonato'
 import CierreCampeonato from './CierreCampeonato'
 import NormasCampeonato from './NormasCampeonato'
+import AuditoriaCampeonato from './AuditoriaCampeonato'
 import './CampeonatoAdmin.css'
 
 function tituloFase(partido) {
@@ -582,6 +583,17 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     )
   }
 
+  if (seccion === 'auditoria') {
+    return (
+      <AuditoriaCampeonato
+        codigo={codigo}
+        onVolver={() => setSeccion('menu')}
+        onResultados={() => setSeccion('resultados')}
+        onPanelPrincipal={volverPanelPrincipal}
+      />
+    )
+  }
+
   if (seccion === 'normas') {
     return (
       <NormasCampeonato
@@ -630,6 +642,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('fases')}>
               <span>🏆</span><strong>Fases y cruces</strong>
               <small>Cuadro principal y Copa Palas de Playa</small>
+            </button>
+            <button type="button" className="modulo-campeonato activo" onClick={() => setSeccion('auditoria')}>
+              <span>🔎</span><strong>Auditoría del campeonato</strong>
+              <small>Repeticiones, avisos y revisión de los datos</small>
             </button>
             <button type="button" className="modulo-campeonato activo modulo-normas-campeonato" onClick={() => setSeccion('normas')}>
               <span>📜</span><strong>Normas y reglamento</strong>
