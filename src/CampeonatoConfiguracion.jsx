@@ -104,6 +104,17 @@ function normalizarConfiguracion(datos) {
     config[campo] = aBooleano(config[campo])
   })
   config.hay_copa_palas_playa = normalizarSiNoIndefinido(datos?.hay_copa_palas_playa)
+
+  // Corrige combinaciones antiguas o incompletas sin eliminar la opción «—».
+  if (config.tipo_campeonato === 'Liguilla') {
+    config.estructura_primera_fase = 'Liguilla Única'
+    config.num_grupos_iniciales = 1
+  } else if (config.tipo_campeonato === 'Grupos') {
+    if (!['2 Grupos', '4 Grupos'].includes(config.estructura_primera_fase)) {
+      config.estructura_primera_fase = '2 Grupos'
+    }
+    config.num_grupos_iniciales = config.estructura_primera_fase === '4 Grupos' ? 4 : 2
+  }
   return config
 }
 
@@ -165,9 +176,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         if (value === 'Liguilla') {
           siguiente.estructura_primera_fase = 'Liguilla Única'
           siguiente.num_grupos_iniciales = 1
-        } else if (actual.estructura_primera_fase === 'Liguilla Única') {
-          siguiente.estructura_primera_fase = '2 Grupos'
-          siguiente.num_grupos_iniciales = 2
+        } else if (value === 'Grupos') {
+          siguiente.estructura_primera_fase = ['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)
+            ? actual.estructura_primera_fase
+            : '2 Grupos'
+          siguiente.num_grupos_iniciales = siguiente.estructura_primera_fase === '4 Grupos' ? 4 : 2
         }
       }
       if (name === 'estructura_primera_fase') {
@@ -299,11 +312,25 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <legend>Estructura del torneo</legend>
             <div className="rejilla-configuracion">
               <Campo etiqueta="Tipo de campeonato" ayuda="Elige — mientras el formato todavía no esté decidido."><select name="tipo_campeonato" value={config.tipo_campeonato || ''} onChange={cambiar}><option value="">—</option><option value="Liguilla">Liguilla</option><option value="Grupos">Grupos</option></select></Campo>
-              <Campo etiqueta="Primera fase"><select name="estructura_primera_fase" value={config.estructura_primera_fase} onChange={cambiar} disabled={!esGrupos}><option>Liguilla Única</option><option>2 Grupos</option><option>4 Grupos</option></select></Campo>
-              {esGrupos && <Campo etiqueta="Equipos por grupo"><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
+              <Campo etiqueta="Primera fase" ayuda={config.tipo_campeonato ? 'Las opciones dependen del tipo de campeonato.' : 'Primero elige el tipo de campeonato.'}>
+                <select name="estructura_primera_fase" value={config.tipo_campeonato ? config.estructura_primera_fase : ''} onChange={cambiar} disabled={!esGrupos}>
+                  {!config.tipo_campeonato && <option value="">—</option>}
+                  {config.tipo_campeonato === 'Liguilla' && <option>Liguilla Única</option>}
+                  {esGrupos && <><option>2 Grupos</option><option>4 Grupos</option></>}
+                </select>
+              </Campo>
+              {esGrupos && <Campo etiqueta="Equipos previstos por grupo" ayuda="De momento todos los grupos deben tener el mismo número."><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
               <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
-              <Campo etiqueta="Equipos que pasan a eliminatorias"><input type="number" min="1" name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
             </div>
+            {esGrupos && (
+              <div className="resumen-formato-especial">
+                <strong>Vista previa del formato actual</strong>
+                <span>{config.num_grupos_iniciales} grupos × {config.equipos_por_grupo || 0} equipos = {(config.num_grupos_iniciales || 0) * (config.equipos_por_grupo || 0)} plazas previstas.</span>
+                <span>Pasan {(config.num_grupos_iniciales || 0) * (config.equipos_pasan_a_cruces_por_grupo || 0)} equipos a eliminatorias en total.</span>
+                <small>Esta versión todavía requiere grupos iguales; no genera automáticamente un reparto 5 + 4.</small>
+              </div>
+            )}
             <label className="interruptor-configuracion"><input type="checkbox" name="hay_regrupos" checked={config.hay_regrupos} onChange={cambiar} /><span>Segunda fase por ReGrupos</span></label>
             {config.hay_regrupos && <div className="bloque-dependiente"><div className="rejilla-configuracion"><Campo etiqueta="Equipos que pasan por grupo"><input type="number" min="2" name="equipos_pasan_a_regrupos" value={config.equipos_pasan_a_regrupos} onChange={cambiar} /></Campo><Campo etiqueta="Puntos por victoria arrastrada"><input type="number" min="0" name="puntos_partido_arrastrado" value={config.puntos_partido_arrastrado} onChange={cambiar} /></Campo></div><label className="interruptor-configuracion"><input type="checkbox" name="repetir_enfrentamientos_regrupos" checked={config.repetir_enfrentamientos_regrupos} onChange={cambiar} /><span>Repetir en ReGrupos los enfrentamientos ya jugados</span></label><small className="ayuda-regrupos">Si no se repiten, el partido anterior se arrastra al nuevo ReGrupo y no se duplica.</small></div>}
           </fieldset>
