@@ -205,7 +205,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     if (error || data?.ok !== true) {
       setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo guardar la configuración.' })
     } else {
-      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y protegida frente a Excel.' })
+      if (data.configuracion) {
+        setConfig(normalizarConfiguracion(data.configuracion))
+      }
+      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })
     }
     setGuardando(false)
   }
