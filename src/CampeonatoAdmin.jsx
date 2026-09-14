@@ -260,7 +260,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     }))
     if (['MM', 'PP'].includes(partido.codigo_fase)) {
       const { error: errorAvance } = await supabaseCampeonato.rpc(
-        'admin_actualizar_cuadro_especial',
+        'admin_actualizar_cuadro',
         { p_codigo: codigo }
       )
       if (errorAvance) {
