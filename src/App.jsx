@@ -314,8 +314,8 @@ function EditorRecorteFoto({ archivo, onCancelar, onGuardar }) {
   )
 }
 
-function PresentacionEquiposPublica({ datos, control }) {
-  const [sonidoActivo, setSonidoActivo] = useState(false)
+function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = false }) {
+  const [sonidoActivo] = useState(() => Boolean(sonidoActivoInicial))
   const [reloj, setReloj] = useState(Date.now())
   const audioRef = useRef(null)
   const equipos = datos?.equipos ?? []
@@ -362,27 +362,22 @@ function PresentacionEquiposPublica({ datos, control }) {
       </header>
       <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${control?.presentacion_equipos_version ?? 0}`}>
         <p className="grupo-presentacion-equipos">{equipo.grupo || 'EQUIPO SORTEADO'}</p>
-        <h2>{equipo.nombre_equipo}</h2>
         <div className="jugadores-presentacion-equipos" data-miembros={miembros.length}>
           {miembros.map((miembro, indice) => {
             const imagen = miembro.caricatura_path || miembro.foto_path
             return (
               <article className={`jugador-presentacion-equipos ${indice % 2 === 0 ? 'entra-izquierda' : 'entra-derecha'}`} key={miembro.codigo_jugador || indice} style={{ '--retraso-jugador': `${indice * 220}ms` }}>
+                <h3>{miembro.nombre}</h3>
                 <div className={`imagen-presentacion-equipos ${miembro.caricatura_path ? 'imagen-caricatura' : ''}`}>
                   {imagen ? <img src={supabase.storage.from('jugadores').getPublicUrl(imagen).data.publicUrl} alt={miembro.nombre} /> : <span>{String(miembro.nombre || '?').slice(0, 1)}</span>}
                 </div>
-                <h3>{miembro.nombre}</h3>
                 {datos.mostrar_bombos_publico !== false && <small>{miembro.bombo || 'Jugador'}</small>}
               </article>
             )
           })}
         </div>
       </section>
-      <footer className="controles-presentacion-equipos">
-        {musicaUrl && !sonidoActivo && <button type="button" className="activar-sonido-equipos" onClick={() => { setSonidoActivo(true); audioRef.current?.play().catch(() => {}) }}>🔊 Activar música</button>}
-        <span className="estado-remoto-equipos">📱 Control desde el móvil o el panel</span>
-        <button type="button" onClick={() => document.documentElement.requestFullscreen?.()}>⛶ Pantalla completa</button>
-      </footer>
+
     </main>
   )
 }
@@ -11000,7 +10995,7 @@ if (
   ejecucionPublicaId
 ) {
   if (controlEquipos?.presentacion_equipos_activa && presentacionPublica) {
-    return <PresentacionEquiposPublica datos={presentacionPublica} control={controlEquipos} />
+    return <PresentacionEquiposPublica datos={presentacionPublica} control={controlEquipos} sonidoActivoInicial={sonidoPublicoActivo} />
   }
 
   const equiposPublicos =
