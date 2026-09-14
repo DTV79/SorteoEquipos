@@ -35,18 +35,26 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const cargar = useCallback(async () => {
     setCargando(true)
     setError('')
-    const [consultaConfig, consultaClasificacion] = await Promise.all([
-      supabaseCampeonato.rpc('admin_obtener_configuracion', { p_codigo: codigo }),
-      supabaseCampeonato.rpc('admin_listar_clasificaciones', { p_codigo: codigo, p_fase: 'RG' }),
-    ])
+    const consultaConfig = await supabaseCampeonato.rpc(
+      'admin_obtener_configuracion',
+      { p_codigo: codigo }
+    )
 
     if (consultaConfig.error || consultaConfig.data?.ok !== true) {
       setError(consultaConfig.error?.message || consultaConfig.data?.error || 'No se pudo cargar la configuración.')
-    } else if (consultaClasificacion.error || consultaClasificacion.data?.ok !== true) {
-      setError(consultaClasificacion.error?.message || consultaClasificacion.data?.error || 'No se pudo cargar la clasificación de ReGrupos.')
     } else {
-      setConfig(consultaConfig.data.configuracion ?? {})
-      setClasificacion(consultaClasificacion.data.clasificacion ?? [])
+      const configuracion = consultaConfig.data.configuracion ?? {}
+      const faseClasificacion = configuracion.hay_regrupos ? 'RG' : 'GR'
+      const consultaClasificacion = await supabaseCampeonato.rpc(
+        'admin_listar_clasificaciones',
+        { p_codigo: codigo, p_fase: faseClasificacion }
+      )
+      if (consultaClasificacion.error || consultaClasificacion.data?.ok !== true) {
+        setError(consultaClasificacion.error?.message || consultaClasificacion.data?.error || 'No se pudo cargar la clasificación.')
+      } else {
+        setConfig(configuracion)
+        setClasificacion(consultaClasificacion.data.clasificacion ?? [])
+      }
     }
     setCargando(false)
   }, [codigo])
@@ -69,19 +77,28 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const grupoA = grupos[0]?.[1] ?? []
   const grupoB = grupos[1]?.[1] ?? []
   const cuadroCompleto = especial && grupos.length === 2 && grupoA.length >= 4 && grupoB.length >= 4
+  const equiposNecesarios = {
+    Octavos: 16,
+    Cuartos: 8,
+    Semifinales: 4,
+    Final: 2,
+  }[config.ronda_inicial_eliminatorias] ?? 0
+  const clasificadosPorGrupo = Number(config.equipos_pasan_a_cruces_por_grupo) || 0
+  const clasificadosNormales = clasificacion.filter((fila) => Number(fila.posicion) <= clasificadosPorGrupo)
+  const cuadroNormalCompleto = !especial && equiposNecesarios > 0 && clasificadosNormales.length === equiposNecesarios
 
   async function generarCuadro() {
     setGenerando(true)
     setError('')
     setMensaje('')
     const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
-      'admin_generar_cuadro_especial',
+      especial ? 'admin_generar_cuadro_especial' : 'admin_generar_cuadro_normal',
       { p_codigo: codigo }
     )
     if (errorGeneracion || data?.ok !== true) {
       setError(errorGeneracion?.message || data?.error || 'No se pudo generar el cuadro.')
     } else {
-      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de cuartos. Las siguientes rondas aparecerán al guardar los resultados.`)
+      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de ${especial ? 'cuartos' : (data.ronda_inicial || 'la ronda inicial').toLowerCase()}.${data.copa_palas ? ' La Copa Palas de Playa también queda preparada.' : ''} Las siguientes rondas aparecerán al guardar los resultados.`)
     }
     setGenerando(false)
   }
@@ -111,10 +128,26 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
             </section>
 
             {!especial && (
-              <section className="aviso-cuadro-normal">
-                <strong>Cruces normales</strong>
-                <p>Los equipos clasificados comenzarán en {config.ronda_inicial_eliminatorias || 'la ronda inicial'} aplicando el criterio «{config.criterio_generar_cruces || 'Por clasificación'}».</p>
-              </section>
+              <>
+                <section className="aviso-cuadro-normal">
+                  <strong>Cruces normales</strong>
+                  <p>Los equipos clasificados comenzarán en {config.ronda_inicial_eliminatorias || 'la ronda inicial'} aplicando el criterio «{config.criterio_generar_cruces || 'Por clasificación'}».</p>
+                  <p>{clasificadosNormales.length} de {equiposNecesarios || '—'} equipos preparados desde la clasificación de {config.hay_regrupos ? 'ReGrupos' : 'Grupos'}.</p>
+                  {config.hay_copa_palas_playa && <p>🏖️ La Copa Palas de Playa se generará con los perdedores de la primera eliminatoria y avanzará cuando se guarden los resultados.</p>}
+                </section>
+                {!cuadroNormalCompleto && (
+                  <p className="mensaje-login">La ronda y el número de clasificados por grupo no aportan exactamente los equipos necesarios para crear el cuadro.</p>
+                )}
+                <section className="barra-generar-cuadro">
+                  <div>
+                    <strong>{mensaje || (cuadroNormalCompleto ? 'Clasificación preparada' : 'Configuración incompleta')}</strong>
+                    <span>Se crearán los partidos reales en Supabase y las siguientes rondas avanzarán automáticamente.</span>
+                  </div>
+                  <button type="button" className="boton boton-principal" disabled={generando || !cuadroNormalCompleto} onClick={generarCuadro}>
+                    {generando ? 'Generando…' : 'Generar cuadro definitivo'}
+                  </button>
+                </section>
+              </>
             )}
 
             {especial && !cuadroCompleto && (
