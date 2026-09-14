@@ -314,6 +314,168 @@ function EditorRecorteFoto({ archivo, onCancelar, onGuardar }) {
   )
 }
 
+function PresentacionEquiposPublica({ sorteoId, ejecucionId }) {
+  const [datos, setDatos] = useState(null)
+  const [indiceEquipo, setIndiceEquipo] = useState(0)
+  const [automatico, setAutomatico] = useState(true)
+  const [sonidoActivo, setSonidoActivo] = useState(false)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+  const [animacion, setAnimacion] = useState(0)
+  const audioRef = useRef(null)
+
+  useEffect(() => {
+    let cancelado = false
+
+    async function cargar() {
+      const { data, error: errorCarga } = await supabase.rpc(
+        'obtener_presentacion_publica_v3',
+        { p_sorteo_id: sorteoId, p_ejecucion_id: ejecucionId }
+      )
+
+      if (cancelado) return
+
+      if (errorCarga) {
+        setError(errorCarga.message)
+      } else if (!data || String(data.estado).toLowerCase() !== 'finalizada') {
+        setError('La presentación de equipos estará disponible cuando termine el sorteo.')
+      } else {
+        setDatos(data)
+      }
+      setCargando(false)
+    }
+
+    void cargar()
+    return () => { cancelado = true }
+  }, [sorteoId, ejecucionId])
+
+  const equipos = datos?.equipos ?? []
+  const duracion = limitarNumero(
+    datos?.presentacion_equipos_duracion_ms,
+    3000,
+    60000,
+    8000
+  )
+
+  useEffect(() => {
+    if (!automatico || equipos.length < 2 || indiceEquipo >= equipos.length - 1) {
+      return undefined
+    }
+
+    const temporizador = window.setTimeout(() => {
+      setIndiceEquipo((actual) => Math.min(actual + 1, equipos.length - 1))
+      setAnimacion((actual) => actual + 1)
+    }, duracion)
+
+    return () => window.clearTimeout(temporizador)
+  }, [automatico, equipos.length, indiceEquipo, duracion])
+
+  useEffect(() => {
+    if (!sonidoActivo || !audioRef.current) return
+    audioRef.current.volume = limitarNumero(
+      datos?.presentacion_equipos_musica_volumen,
+      0,
+      100,
+      65
+    ) / 100
+    audioRef.current.play().catch(() => {})
+  }, [sonidoActivo, datos])
+
+  function moverEquipo(direccion) {
+    setAutomatico(false)
+    setIndiceEquipo((actual) =>
+      Math.max(0, Math.min(equipos.length - 1, actual + direccion))
+    )
+    setAnimacion((actual) => actual + 1)
+  }
+
+  function activarSonido() {
+    setSonidoActivo(true)
+    audioRef.current?.play().catch(() => {})
+  }
+
+  if (cargando) {
+    return <main className="presentacion-equipos-tv estado-presentacion-equipos">Preparando presentación…</main>
+  }
+
+  if (error || equipos.length === 0) {
+    return <main className="presentacion-equipos-tv estado-presentacion-equipos">{error || 'No hay equipos para presentar.'}</main>
+  }
+
+  const equipo = equipos[indiceEquipo]
+  const miembros = Array.isArray(equipo?.miembros) ? equipo.miembros : []
+  const musicaUrl = datos.presentacion_equipos_musica_path
+    ? supabase.storage.from('musica-sorteos').getPublicUrl(
+        datos.presentacion_equipos_musica_path
+      ).data.publicUrl
+    : ''
+
+  return (
+    <main className="presentacion-equipos-tv">
+      {musicaUrl && <audio ref={audioRef} src={musicaUrl} loop preload="auto" />}
+
+      <div className="fondo-presentacion-equipos" aria-hidden="true">
+        <span /><span /><span />
+      </div>
+
+      <header className="cabecera-presentacion-equipos">
+        <div>
+          <small>PRESENTACIÓN OFICIAL</small>
+          <h1>{datos.sorteo}</h1>
+        </div>
+        <strong>Equipo {indiceEquipo + 1} de {equipos.length}</strong>
+      </header>
+
+      <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${animacion}`}>
+        <p className="grupo-presentacion-equipos">
+          {equipo.grupo || 'EQUIPO SORTEADO'}
+        </p>
+        <h2>{equipo.nombre_equipo}</h2>
+
+        <div className="jugadores-presentacion-equipos" data-miembros={miembros.length}>
+          {miembros.map((miembro, indice) => {
+            const imagen = miembro.caricatura_path || miembro.foto_path
+            return (
+              <article
+                className={`jugador-presentacion-equipos ${indice % 2 === 0 ? 'entra-izquierda' : 'entra-derecha'}`}
+                key={miembro.codigo_jugador || indice}
+                style={{ '--retraso-jugador': `${indice * 220}ms` }}
+              >
+                <div className={`imagen-presentacion-equipos ${miembro.caricatura_path ? 'imagen-caricatura' : ''}`}>
+                  {imagen ? (
+                    <img
+                      src={supabase.storage.from('jugadores').getPublicUrl(imagen).data.publicUrl}
+                      alt={miembro.nombre}
+                    />
+                  ) : (
+                    <span>{String(miembro.nombre || '?').slice(0, 1)}</span>
+                  )}
+                </div>
+                <h3>{miembro.nombre}</h3>
+                {datos.mostrar_bombos_publico !== false && (
+                  <small>{miembro.bombo || 'Jugador'}</small>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <footer className="controles-presentacion-equipos">
+        <button type="button" onClick={() => moverEquipo(-1)} disabled={indiceEquipo === 0}>← Anterior</button>
+        <button type="button" onClick={() => setAutomatico((valor) => !valor)}>
+          {automatico ? '⏸ Pausar' : '▶ Automático'}
+        </button>
+        <button type="button" onClick={() => moverEquipo(1)} disabled={indiceEquipo === equipos.length - 1}>Siguiente →</button>
+        {musicaUrl && !sonidoActivo && (
+          <button type="button" className="activar-sonido-equipos" onClick={activarSonido}>🔊 Activar música</button>
+        )}
+        <button type="button" onClick={() => document.documentElement.requestFullscreen?.()}>⛶ Pantalla completa</button>
+      </footer>
+    </main>
+  )
+}
+
 
 function generarCodigoBomboAutomatico(indice) {
   let numero = Number(indice) + 1
@@ -577,6 +739,12 @@ const [catalogoEditarFoto, setCatalogoEditarFoto] =
   useState(null)
 const [catalogoEditarFotoPreview, setCatalogoEditarFotoPreview] =
   useState('')
+const [catalogoEditarCaricatura, setCatalogoEditarCaricatura] =
+  useState(null)
+const [catalogoEditarCaricaturaPreview, setCatalogoEditarCaricaturaPreview] =
+  useState('')
+const [catalogoEliminarFoto, setCatalogoEliminarFoto] = useState(false)
+const [catalogoEliminarCaricatura, setCatalogoEliminarCaricatura] = useState(false)
 const [catalogoGuardandoEdicion, setCatalogoGuardandoEdicion] =
   useState(false)
 
@@ -1922,6 +2090,11 @@ const [modoPublico] = useState(() => {
   return parametros.get('publico') === '1'
 })
 
+const [modoPresentacionEquipos] = useState(() => {
+  const parametros = new URLSearchParams(window.location.search)
+  return parametros.get('presentacionEquipos') === '1'
+})
+
 const [sorteoPublicoId] = useState(() => {
   const parametros =
     new URLSearchParams(window.location.search)
@@ -2811,6 +2984,11 @@ const temporizadorRepeticionAdminRef = useRef(null)
           efecto_resumen_nombre,
           efecto_resumen_volumen,
           efecto_resumen_activo,
+          mostrar_bombos_publico,
+          presentacion_equipos_musica_path,
+          presentacion_equipos_musica_nombre,
+          presentacion_equipos_musica_volumen,
+          presentacion_equipos_duracion_ms,
           estado,
           creado_en
         `)
@@ -4509,6 +4687,7 @@ async function cargarCatalogoGeneral() {
       apellidos,
       alias,
       foto_path,
+      caricatura_path,
       activo
     `)
     .eq('activo', true)
@@ -4579,6 +4758,7 @@ function guardarFotoRecortada(archivo, preview) {
   } else if (destinoFotoRecortada === 'editar-catalogo') {
     setCatalogoEditarFoto(archivo)
     setCatalogoEditarFotoPreview(preview)
+    setCatalogoEliminarFoto(false)
   }
 
   setFotoPendienteRecorte(null)
@@ -4591,9 +4771,17 @@ function abrirEditarJugadorCatalogo(jugador) {
   setCatalogoEditarApellidos(jugador.apellidos ?? '')
   setCatalogoEditarAlias(jugador.alias ?? '')
   setCatalogoEditarFoto(null)
+  setCatalogoEditarCaricatura(null)
+  setCatalogoEliminarFoto(false)
+  setCatalogoEliminarCaricatura(false)
   setCatalogoEditarFotoPreview(
     jugador.foto_path
       ? obtenerUrlFoto(jugador.foto_path)
+      : ''
+  )
+  setCatalogoEditarCaricaturaPreview(
+    jugador.caricatura_path
+      ? obtenerUrlFoto(jugador.caricatura_path)
       : ''
   )
   setCatalogoGestionMensaje('')
@@ -4608,6 +4796,28 @@ function cerrarEditarJugadorCatalogo() {
   setCatalogoEditarAlias('')
   setCatalogoEditarFoto(null)
   setCatalogoEditarFotoPreview('')
+  setCatalogoEditarCaricatura(null)
+  setCatalogoEditarCaricaturaPreview('')
+  setCatalogoEliminarFoto(false)
+  setCatalogoEliminarCaricatura(false)
+}
+
+function seleccionarCaricaturaCatalogo(evento) {
+  const archivo = evento.target.files?.[0] ?? null
+  evento.target.value = ''
+  if (!archivo) return
+  if (!archivo.type.startsWith('image/')) {
+    setCatalogoGestionMensaje('El archivo seleccionado no es una imagen.')
+    return
+  }
+  if (archivo.size > 8 * 1024 * 1024) {
+    setCatalogoGestionMensaje('La caricatura no puede superar 8 MB.')
+    return
+  }
+  setCatalogoEditarCaricatura(archivo)
+  setCatalogoEditarCaricaturaPreview(URL.createObjectURL(archivo))
+  setCatalogoEliminarCaricatura(false)
+  setCatalogoGestionMensaje('')
 }
 
 async function guardarEdicionJugadorCatalogo(evento) {
@@ -4624,8 +4834,13 @@ async function guardarEdicionJugadorCatalogo(evento) {
   setCatalogoGuardandoEdicion(true)
   setCatalogoGestionMensaje('Guardando cambios...')
 
-  let nuevaFotoPath = jugadorCatalogoEditando.foto_path ?? null
-  let fotoNuevaSubida = false
+  let nuevaFotoPath = catalogoEliminarFoto
+    ? null
+    : jugadorCatalogoEditando.foto_path ?? null
+  let nuevaCaricaturaPath = catalogoEliminarCaricatura
+    ? null
+    : jugadorCatalogoEditando.caricatura_path ?? null
+  const archivosNuevos = []
 
   try {
     if (catalogoEditarFoto) {
@@ -4642,7 +4857,25 @@ async function guardarEdicionJugadorCatalogo(evento) {
         })
 
       if (errorSubida) throw errorSubida
-      fotoNuevaSubida = true
+      archivosNuevos.push(nuevaFotoPath)
+    }
+
+    if (catalogoEditarCaricatura) {
+      const extension = catalogoEditarCaricatura.name.split('.').pop()?.toLowerCase() || 'png'
+      nuevaCaricaturaPath =
+        `${jugadorCatalogoEditando.id}/caricatura-${crypto.randomUUID()}.${extension}`
+
+      const { error: errorCaricatura } = await supabase
+        .storage
+        .from('jugadores')
+        .upload(nuevaCaricaturaPath, catalogoEditarCaricatura, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: catalogoEditarCaricatura.type,
+        })
+
+      if (errorCaricatura) throw errorCaricatura
+      archivosNuevos.push(nuevaCaricaturaPath)
     }
 
     const cambios = {
@@ -4650,6 +4883,7 @@ async function guardarEdicionJugadorCatalogo(evento) {
       apellidos: catalogoEditarApellidos.trim() || null,
       alias: catalogoEditarAlias.trim() || null,
       foto_path: nuevaFotoPath,
+      caricatura_path: nuevaCaricaturaPath,
     }
 
     const { data: actualizado, error: errorActualizar } = await supabase
@@ -4663,6 +4897,7 @@ async function guardarEdicionJugadorCatalogo(evento) {
         apellidos,
         alias,
         foto_path,
+        caricatura_path,
         activo
       `)
       .single()
@@ -4670,7 +4905,7 @@ async function guardarEdicionJugadorCatalogo(evento) {
     if (errorActualizar) throw errorActualizar
 
     if (
-      catalogoEditarFoto &&
+      (catalogoEditarFoto || catalogoEliminarFoto) &&
       jugadorCatalogoEditando.foto_path &&
       jugadorCatalogoEditando.foto_path !== nuevaFotoPath
     ) {
@@ -4681,6 +4916,19 @@ async function guardarEdicionJugadorCatalogo(evento) {
 
       if (errorBorrarAnterior) {
         console.warn('No se pudo borrar la foto anterior:', errorBorrarAnterior)
+      }
+    }
+
+    if (
+      (catalogoEditarCaricatura || catalogoEliminarCaricatura) &&
+      jugadorCatalogoEditando.caricatura_path &&
+      jugadorCatalogoEditando.caricatura_path !== nuevaCaricaturaPath
+    ) {
+      const { error: errorBorrarCaricatura } = await supabase.storage
+        .from('jugadores')
+        .remove([jugadorCatalogoEditando.caricatura_path])
+      if (errorBorrarCaricatura) {
+        console.warn('No se pudo borrar la caricatura anterior:', errorBorrarCaricatura)
       }
     }
 
@@ -4700,10 +4948,14 @@ async function guardarEdicionJugadorCatalogo(evento) {
     setCatalogoEditarAlias('')
     setCatalogoEditarFoto(null)
     setCatalogoEditarFotoPreview('')
+    setCatalogoEditarCaricatura(null)
+    setCatalogoEditarCaricaturaPreview('')
+    setCatalogoEliminarFoto(false)
+    setCatalogoEliminarCaricatura(false)
     setCatalogoGestionMensaje('Jugador actualizado correctamente.')
   } catch (error) {
-    if (fotoNuevaSubida && nuevaFotoPath) {
-      await supabase.storage.from('jugadores').remove([nuevaFotoPath])
+    if (archivosNuevos.length > 0) {
+      await supabase.storage.from('jugadores').remove(archivosNuevos)
     }
 
     console.error('Error editando jugador del catálogo:', error)
@@ -10637,6 +10889,98 @@ function abrirPantallaPublica() {
   )
 }
 
+function abrirPresentacionEquipos() {
+  if (!sorteoSeleccionado?.id || !estadoPresentacion?.ejecucion_id) {
+    setMensajePresentacion('No se ha podido identificar la ejecución finalizada.')
+    return
+  }
+
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.searchParams.set('presentacionEquipos', '1')
+  url.searchParams.set('sorteo', sorteoSeleccionado.id)
+  url.searchParams.set('ejecucion', estadoPresentacion.ejecucion_id)
+
+  window.open(
+    url.toString(),
+    `presentacion-equipos-${sorteoSeleccionado.id}-${estadoPresentacion.ejecucion_id}`
+  )
+}
+
+async function guardarOpcionPresentacionEquipos(cambios, mensaje) {
+  if (!sorteoSeleccionado?.id) return
+
+  setMensajePresentacion('Guardando configuración…')
+  const { error } = await supabase
+    .from('sorteos')
+    .update(cambios)
+    .eq('id', sorteoSeleccionado.id)
+
+  if (error) {
+    setMensajePresentacion(`Error: ${error.message}`)
+    return
+  }
+
+  setSorteoSeleccionado((actual) => ({ ...actual, ...cambios }))
+  setMensajePresentacion(mensaje)
+}
+
+async function subirMusicaPresentacionEquipos(evento) {
+  const archivo = evento.target.files?.[0] ?? null
+  evento.target.value = ''
+  if (!archivo || !sorteoSeleccionado?.id) return
+
+  if (!['audio/mpeg', 'audio/mp3', 'audio/x-mpeg'].includes(archivo.type) &&
+      !archivo.name.toLowerCase().endsWith('.mp3')) {
+    setMensajePresentacion('Selecciona una canción en formato MP3.')
+    return
+  }
+
+  setMensajePresentacion('Subiendo canción de la presentación de equipos…')
+  const rutaAnterior = sorteoSeleccionado.presentacion_equipos_musica_path
+  const ruta = `${sorteoSeleccionado.id}/equipos-${crypto.randomUUID()}.mp3`
+  const { error: errorSubida } = await supabase.storage
+    .from('musica-sorteos')
+    .upload(ruta, archivo, { cacheControl: '3600', upsert: false, contentType: 'audio/mpeg' })
+
+  if (errorSubida) {
+    setMensajePresentacion(`Error: ${errorSubida.message}`)
+    return
+  }
+
+  const cambios = {
+    presentacion_equipos_musica_path: ruta,
+    presentacion_equipos_musica_nombre: archivo.name,
+  }
+  const { error: errorActualizar } = await supabase
+    .from('sorteos')
+    .update(cambios)
+    .eq('id', sorteoSeleccionado.id)
+
+  if (errorActualizar) {
+    await supabase.storage.from('musica-sorteos').remove([ruta])
+    setMensajePresentacion(`Error: ${errorActualizar.message}`)
+    return
+  }
+
+  if (rutaAnterior && rutaAnterior !== ruta) {
+    await supabase.storage.from('musica-sorteos').remove([rutaAnterior])
+  }
+  setSorteoSeleccionado((actual) => ({ ...actual, ...cambios }))
+  setMensajePresentacion('✓ Canción de la presentación de equipos guardada.')
+}
+
+async function eliminarMusicaPresentacionEquipos() {
+  const ruta = sorteoSeleccionado?.presentacion_equipos_musica_path
+  if (!ruta) return
+
+  await guardarOpcionPresentacionEquipos(
+    { presentacion_equipos_musica_path: null, presentacion_equipos_musica_nombre: null },
+    '✓ Canción eliminada.'
+  )
+  await supabase.storage.from('musica-sorteos').remove([ruta])
+}
+
 async function activarPantallaCompletaPublica() {
   try {
     if (!document.fullscreenElement) {
@@ -10718,6 +11062,16 @@ async function activarPantallaCompletaPublica() {
 PANTALLA PÚBLICA / TV
 ============================================================
 */
+
+if (modoPresentacionEquipos) {
+  const parametros = new URLSearchParams(window.location.search)
+  return (
+    <PresentacionEquiposPublica
+      sorteoId={parametros.get('sorteo') ?? ''}
+      ejecucionId={parametros.get('ejecucion') ?? ''}
+    />
+  )
+}
 
 if (
   modoPublico &&
@@ -11305,11 +11659,13 @@ if (
                             )}
                           </div>
 
-                          <small>
-                            {miembro.bombo
-                              ? String(miembro.bombo).toUpperCase()
-                              : 'JUGADOR'}
-                          </small>
+                          {presentacionPublica.mostrar_bombos_publico !== false && (
+                            <small>
+                              {miembro.bombo
+                                ? String(miembro.bombo).toUpperCase()
+                                : 'JUGADOR'}
+                            </small>
+                          )}
 
                           <h2>
                             {miembro.nombre}
@@ -11581,9 +11937,11 @@ if (
                                             {miembro.nombre}
                                           </strong>
 
-                                          <small>
-                                            {miembro.bombo ?? 'Jugador'}
-                                          </small>
+                                          {presentacionPublica.mostrar_bombos_publico !== false && (
+                                            <small>
+                                              {miembro.bombo ?? 'Jugador'}
+                                            </small>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -13641,6 +13999,7 @@ if (
 
                       <small>
                         {jugador.codigo_jugador}
+                        {jugador.caricatura_path ? ' · 🎭 Caricatura lista' : ''}
                       </small>
                     </div>
                   </div>
@@ -13717,6 +14076,51 @@ if (
                       }
                     />
                   </label>
+
+                  {catalogoEditarFotoPreview && (
+                    <button
+                      type="button"
+                      className="boton boton-peligro boton-eliminar-imagen-jugador"
+                      onClick={() => {
+                        setCatalogoEditarFoto(null)
+                        setCatalogoEditarFotoPreview('')
+                        setCatalogoEliminarFoto(true)
+                      }}
+                    >
+                      🗑 Eliminar foto
+                    </button>
+                  )}
+                </div>
+
+                <div className="caricatura-jugador-form">
+                  <div className="preview-caricatura-jugador">
+                    {catalogoEditarCaricaturaPreview ? (
+                      <img src={catalogoEditarCaricaturaPreview} alt="Caricatura del jugador" />
+                    ) : (
+                      <span>🎭</span>
+                    )}
+                  </div>
+                  <div>
+                    <strong>Caricatura de cuerpo entero</strong>
+                    <p>Se utilizará únicamente en la presentación final de los equipos.</p>
+                    <label className="selector-foto">
+                      {catalogoEditarCaricaturaPreview ? 'Cambiar caricatura' : 'Subir caricatura'}
+                      <input type="file" accept="image/*" onChange={seleccionarCaricaturaCatalogo} />
+                    </label>
+                    {catalogoEditarCaricaturaPreview && (
+                      <button
+                        type="button"
+                        className="boton boton-peligro boton-eliminar-imagen-jugador"
+                        onClick={() => {
+                          setCatalogoEditarCaricatura(null)
+                          setCatalogoEditarCaricaturaPreview('')
+                          setCatalogoEliminarCaricatura(true)
+                        }}
+                      >
+                        🗑 Eliminar caricatura
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <label className="campo-formulario">
@@ -16274,6 +16678,23 @@ if (
           </div>
         )}
 
+        <label className="opcion-visibilidad-bombos">
+          <input
+            type="checkbox"
+            checked={sorteoSeleccionado.mostrar_bombos_publico !== false}
+            onChange={(evento) => guardarOpcionPresentacionEquipos(
+              { mostrar_bombos_publico: evento.target.checked },
+              evento.target.checked
+                ? '✓ Durante la presentación se indicará el bombo de cada jugador.'
+                : '✓ Durante la presentación no se mostrará ningún bombo.'
+            )}
+          />
+          <span>
+            <strong>Mostrar de qué bombo procede cada jugador</strong>
+            <small>Desmárcalo si quieres que el público vea los equipos sin conocer sus bombos.</small>
+          </span>
+        </label>
+
         <div className="zona-generar-sorteo">
           <div>
             <h3>Generación de equipos</h3>
@@ -18259,6 +18680,15 @@ if (
                 <div className="acciones-final-presentacion">
                   <button
                     type="button"
+                    className="boton boton-principal boton-presentacion-principal"
+                    onClick={abrirPresentacionEquipos}
+                    disabled={accionPresentacion || bloqueoSecuenciaPresentacion}
+                  >
+                    🎭 Presentación de los equipos
+                  </button>
+
+                  <button
+                    type="button"
                     className="boton boton-secundario boton-presentacion-principal"
                     onClick={repetirPresentacionEnTv}
                     disabled={
@@ -18295,6 +18725,90 @@ if (
                   </button>
                 </div>
               </div>
+            )}
+
+            {estadoActual === 'finalizada' && (
+              <section className="config-presentacion-equipos">
+                <div className="cabecera-config-presentacion-equipos">
+                  <div>
+                    <small>SEGUNDO ACTO</small>
+                    <h3>Configurar presentación de los equipos</h3>
+                    <p>Caricaturas de cuerpo entero, canción propia y avance automático.</p>
+                  </div>
+                  <span>🎭</span>
+                </div>
+
+                <div className="campos-config-presentacion-equipos">
+                  <label>
+                    <span>Tiempo por equipo</span>
+                    <select
+                      value={String(sorteoSeleccionado.presentacion_equipos_duracion_ms ?? 8000)}
+                      onChange={(evento) => guardarOpcionPresentacionEquipos(
+                        { presentacion_equipos_duracion_ms: Number(evento.target.value) },
+                        '✓ Tiempo por equipo guardado.'
+                      )}
+                    >
+                      <option value="5000">5 segundos</option>
+                      <option value="8000">8 segundos</option>
+                      <option value="10000">10 segundos</option>
+                      <option value="15000">15 segundos</option>
+                      <option value="20000">20 segundos</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Volumen de la canción: {sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}
+                      onChange={(evento) => setSorteoSeleccionado((actual) => ({
+                        ...actual,
+                        presentacion_equipos_musica_volumen: Number(evento.target.value),
+                      }))}
+                      onMouseUp={(evento) => guardarOpcionPresentacionEquipos(
+                        { presentacion_equipos_musica_volumen: Number(evento.currentTarget.value) },
+                        '✓ Volumen guardado.'
+                      )}
+                      onTouchEnd={(evento) => guardarOpcionPresentacionEquipos(
+                        { presentacion_equipos_musica_volumen: Number(evento.currentTarget.value) },
+                        '✓ Volumen guardado.'
+                      )}
+                    />
+                  </label>
+
+                  <label className="check-config-presentacion-equipos">
+                    <input
+                      type="checkbox"
+                      checked={sorteoSeleccionado.mostrar_bombos_publico !== false}
+                      onChange={(evento) => guardarOpcionPresentacionEquipos(
+                        { mostrar_bombos_publico: evento.target.checked },
+                        evento.target.checked
+                          ? '✓ Se mostrará el bombo de cada jugador.'
+                          : '✓ Los bombos quedarán ocultos al público.'
+                      )}
+                    />
+                    <span>Mostrar de qué bombo procede cada jugador</span>
+                  </label>
+                </div>
+
+                <div className="musica-config-presentacion-equipos">
+                  <div>
+                    <small>CANCIÓN</small>
+                    <strong>{sorteoSeleccionado.presentacion_equipos_musica_nombre || 'Sin canción configurada'}</strong>
+                  </div>
+                  <label className="boton boton-secundario">
+                    {sorteoSeleccionado.presentacion_equipos_musica_path ? 'Cambiar MP3' : 'Seleccionar MP3'}
+                    <input type="file" accept=".mp3,audio/mpeg" onChange={subirMusicaPresentacionEquipos} hidden />
+                  </label>
+                  {sorteoSeleccionado.presentacion_equipos_musica_path && (
+                    <button type="button" className="boton boton-secundario" onClick={eliminarMusicaPresentacionEquipos}>
+                      Eliminar canción
+                    </button>
+                  )}
+                </div>
+              </section>
             )}
 
             {mensajePresentacion && (

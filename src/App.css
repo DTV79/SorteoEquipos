@@ -9522,3 +9522,124 @@ Así la animación sigue siendo clara sin tocar los bordes del panel.
     flex: 1;
   }
 }
+/* ==========================================================
+   PRESENTACIÓN FINAL DE EQUIPOS
+   ========================================================== */
+
+.presentacion-equipos-tv {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 15%, rgba(34, 197, 94, .22), transparent 34%),
+    linear-gradient(145deg, #07111d 0%, #0d1b2b 52%, #071018 100%);
+}
+
+.estado-presentacion-equipos {
+  place-items: center;
+  font-size: clamp(1.1rem, 2.4vw, 2rem);
+  text-align: center;
+  padding: 2rem;
+}
+
+.fondo-presentacion-equipos,
+.fondo-presentacion-equipos span { position: absolute; inset: 0; pointer-events: none; }
+.fondo-presentacion-equipos span:nth-child(1) { background: linear-gradient(105deg, transparent 30%, rgba(34,197,94,.08) 31%, transparent 45%); }
+.fondo-presentacion-equipos span:nth-child(2) { background: radial-gradient(circle at 10% 75%, rgba(59,130,246,.18), transparent 24%); }
+.fondo-presentacion-equipos span:nth-child(3) { background: radial-gradient(circle at 90% 75%, rgba(245,158,11,.16), transparent 24%); }
+
+.cabecera-presentacion-equipos {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  padding: clamp(1rem, 2.4vw, 2.3rem) clamp(1.2rem, 4vw, 4.5rem);
+  border-bottom: 1px solid rgba(255,255,255,.11);
+}
+.cabecera-presentacion-equipos small { color: #4ade80; font-weight: 900; letter-spacing: .18em; }
+.cabecera-presentacion-equipos h1 { margin: .25rem 0 0; font-size: clamp(1.25rem, 2.7vw, 2.5rem); }
+.cabecera-presentacion-equipos > strong { padding: .65rem 1rem; border-radius: 999px; background: rgba(255,255,255,.1); }
+
+.escenario-presentacion-equipos {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 4vw;
+}
+.grupo-presentacion-equipos { margin: 0; color: #86efac; font-weight: 900; letter-spacing: .16em; }
+.escenario-presentacion-equipos > h2 { margin: .25rem 0 .7rem; font-size: clamp(1.8rem, 4.2vw, 4rem); text-align: center; }
+
+.jugadores-presentacion-equipos {
+  width: min(1500px, 96vw);
+  min-height: 54vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(.75rem, 3vw, 3.5rem);
+}
+.jugador-presentacion-equipos { flex: 1 1 0; max-width: 430px; text-align: center; opacity: 0; animation: entrada-jugador-equipo .9s cubic-bezier(.18,.78,.25,1) forwards; animation-delay: var(--retraso-jugador); }
+.jugador-presentacion-equipos.entra-izquierda { --origen-entrada: -55vw; }
+.jugador-presentacion-equipos.entra-derecha { --origen-entrada: 55vw; }
+.imagen-presentacion-equipos { height: min(50vh, 520px); display: grid; place-items: center; }
+.imagen-presentacion-equipos img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 22px 28px rgba(0,0,0,.5)); }
+.imagen-presentacion-equipos:not(.imagen-caricatura) img { width: min(36vh, 320px); height: min(36vh, 320px); border-radius: 50%; object-fit: cover; border: 5px solid rgba(255,255,255,.8); }
+.imagen-presentacion-equipos span { width: 180px; height: 180px; display: grid; place-items: center; border-radius: 50%; background: #1e293b; font-size: 5rem; }
+.jugador-presentacion-equipos h3 { margin: .2rem 0; font-size: clamp(1.35rem, 2.8vw, 2.8rem); text-shadow: 0 3px 18px #000; }
+.jugador-presentacion-equipos small { color: #86efac; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
+
+@keyframes entrada-jugador-equipo {
+  0% { opacity: 0; transform: translateX(var(--origen-entrada)) scale(.86); filter: blur(8px); }
+  70% { opacity: 1; transform: translateX(2%) scale(1.03); filter: blur(0); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+
+.controles-presentacion-equipos { position: relative; z-index: 3; display: flex; justify-content: center; flex-wrap: wrap; gap: .65rem; padding: .85rem 1rem; background: rgba(2,6,23,.72); backdrop-filter: blur(12px); }
+.controles-presentacion-equipos button { border: 1px solid rgba(255,255,255,.18); border-radius: 10px; padding: .65rem 1rem; color: white; background: rgba(255,255,255,.1); cursor: pointer; font-weight: 750; }
+.controles-presentacion-equipos button:hover:not(:disabled) { background: rgba(34,197,94,.25); }
+.controles-presentacion-equipos button:disabled { opacity: .35; cursor: default; }
+.controles-presentacion-equipos .activar-sonido-equipos { background: #16a34a; }
+
+.config-presentacion-equipos { margin: 1.2rem 0; padding: 1.25rem; border: 1px solid rgba(34,197,94,.32); border-radius: 18px; background: linear-gradient(145deg, rgba(34,197,94,.1), rgba(15,23,42,.68)); }
+.cabecera-config-presentacion-equipos { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.cabecera-config-presentacion-equipos small { color: #22c55e; font-weight: 900; letter-spacing: .12em; }
+.cabecera-config-presentacion-equipos h3 { margin: .25rem 0; }
+.cabecera-config-presentacion-equipos p { margin: 0; opacity: .78; }
+.cabecera-config-presentacion-equipos > span { font-size: 2.4rem; }
+.campos-config-presentacion-equipos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; margin-top: 1.1rem; }
+.campos-config-presentacion-equipos > label:not(.check-config-presentacion-equipos) { display: grid; gap: .5rem; font-weight: 750; }
+.campos-config-presentacion-equipos select { width: 100%; padding: .72rem; border-radius: 9px; }
+.check-config-presentacion-equipos { grid-column: 1/-1; display: flex; gap: .7rem; align-items: center; padding: .85rem; border-radius: 12px; background: rgba(255,255,255,.06); }
+.check-config-presentacion-equipos input, .opcion-visibilidad-bombos input { width: 20px; height: 20px; accent-color: #22c55e; }
+.musica-config-presentacion-equipos { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.12); }
+.musica-config-presentacion-equipos > div { display: grid; margin-right: auto; }
+.musica-config-presentacion-equipos small { opacity: .68; font-weight: 800; }
+.opcion-visibilidad-bombos { display: flex; gap: .8rem; align-items: center; margin: 1rem 0; padding: 1rem; border: 1px solid rgba(34,197,94,.25); border-radius: 14px; background: rgba(34,197,94,.07); cursor: pointer; }
+.opcion-visibilidad-bombos span { display: grid; gap: .2rem; }
+.opcion-visibilidad-bombos small { opacity: .72; }
+
+.caricatura-jugador-form { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 1rem; padding: 1rem; border-radius: 14px; background: rgba(34,197,94,.07); border: 1px solid rgba(34,197,94,.2); }
+.preview-caricatura-jugador { height: 190px; display: grid; place-items: center; border-radius: 12px; overflow: hidden; background: #111c29; }
+.preview-caricatura-jugador img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.preview-caricatura-jugador span { font-size: 3rem; }
+.caricatura-jugador-form p { margin: .35rem 0 .8rem; opacity: .72; font-size: .9rem; }
+.boton-eliminar-imagen-jugador { margin-top: .55rem; padding: .55rem .75rem; }
+
+@media (max-width: 720px) {
+  .cabecera-presentacion-equipos { align-items: flex-start; }
+  .cabecera-presentacion-equipos > strong { font-size: .75rem; }
+  .jugadores-presentacion-equipos { min-height: 58vh; gap: .3rem; }
+  .imagen-presentacion-equipos { height: min(42vh, 400px); }
+  .campos-config-presentacion-equipos { grid-template-columns: 1fr; }
+  .caricatura-jugador-form { grid-template-columns: 110px 1fr; }
+  .preview-caricatura-jugador { height: 150px; }
+}
