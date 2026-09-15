@@ -53,6 +53,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [mensajes, setMensajes] = useState({})
   const [puntosMaximos, setPuntosMaximos] = useState(15)
   const [estructuraPrimeraFase, setEstructuraPrimeraFase] = useState('Grupos')
+  const [modoGenerarJornadas, setModoGenerarJornadas] = useState('')
   const [hayRegrupos, setHayRegrupos] = useState(false)
   const [hayPalas, setHayPalas] = useState(false)
   const [faseActiva, setFaseActiva] = useState('GR')
@@ -126,6 +127,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         const maximo = Number(configuracion.puntos_maximos_por_set)
         if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
         setEstructuraPrimeraFase(configuracion.estructura_primera_fase || 'Grupos')
+        setModoGenerarJornadas(configuracion.modo_generar_jornadas || '')
         setHayRegrupos(Boolean(configuracion.hay_regrupos))
         setHayPalas(Boolean(configuracion.hay_copa_palas_playa))
       })
@@ -718,7 +720,15 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           <section className="generador-partidos-grupos">
             <div>
               <strong>Liguilla · siguiente jornada</strong>
-              <span>La primera jornada es aleatoria; después aplica el modo configurado, evita repeticiones y reparte los descansos.</span>
+              <span>
+                La primera jornada es aleatoria; después aplica {
+                  modoGenerarJornadas === 'Aleatorio'
+                    ? 'el modo aleatorio'
+                    : modoGenerarJornadas === 'Suizo'
+                      ? 'el sistema suizo'
+                      : 'un modo todavía sin definir'
+                }, evita repeticiones y reparte los descansos.
+              </span>
             </div>
             <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarSiguienteJornadaLiguilla}>
               {generandoGrupos ? 'Generando…' : partidosFaseActiva.length > 0 ? 'Generar siguiente jornada' : 'Generar primera jornada'}
