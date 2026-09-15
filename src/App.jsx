@@ -15682,7 +15682,7 @@ if (
         <header className="cabecera-gestion">
           <div>
             <p className="etiqueta">CONFIGURACIÓN</p>
-            <h2>Equipos fijos</h2>
+            <h2>Equipos fijos e incompatibles</h2>
             <p className="descripcion-admin">
               {sorteoSeleccionado.nombre}
             </p>
@@ -19408,11 +19408,11 @@ if (
 
               <span>
                 <strong>
-                  Equipos fijos
+                  Equipos fijos e incompatibles
                 </strong>
 
                 <small>
-                  Fijar parejas que no entrarán en la mezcla
+                  Fijar parejas que no entrarán en la mezcla y configurar jugadores incompatibles
                 </small>
               </span>
             </button>
