@@ -1746,6 +1746,12 @@ const [equipoFijoPendienteEliminar, setEquipoFijoPendienteEliminar] =
   useState(null)
 const [eliminandoEquipoFijo, setEliminandoEquipoFijo] = useState(false)
 
+const [incompatibilidadesSorteo, setIncompatibilidadesSorteo] = useState([])
+const [jugadorBaseIncompatibilidad, setJugadorBaseIncompatibilidad] = useState('')
+const [jugadoresIncompatiblesSeleccionados, setJugadoresIncompatiblesSeleccionados] = useState([])
+const [busquedaIncompatibles, setBusquedaIncompatibles] = useState('')
+const [guardandoIncompatibilidad, setGuardandoIncompatibilidad] = useState(false)
+
 
 /*
 ============================================================
@@ -6083,6 +6089,20 @@ function reiniciarConstructorEquipoFijo() {
   setParticipantesEquipoFijo([])
   setBusquedasEquipoFijo([])
   setCoronaEquipoFijo(false)
+  setJugadorBaseIncompatibilidad('')
+  setJugadoresIncompatiblesSeleccionados([])
+  setBusquedaIncompatibles('')
+}
+
+async function cargarIncompatibilidadesSorteo() {
+  if (!sorteoSeleccionado) return
+  const { data, error } = await supabase
+    .from('incompatibilidades_sorteo')
+    .select('id,sorteo_id,participante_1_id,participante_2_id,creado_en')
+    .eq('sorteo_id', sorteoSeleccionado.id)
+    .order('creado_en', { ascending: true })
+  if (error) throw error
+  setIncompatibilidadesSorteo(data ?? [])
 }
 
 async function abrirEquiposFijos() {
@@ -6102,6 +6122,7 @@ async function abrirEquiposFijos() {
       respuestaPosiciones,
       respuestaEquipos,
       respuestaMiembros,
+      respuestaIncompatibilidades,
     ] = await Promise.all([
       supabase
         .from('participantes_sorteo')
@@ -6133,12 +6154,18 @@ async function abrirEquiposFijos() {
         .select('id,equipo_fijo_id,participante_id,orden_en_equipo')
         .eq('sorteo_id', sorteoSeleccionado.id)
         .order('orden_en_equipo', { ascending: true }),
+      supabase
+        .from('incompatibilidades_sorteo')
+        .select('id,sorteo_id,participante_1_id,participante_2_id,creado_en')
+        .eq('sorteo_id', sorteoSeleccionado.id)
+        .order('creado_en', { ascending: true }),
     ])
 
     const errorCarga =
       respuestaParticipantes.error || respuestaBombos.error ||
       respuestaReglas.error || respuestaPosiciones.error ||
-      respuestaEquipos.error || respuestaMiembros.error
+      respuestaEquipos.error || respuestaMiembros.error ||
+      respuestaIncompatibilidades.error
     if (errorCarga) throw errorCarga
 
     const listaParticipantes = respuestaParticipantes.data ?? []
@@ -6155,6 +6182,7 @@ async function abrirEquiposFijos() {
     setReglasEquiposFijos(reglasConBombos)
     setEquiposFijos(respuestaEquipos.data ?? [])
     setMiembrosEquiposFijos(respuestaMiembros.data ?? [])
+    setIncompatibilidadesSorteo(respuestaIncompatibilidades.data ?? [])
 
     const idsJugadores = [...new Set(listaParticipantes.map((p) => p.jugador_id))]
     if (idsJugadores.length === 0) {
@@ -6219,6 +6247,51 @@ async function crearEquipoFijo(evento) {
   } finally {
     setGuardandoEquipoFijo(false)
   }
+}
+
+async function guardarIncompatibilidades(evento) {
+  evento.preventDefault()
+  if (!sorteoSeleccionado || !jugadorBaseIncompatibilidad) {
+    setMensajeEquiposFijos('Selecciona el jugador principal.')
+    return
+  }
+  if (jugadoresIncompatiblesSeleccionados.length === 0) {
+    setMensajeEquiposFijos('Selecciona al menos un jugador incompatible.')
+    return
+  }
+
+  setGuardandoIncompatibilidad(true)
+  setMensajeEquiposFijos('Guardando incompatibilidades...')
+  try {
+    const { error } = await supabase.rpc('guardar_incompatibilidades_sorteo', {
+      p_sorteo_id: sorteoSeleccionado.id,
+      p_participante_base_id: jugadorBaseIncompatibilidad,
+      p_participante_incompatibles_ids: jugadoresIncompatiblesSeleccionados,
+    })
+    if (error) throw error
+    await cargarIncompatibilidadesSorteo()
+    setJugadorBaseIncompatibilidad('')
+    setJugadoresIncompatiblesSeleccionados([])
+    setBusquedaIncompatibles('')
+    setMensajeEquiposFijos('Incompatibilidades guardadas. El sorteo nunca juntará esas parejas.')
+  } catch (error) {
+    setMensajeEquiposFijos(`Error: ${error.message}`)
+  } finally {
+    setGuardandoIncompatibilidad(false)
+  }
+}
+
+async function eliminarIncompatibilidad(id) {
+  setMensajeEquiposFijos('Eliminando incompatibilidad...')
+  const { error } = await supabase.rpc('eliminar_incompatibilidad_sorteo', {
+    p_incompatibilidad_id: id,
+  })
+  if (error) {
+    setMensajeEquiposFijos(`Error: ${error.message}`)
+    return
+  }
+  await cargarIncompatibilidadesSorteo()
+  setMensajeEquiposFijos('Incompatibilidad eliminada.')
 }
 
 async function actualizarCoronaEquipoFijo(equipoFijo, mostrarCorona) {
@@ -7663,7 +7736,7 @@ async function confirmarGeneracionSorteo() {
       data,
       error,
     } = await supabase.rpc(
-      'generar_sorteo_aleatorio',
+      'generar_sorteo_respetando_incompatibilidades',
       {
         p_sorteo_id:
           sorteoSeleccionado.id,
@@ -15920,6 +15993,81 @@ if (
               </article>
             )
           })}
+        </div>
+
+        <div className="panel-incompatibilidades">
+          <div className="cabecera-incompatibilidades">
+            <div>
+              <p className="etiqueta">RESTRICCIONES DEL SORTEO</p>
+              <h3>Jugadores incompatibles</h3>
+              <p>El jugador principal nunca formará equipo con ninguno de los jugadores seleccionados.</p>
+            </div>
+            <span className="badge-estado">{incompatibilidadesSorteo.length} prohibidas</span>
+          </div>
+
+          <form className="formulario-incompatibilidades" onSubmit={guardarIncompatibilidades}>
+            <label>
+              <span>Jugador principal</span>
+              <select value={jugadorBaseIncompatibilidad} onChange={(evento) => {
+                setJugadorBaseIncompatibilidad(evento.target.value)
+                setJugadoresIncompatiblesSeleccionados([])
+                setMensajeEquiposFijos('')
+              }}>
+                <option value="">Selecciona un jugador</option>
+                {datosParticipantesFijos.map((item) => (
+                  <option key={item.participante.id} value={item.participante.id}>{item.nombre}</option>
+                ))}
+              </select>
+            </label>
+
+            {jugadorBaseIncompatibilidad && (
+              <>
+                <label className="buscador-incompatibles">
+                  <span>Buscar jugadores incompatibles</span>
+                  <input type="search" value={busquedaIncompatibles} onChange={(evento) => setBusquedaIncompatibles(evento.target.value)} placeholder="Escribe un nombre..." />
+                </label>
+                <div className="grid-incompatibles">
+                  {datosParticipantesFijos
+                    .filter((item) => item.participante.id !== jugadorBaseIncompatibilidad)
+                    .filter((item) => normalizar(item.nombre).includes(normalizar(busquedaIncompatibles)))
+                    .map((item) => {
+                      const marcada = jugadoresIncompatiblesSeleccionados.includes(item.participante.id)
+                      return (
+                        <label className={`opcion-incompatible ${marcada ? 'opcion-incompatible-activa' : ''}`} key={item.participante.id}>
+                          <input type="checkbox" checked={marcada} onChange={() => setJugadoresIncompatiblesSeleccionados((actuales) =>
+                            marcada ? actuales.filter((id) => id !== item.participante.id) : [...actuales, item.participante.id]
+                          )} />
+                          <div className="avatar-incompatible">
+                            {item.jugador?.foto_path ? <img src={obtenerUrlFoto(item.jugador.foto_path)} alt="" /> : <span>{obtenerIniciales(item.nombre)}</span>}
+                          </div>
+                          <strong>{item.nombre}</strong>
+                        </label>
+                      )
+                    })}
+                </div>
+              </>
+            )}
+
+            <button type="submit" className="boton boton-principal" disabled={guardandoIncompatibilidad || !jugadorBaseIncompatibilidad || jugadoresIncompatiblesSeleccionados.length === 0}>
+              {guardandoIncompatibilidad ? 'Guardando...' : `⛔ Guardar ${jugadoresIncompatiblesSeleccionados.length || ''} incompatibilidad${jugadoresIncompatiblesSeleccionados.length === 1 ? '' : 'es'}`}
+            </button>
+          </form>
+
+          <div className="lista-incompatibilidades">
+            {incompatibilidadesSorteo.map((incompatibilidad) => {
+              const primero = obtenerDatosParticipante(incompatibilidad.participante_1_id)
+              const segundo = obtenerDatosParticipante(incompatibilidad.participante_2_id)
+              return (
+                <article key={incompatibilidad.id}>
+                  <strong>{primero?.nombre ?? 'Jugador'}</strong>
+                  <span>NO PUEDE IR CON</span>
+                  <strong>{segundo?.nombre ?? 'Jugador'}</strong>
+                  <button type="button" className="boton-accion-jugador boton-quitar-jugador" onClick={() => eliminarIncompatibilidad(incompatibilidad.id)}>Eliminar</button>
+                </article>
+              )
+            })}
+            {incompatibilidadesSorteo.length === 0 && <p className="sin-incompatibilidades">Todavía no hay parejas prohibidas.</p>}
+          </div>
         </div>
 
         {equipoFijoPendienteEliminar && (
