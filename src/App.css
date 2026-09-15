@@ -10295,3 +10295,20 @@ body:has(.presentacion-equipos-tv) {
     height: min(54dvh, 540px);
   }
 }
+
+
+/* Resumen final TV: fotos y nombres más grandes sin alterar los recuadros. */
+.resumen-final-publico-tv .avatar-resumen-final {
+  width: clamp(44px, 5.4dvh, 64px);
+  height: clamp(44px, 5.4dvh, 64px);
+  flex: 0 0 clamp(44px, 5.4dvh, 64px);
+}
+
+.resumen-final-publico-tv .jugador-resumen-final {
+  gap: clamp(7px, .7vw, 12px);
+}
+
+.resumen-final-publico-tv .jugador-resumen-final strong {
+  font-size: clamp(14px, 1.8dvh, 21px);
+  line-height: 1.05;
+}
