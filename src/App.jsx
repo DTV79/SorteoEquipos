@@ -314,6 +314,31 @@ function EditorRecorteFoto({ archivo, onCancelar, onGuardar }) {
   )
 }
 
+function CoronaEquipo() {
+  return (
+    <div className="corona-presentacion-equipo" aria-label="Equipo con corona">
+      <svg viewBox="0 0 180 135" role="img" aria-hidden="true">
+        <defs>
+          <linearGradient id="oro-corona" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#fff3a6" />
+            <stop offset=".35" stopColor="#ffd43b" />
+            <stop offset=".72" stopColor="#f59f00" />
+            <stop offset="1" stopColor="#b76500" />
+          </linearGradient>
+          <filter id="brillo-corona" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <path className="destello-corona" d="M90 2v19M39 20l12 15M141 20l-12 15M12 61h20M148 61h20" />
+        <path className="cuerpo-corona" filter="url(#brillo-corona)" d="M22 44l38 28 30-50 30 50 38-28-14 65H36z" />
+        <path className="base-corona" d="M35 105h110l-5 20H40z" />
+        <circle cx="60" cy="92" r="7" /><circle cx="90" cy="92" r="7" /><circle cx="120" cy="92" r="7" />
+      </svg>
+    </div>
+  )
+}
+
 function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = false }) {
   const [sonidoActivo] = useState(() => Boolean(sonidoActivoInicial))
   const [reloj, setReloj] = useState(Date.now())
@@ -363,6 +388,7 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
       <section className="escenario-presentacion-equipos" key={`${indiceEquipo}-${control?.presentacion_equipos_version ?? 0}`}>
         <p className="grupo-presentacion-equipos">{equipo.grupo || 'EQUIPO SORTEADO'}</p>
         <div className="jugadores-presentacion-equipos" data-miembros={miembros.length}>
+          {equipo.mostrar_corona && miembros.length === 2 && <CoronaEquipo />}
           {miembros.map((miembro, indice) => {
             const imagen = miembro.caricatura_path || miembro.foto_path
             return (
@@ -1712,6 +1738,7 @@ const [mensajeEquiposFijos, setMensajeEquiposFijos] = useState('')
 const [reglaEquipoFijoId, setReglaEquipoFijoId] = useState('')
 const [participantesEquipoFijo, setParticipantesEquipoFijo] = useState([])
 const [busquedasEquipoFijo, setBusquedasEquipoFijo] = useState([])
+const [coronaEquipoFijo, setCoronaEquipoFijo] = useState(false)
 
 
 const [guardandoEquipoFijo, setGuardandoEquipoFijo] = useState(false)
@@ -6055,6 +6082,7 @@ function reiniciarConstructorEquipoFijo() {
   setReglaEquipoFijoId('')
   setParticipantesEquipoFijo([])
   setBusquedasEquipoFijo([])
+  setCoronaEquipoFijo(false)
 }
 
 async function abrirEquiposFijos() {
@@ -6097,7 +6125,7 @@ async function abrirEquiposFijos() {
         .order('orden_en_equipo', { ascending: true }),
       supabase
         .from('equipos_fijos')
-        .select('id,sorteo_id,regla_id,creado_en')
+        .select('id,sorteo_id,regla_id,mostrar_corona,creado_en')
         .eq('sorteo_id', sorteoSeleccionado.id)
         .order('creado_en', { ascending: true }),
       supabase
@@ -6176,16 +6204,55 @@ async function crearEquipoFijo(evento) {
       p_sorteo_id: sorteoSeleccionado.id,
       p_regla_id: reglaEquipoFijoId,
       p_participante_ids: seleccion,
+      p_mostrar_corona: coronaEquipoFijo,
     })
     if (error) throw error
     await abrirEquiposFijos()
-    setMensajeEquiposFijos('Equipo fijo creado correctamente. Sus integrantes ya no entrarán en la mezcla aleatoria.')
+    setMensajeEquiposFijos(
+      coronaEquipoFijo
+        ? 'Equipo fijo creado con corona. Aparecerá en su presentación oficial.'
+        : 'Equipo fijo creado correctamente. Sus integrantes ya no entrarán en la mezcla aleatoria.'
+    )
   } catch (error) {
     console.error('Error creando equipo fijo:', error)
     setMensajeEquiposFijos(`Error: ${error.message}`)
   } finally {
     setGuardandoEquipoFijo(false)
   }
+}
+
+async function actualizarCoronaEquipoFijo(equipoFijo, mostrarCorona) {
+  setMensajeEquiposFijos('Guardando corona...')
+  setEquiposFijos((actuales) =>
+    actuales.map((equipo) =>
+      equipo.id === equipoFijo.id
+        ? { ...equipo, mostrar_corona: mostrarCorona }
+        : equipo
+    )
+  )
+
+  const { error } = await supabase.rpc('actualizar_corona_equipo_fijo', {
+    p_equipo_fijo_id: equipoFijo.id,
+    p_mostrar_corona: mostrarCorona,
+  })
+
+  if (error) {
+    setEquiposFijos((actuales) =>
+      actuales.map((equipo) =>
+        equipo.id === equipoFijo.id
+          ? { ...equipo, mostrar_corona: !mostrarCorona }
+          : equipo
+      )
+    )
+    setMensajeEquiposFijos(`Error: ${error.message}`)
+    return
+  }
+
+  setMensajeEquiposFijos(
+    mostrarCorona
+      ? 'Corona activada para este equipo.'
+      : 'Corona desactivada para este equipo.'
+  )
 }
 
 async function confirmarEliminarEquipoFijo() {
@@ -15742,6 +15809,19 @@ if (
                   })}
                 </div>
 
+                <label className="opcion-corona-equipo-fijo">
+                  <input
+                    type="checkbox"
+                    checked={coronaEquipoFijo}
+                    onChange={(evento) => setCoronaEquipoFijo(evento.target.checked)}
+                  />
+                  <span className="icono-corona-check" aria-hidden="true">♛</span>
+                  <span>
+                    <strong>Corona</strong>
+                    <small>Mostrar una corona dorada entre los dos jugadores durante la presentación.</small>
+                  </span>
+                </label>
+
                 <button
                   type="submit"
                   className="boton boton-principal boton-fijar-equipo-visual"
@@ -15818,6 +15898,17 @@ if (
 
                 <div className="pie-equipo-fijo">
                   <span>{regla?.nombre ?? 'Regla de emparejamiento'}</span>
+                  <label className="interruptor-corona-equipo">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(equipoFijo.mostrar_corona)}
+                      onChange={(evento) =>
+                        actualizarCoronaEquipoFijo(equipoFijo, evento.target.checked)
+                      }
+                    />
+                    <span aria-hidden="true">♛</span>
+                    Corona
+                  </label>
                   <button
                     type="button"
                     className="boton-accion-jugador boton-eliminar-equipo-fijo"
