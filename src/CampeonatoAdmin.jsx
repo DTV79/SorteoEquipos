@@ -157,9 +157,18 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         .includes(texto)
       return coincideFase && coincideJornada && coincideRonda && coincideTexto
     }).sort((a, b) => {
-      if (!['MM', 'PP'].includes(faseActiva)) return 0
-      const ordenRondas = { CUA: 1, SEM: 2, FIN: 3 }
-      return (ordenRondas[a.codigo_ronda] ?? 99) - (ordenRondas[b.codigo_ronda] ?? 99) || Number(a.orden ?? 0) - Number(b.orden ?? 0)
+      const porJornada = Number(a.jornada ?? 0) - Number(b.jornada ?? 0)
+      if (porJornada) return porJornada
+
+      if (['MM', 'PP'].includes(faseActiva)) {
+        const ordenRondas = { OCT: 1, CUA: 2, SEM: 3, FIN: 4 }
+        const porRonda = (ordenRondas[a.codigo_ronda] ?? 99) - (ordenRondas[b.codigo_ronda] ?? 99)
+        if (porRonda) return porRonda
+      }
+
+      return String(a.codigo_grupo ?? '').localeCompare(String(b.codigo_grupo ?? ''), 'es') ||
+        Number(a.orden ?? 0) - Number(b.orden ?? 0) ||
+        String(a.id_partido ?? '').localeCompare(String(b.id_partido ?? ''), 'es')
     })
   }, [faseActiva, filtro, filtroJornada, filtroRonda, partidos])
 
