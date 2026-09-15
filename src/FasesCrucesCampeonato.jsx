@@ -74,6 +74,11 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   }, [clasificacion])
 
   const especial = config.formato_acceso_eliminatorias === FORMATO_ESPECIAL
+  const esLiguilla = config.tipo_campeonato === 'Liguilla'
+  const posicionInicioPalas = Math.max(1, Number(config.posicion_inicio_palas_playa) || 1)
+  const participantesPalasLiguilla = esLiguilla
+    ? clasificacion.filter((fila) => Number(fila.posicion) >= posicionInicioPalas)
+    : []
   const grupoA = grupos[0]?.[1] ?? []
   const grupoB = grupos[1]?.[1] ?? []
   const cuadroCompleto = especial && grupos.length === 2 && grupoA.length >= 4 && grupoB.length >= 4
@@ -133,7 +138,13 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                   <strong>Cruces normales</strong>
                   <p>Los equipos clasificados comenzarán en {config.ronda_inicial_eliminatorias || 'la ronda inicial'} aplicando el criterio «{config.criterio_generar_cruces || 'Por clasificación'}».</p>
                   <p>{clasificadosNormales.length} de {equiposNecesarios || '—'} equipos preparados desde la clasificación de {config.hay_regrupos ? 'ReGrupos' : 'Grupos'}.</p>
-                  {config.hay_copa_palas_playa && <p>🏖️ La Copa Palas de Playa se generará con los perdedores de la primera eliminatoria y avanzará cuando se guarden los resultados.</p>}
+                  {config.hay_copa_palas_playa && esLiguilla && (
+                    <p>🏖️ La Copa Palas de Playa se creará con los {participantesPalasLiguilla.length} equipos clasificados desde la posición {posicionInicioPalas}. El ganador de cada partido se salva y el perdedor continúa.</p>
+                  )}
+                  {config.hay_copa_palas_playa && !esLiguilla && (
+                    <p>🏖️ La Copa Palas de Playa se generará con los equipos que determine este formato. El ganador se salva y el perdedor continúa.</p>
+                  )}
+                  {config.hay_copa_palas_playa && <p>El criterio aplicado será «{config.criterio_palas_playa || 'Por Clasificación'}».</p>}
                 </section>
                 {!cuadroNormalCompleto && (
                   <p className="mensaje-login">La ronda y el número de clasificados por grupo no aportan exactamente los equipos necesarios para crear el cuadro.</p>
@@ -179,13 +190,13 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                     <div className="partidos-palas">
                       <Partido titulo="Semifinal Palas 1" equipo1={grupoA[3]} pendiente2="Perdedor de Cuartos 2" tono="palas" />
                       <Partido titulo="Semifinal Palas 2" equipo1={grupoB[3]} pendiente2="Perdedor de Cuartos 1" tono="palas" />
-                      <Partido titulo="Final Palas de Playa" pendiente1="Ganador de Semifinal Palas 1" pendiente2="Ganador de Semifinal Palas 2" tono="palas final" />
+                      <Partido titulo="Final Palas de Playa" pendiente1="Perdedor de Semifinal Palas 1" pendiente2="Perdedor de Semifinal Palas 2" tono="palas final" />
                     </div>
                   </section>
                 )}
 
                 <section className="barra-generar-cuadro">
-                  <div><strong>{mensaje || 'Vista previa preparada'}</strong><span>Los ganadores y perdedores avanzarán automáticamente cuando guardes cada resultado.</span></div>
+                  <div><strong>{mensaje || 'Vista previa preparada'}</strong><span>En el cuadro principal avanzan los ganadores; en Palas de Playa continúan los perdedores.</span></div>
                   <button type="button" className="boton boton-principal" disabled={generando} onClick={generarCuadro}>{generando ? 'Generando…' : 'Generar cuadro definitivo'}</button>
                 </section>
               </>
