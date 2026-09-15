@@ -9985,3 +9985,108 @@ body:has(.presentacion-equipos-tv) {
 .resumen-final-publico-tv .jugador-resumen-final strong {
   font-size: clamp(11px, 1.25dvh, 15px);
 }
+
+
+/* Corona de los equipos fijos */
+.opcion-corona-equipo-fijo {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  width: 100%;
+  margin: .9rem 0;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(245, 183, 0, .38);
+  border-radius: 14px;
+  background: rgba(245, 159, 0, .08);
+  cursor: pointer;
+}
+.opcion-corona-equipo-fijo input,
+.interruptor-corona-equipo input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: #f5b700;
+}
+.icono-corona-check,
+.interruptor-corona-equipo span {
+  color: #ffd43b;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+.opcion-corona-equipo-fijo > span:last-child {
+  display: grid;
+  gap: .18rem;
+}
+.opcion-corona-equipo-fijo small {
+  opacity: .72;
+  font-weight: 500;
+}
+.interruptor-corona-equipo {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;
+  padding: .4rem .65rem;
+  border: 1px solid rgba(245, 183, 0, .35);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+}
+.jugadores-presentacion-equipos {
+  position: relative;
+}
+.corona-presentacion-equipo {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 48%;
+  width: clamp(76px, 9vw, 150px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, .5));
+  animation: entrada-corona-equipo 900ms cubic-bezier(.2, .9, .25, 1.25) 600ms both,
+             flotacion-corona-equipo 2.4s ease-in-out 1.5s infinite;
+}
+.corona-presentacion-equipo svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.corona-presentacion-equipo .cuerpo-corona,
+.corona-presentacion-equipo .base-corona {
+  fill: url(#oro-corona);
+  stroke: #fff1a8;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.corona-presentacion-equipo circle {
+  fill: #fff4b0;
+  stroke: #d98b00;
+  stroke-width: 3;
+}
+.corona-presentacion-equipo .destello-corona {
+  fill: none;
+  stroke: #fff4b0;
+  stroke-width: 6;
+  stroke-linecap: round;
+  animation: brillo-corona-equipo 1.6s ease-in-out infinite;
+}
+@keyframes entrada-corona-equipo {
+  from { opacity: 0; transform: translate(-50%, -140%) scale(.25) rotate(-14deg); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+@keyframes flotacion-corona-equipo {
+  0%, 100% { transform: translate(-50%, -50%) translateY(-4px); }
+  50% { transform: translate(-50%, -50%) translateY(6px); }
+}
+@keyframes brillo-corona-equipo {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+@media (max-width: 720px) {
+  .pie-equipo-fijo { flex-wrap: wrap; }
+  .interruptor-corona-equipo { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .corona-presentacion-equipo,
+  .corona-presentacion-equipo .destello-corona { animation: none; }
+}
