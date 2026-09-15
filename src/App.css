@@ -10247,3 +10247,51 @@ body:has(.presentacion-equipos-tv) {
   width: 100%;
   min-width: 0;
 }
+
+
+/* Centrado del conjunto nombre + caricatura en la presentación de equipos. */
+.presentacion-equipos-tv .escenario-presentacion-equipos {
+  justify-content: center;
+}
+
+.presentacion-equipos-tv .jugadores-presentacion-equipos {
+  width: min(1100px, 88vw);
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(18px, 2.6vw, 42px);
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos {
+  height: auto;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos h3 {
+  flex: 0 0 auto;
+  margin: 0 0 clamp(6px, 1dvh, 12px);
+  text-align: center;
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos {
+  flex: 0 1 min(62dvh, 650px);
+  width: 100%;
+  height: min(62dvh, 650px);
+  max-height: calc(100dvh - 155px);
+  place-items: center;
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos.imagen-caricatura img {
+  object-position: center center;
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .presentacion-equipos-tv .imagen-presentacion-equipos {
+    flex-basis: min(54dvh, 540px);
+    height: min(54dvh, 540px);
+  }
+}
