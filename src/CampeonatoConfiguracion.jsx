@@ -107,6 +107,9 @@ function normalizarConfiguracion(datos) {
   config.ordenar_clasificacion = ['A', 'B', 'C'].includes(config.ordenar_clasificacion)
     ? config.ordenar_clasificacion
     : 'A'
+  config.modo_generar_jornadas = ['Suizo', 'Aleatorio'].includes(config.modo_generar_jornadas)
+    ? config.modo_generar_jornadas
+    : ''
 
   // Corrige combinaciones antiguas o incompletas sin eliminar la opción «—».
   if (config.tipo_campeonato === 'Liguilla') {
@@ -145,6 +148,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [procesandoMantenimiento, setProcesandoMantenimiento] = useState(false)
   const [mostrarPuntuaciones, setMostrarPuntuaciones] = useState(false)
   const [sistemaPuntuacionEditado, setSistemaPuntuacionEditado] = useState('Competitivo')
+  const [mostrarInfoClasificacion, setMostrarInfoClasificacion] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -433,14 +437,30 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 </button>
               </div>
               {config.tipo_campeonato === 'Liguilla' && <>
-                <Campo etiqueta="Ordenar clasificación" ayuda="El criterio se aplica al recalcular la tabla y al preparar la siguiente jornada.">
+                <div className="campo-configuracion">
+                  <div className="etiqueta-con-informacion">
+                    <span>Ordenar clasificación</span>
+                    <button
+                      type="button"
+                      className="boton-informacion-campo"
+                      aria-label="Explicar los criterios de ordenación"
+                      onClick={() => setMostrarInfoClasificacion(true)}
+                    >i</button>
+                  </div>
                   <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiar}>
                     <option value="A">A · Puntos y rendimiento proporcional</option>
                     <option value="B">B · Puntos y mayor participación</option>
                     <option value="C">C · Eficacia real por partido</option>
                   </select>
+                  <small>Se aplica al recalcular la tabla y al preparar la siguiente jornada.</small>
+                </div>
+                <Campo etiqueta="Generación de jornadas" ayuda="La primera jornada siempre es aleatoria. Esta opción decide cómo se crean las siguientes.">
+                  <select name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar}>
+                    <option value="">— Sin definir</option>
+                    <option value="Suizo">Sistema suizo</option>
+                    <option value="Aleatorio">Aleatorio sin repetir</option>
+                  </select>
                 </Campo>
-                <Campo etiqueta="Generación de jornadas"><input name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar} placeholder="Sin definir" /></Campo>
               </>}
             </div>
             {mostrarPuntuaciones && (
@@ -513,6 +533,30 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <div className="barra-guardar-configuracion"><span>Al guardar, Supabase será la fuente maestra y Excel no podrá sobrescribir estos valores.</span><button className="boton boton-principal" type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar configuración'}</button></div>
         </form>
       </section>
+      {mostrarInfoClasificacion && (
+        <div className="fondo-modal-informacion" role="presentation" onMouseDown={() => setMostrarInfoClasificacion(false)}>
+          <section className="modal-informacion-clasificacion" role="dialog" aria-modal="true" aria-labelledby="titulo-info-clasificacion" onMouseDown={(evento) => evento.stopPropagation()}>
+            <button type="button" className="cerrar-modal-informacion" aria-label="Cerrar" onClick={() => setMostrarInfoClasificacion(false)}>×</button>
+            <h3 id="titulo-info-clasificacion">Cómo se ordena la clasificación</h3>
+            <p>El sistema elegido también determina el orden que utiliza el método suizo para preparar la siguiente jornada.</p>
+            <article>
+              <strong>A · Puntos y rendimiento proporcional</strong>
+              <p>Prioriza los puntos totales y, en caso de empate, la eficacia por partido. Compensa mejor a los equipos que hayan descansado.</p>
+              <ol><li>Puntos totales</li><li>Coeficiente de puntos (puntos ÷ partidos jugados)</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Partidos jugados</li><li>Sorteo</li></ol>
+            </article>
+            <article>
+              <strong>B · Puntos y mayor participación</strong>
+              <p>Con los mismos puntos, coloca antes al equipo que haya disputado más partidos. Premia la constancia y la participación.</p>
+              <ol><li>Puntos totales</li><li>Partidos jugados, mayor número primero</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Sorteo</li></ol>
+            </article>
+            <article>
+              <strong>C · Eficacia real por partido</strong>
+              <p>El criterio principal es el promedio de puntos por partido. Es el más independiente del número de jornadas disputadas.</p>
+              <ol><li>Coeficiente de puntos (puntos ÷ partidos jugados)</li><li>Puntos totales</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Partidos jugados</li><li>Sorteo</li></ol>
+            </article>
+          </section>
+        </div>
+      )}
       {accionMantenimiento && (
         <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !procesandoMantenimiento && setAccionMantenimiento(null)}>
           <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-mantenimiento-campeonato" onMouseDown={(evento) => evento.stopPropagation()}>
