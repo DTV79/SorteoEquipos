@@ -10171,3 +10171,71 @@ body:has(.presentacion-equipos-tv) {
   .lista-incompatibilidades article { grid-template-columns: 1fr; text-align: center; }
   .lista-incompatibilidades article button { justify-self: center; }
 }
+
+
+/* Corrección del panel final: texto y mandos en filas separadas. */
+.zona-accion-presentacion.zona-presentacion-finalizada {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.zona-presentacion-finalizada .texto-accion-presentacion {
+  min-width: 0;
+}
+
+.zona-presentacion-finalizada .acciones-final-presentacion {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.zona-presentacion-finalizada .controles-remotos-equipos {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.zona-presentacion-finalizada .controles-remotos-equipos > strong {
+  display: block;
+  width: 100%;
+  line-height: 1.35;
+}
+
+.zona-presentacion-finalizada .controles-remotos-equipos > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+}
+
+.zona-presentacion-finalizada .controles-remotos-equipos .boton {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1050px) {
+  .zona-presentacion-finalizada .controles-remotos-equipos > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .zona-accion-presentacion.zona-presentacion-finalizada {
+    grid-template-columns: 1fr;
+  }
+
+  .zona-presentacion-finalizada .acciones-final-presentacion,
+  .zona-presentacion-finalizada .controles-remotos-equipos > div {
+    grid-column: 1;
+  }
+
+  .zona-presentacion-finalizada .controles-remotos-equipos > div {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .zona-presentacion-finalizada .controles-remotos-equipos .boton:last-child {
+    grid-column: 1 / -1;
+  }
+}
