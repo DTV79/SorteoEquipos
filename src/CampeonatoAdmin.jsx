@@ -89,13 +89,18 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setCargando(true)
     setError('')
 
-    const [{ data, error: errorConsulta }, { data: datosDescansos, error: errorDescansos }] = await Promise.all([
+    const [
+      { data, error: errorConsulta },
+      { data: datosDescansos, error: errorDescansos },
+      { data: descansosPalas, error: errorDescansosPalas },
+    ] = await Promise.all([
       supabaseCampeonato.rpc('admin_listar_partidos', { p_codigo: codigoElegido }),
       supabaseCampeonato.rpc('admin_listar_descansos', { p_codigo: codigoElegido }),
+      supabaseCampeonato.rpc('web_descansos_palas', { p_codigo: codigoElegido }),
     ])
 
-    if (errorConsulta || errorDescansos) {
-      setError(errorConsulta?.message || errorDescansos?.message)
+    if (errorConsulta || errorDescansos || errorDescansosPalas) {
+      setError(errorConsulta?.message || errorDescansos?.message || errorDescansosPalas?.message)
       setCargando(false)
       return
     }
@@ -109,7 +114,23 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       return
     }
 
-    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? [])])
+    const descansosCopa = (Array.isArray(descansosPalas) ? descansosPalas : []).map((descanso) => ({
+      id_partido: `${codigoElegido}-PP-DESC-${descanso.id_equipo}`,
+      codigo_fase: 'PP',
+      codigo_grupo: null,
+      codigo_ronda: descanso.codigo_ronda,
+      jornada: null,
+      orden: 0,
+      equipo_1: descanso.equipo,
+      equipo_2: '',
+      estado: 'descanso',
+      es_descanso_palas: true,
+      mensaje_descanso: descanso.mensaje || 'Descansa y pasa directamente',
+      sets: [],
+      participantes: [],
+    }))
+
+    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? []), ...descansosCopa])
     setJugadores(data.jugadores ?? [])
     setCargando(false)
   }, [])
@@ -769,7 +790,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
         <div className="barra-campeonato">
           <div>
-            <strong>{partidosFaseActiva.length} partidos {({ GR: 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
+            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
@@ -813,6 +834,24 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             const claveRondaAnterior = ['MM', 'PP'].includes(faseActiva) ? partidosVisibles[indice - 1]?.codigo_ronda : partidosVisibles[indice - 1]?.jornada
             const abreJornada = indice === 0 || claveRondaAnterior !== claveRonda
             const nombreRonda = ({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
+
+            if (partido.es_descanso_palas) {
+              return (
+                <Fragment key={partido.id_partido}>
+                  {abreJornada && <h3 className="separador-jornada">{nombreRonda}</h3>}
+                  <article className="tarjeta-partido-campeonato tarjeta-descanso-campeonato">
+                    <div className="partido-cabecera-campeonato">
+                      <span>Palas de Playa · {nombreRonda}</span>
+                      <b className="badge-partido descanso">Descanso</b>
+                    </div>
+                    <div className="equipos-campeonato descanso">
+                      <strong>💤 {partido.equipo_1}</strong>
+                      <span>{partido.mensaje_descanso}</span>
+                    </div>
+                  </article>
+                </Fragment>
+              )
+            }
 
             if (partido.es_descanso) {
               return (
