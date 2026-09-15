@@ -10959,9 +10959,27 @@ function abrirPantallaPublica() {
     ejecucionId
   )
 
+  const anchoVentana = Math.max(800, window.screen.availWidth || window.innerWidth)
+  const altoVentana = Math.max(600, window.screen.availHeight || window.innerHeight)
+  const izquierda = Number.isFinite(window.screen.availLeft)
+    ? window.screen.availLeft
+    : 0
+  const arriba = Number.isFinite(window.screen.availTop)
+    ? window.screen.availTop
+    : 0
+
   window.open(
     url.toString(),
-    `pantalla-publica-${sorteoSeleccionado.id}-${ejecucionId}`
+    `pantalla-publica-${sorteoSeleccionado.id}-${ejecucionId}`,
+    [
+      'popup=yes',
+      `width=${anchoVentana}`,
+      `height=${altoVentana}`,
+      `left=${izquierda}`,
+      `top=${arriba}`,
+      'resizable=yes',
+      'scrollbars=no',
+    ].join(',')
   )
 }
 
