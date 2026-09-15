@@ -376,7 +376,21 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 </select>
               </Campo>
             </div>
-            {config.hay_copa_palas_playa === true && <div className="rejilla-configuracion bloque-dependiente"><Campo etiqueta="Desde la posición"><input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} /></Campo><Campo etiqueta="Criterio Palas de Playa"><select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo></div>}
+            {config.hay_copa_palas_playa === true && <div className="rejilla-configuracion bloque-dependiente">
+              <Campo
+                etiqueta="Desde la posición"
+                ayuda={config.tipo_campeonato === 'Liguilla'
+                  ? 'Desde esta posición hasta el último clasificado disputarán Palas de Playa.'
+                  : 'En Grupos/ReGrupos los participantes se determinan automáticamente por el formato.'}
+              >
+                <input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} disabled={config.tipo_campeonato !== 'Liguilla'} />
+              </Campo>
+              <Campo etiqueta="Criterio Palas de Playa" ayuda="Se aplica tanto en Liguilla como en Grupos/ReGrupos.">
+                <select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}>
+                  <option>Por Clasificación</option><option>No Enfrentados</option>
+                </select>
+              </Campo>
+            </div>}
           </fieldset>
 
           <fieldset>
