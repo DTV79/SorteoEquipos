@@ -17409,6 +17409,11 @@ if (
     },
   ]
 
+  const musicaEquiposUrl =
+    sorteoSeleccionado.presentacion_equipos_musica_path
+      ? obtenerUrlMusica(sorteoSeleccionado.presentacion_equipos_musica_path)
+      : null
+
   const pistasMusica = [
     {
       tipo: 'espera',
@@ -17722,13 +17727,42 @@ if (
             </label>
             <label><span>Volumen: {sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}%</span>
               <input type="range" min="0" max="100" value={sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}
-                onChange={(e) => setSorteoSeleccionado((actual) => ({ ...actual, presentacion_equipos_musica_volumen: Number(e.target.value) }))}
+                onChange={(e) => {
+                  const nuevoVolumen = Number(e.target.value)
+                  setSorteoSeleccionado((actual) => ({ ...actual, presentacion_equipos_musica_volumen: nuevoVolumen }))
+                  const reproductor = document.querySelector('audio[data-tipo-musica="equipos"]')
+                  if (reproductor) reproductor.volume = Math.max(0, Math.min(1, nuevoVolumen / 100))
+                }}
                 onMouseUp={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_musica_volumen: Number(e.currentTarget.value) }, '✓ Volumen guardado.')}
                 onTouchEnd={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_musica_volumen: Number(e.currentTarget.value) }, '✓ Volumen guardado.')} />
             </label>
           </div>
           <div className="musica-config-presentacion-equipos">
             <div><small>CANCIÓN DE LA PRESENTACIÓN DE EQUIPOS</small><strong>{sorteoSeleccionado.presentacion_equipos_musica_nombre || 'Sin canción configurada'}</strong></div>
+
+            {musicaEquiposUrl && (
+              <audio
+                className="preview-audio-musica preview-audio-segundo-acto"
+                data-tipo-musica="equipos"
+                controls
+                preload="metadata"
+                src={musicaEquiposUrl}
+                onLoadedMetadata={(evento) => {
+                  evento.currentTarget.volume = Math.max(
+                    0,
+                    Math.min(1, Number(sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65) / 100)
+                  )
+                }}
+                onVolumeChange={(evento) => {
+                  if (evento.currentTarget.muted) return
+                  setSorteoSeleccionado((actual) => ({
+                    ...actual,
+                    presentacion_equipos_musica_volumen: Math.round(evento.currentTarget.volume * 100),
+                  }))
+                }}
+              />
+            )}
+
             <label className="boton boton-secundario">{sorteoSeleccionado.presentacion_equipos_musica_path ? 'Cambiar MP3' : 'Seleccionar MP3'}<input type="file" accept=".mp3,audio/mpeg" onChange={subirMusicaPresentacionEquipos} hidden /></label>
             {sorteoSeleccionado.presentacion_equipos_musica_path && <button type="button" className="boton boton-secundario" onClick={eliminarMusicaPresentacionEquipos}>Eliminar canción</button>}
           </div>
@@ -18947,8 +18981,8 @@ if (
                 <div className="cabecera-config-presentacion-equipos">
                   <div>
                     <small>SEGUNDO ACTO</small>
-                    <h3>Configurar presentación de los equipos</h3>
-                    <p>Caricaturas de cuerpo entero, canción propia y avance automático.</p>
+                    <h3>Opciones de la presentación de equipos</h3>
+                    <p>Configura el ritmo y decide si se muestra el bombo. La canción se gestiona desde Música de presentación.</p>
                   </div>
                   <span>🎭</span>
                 </div>
@@ -18971,28 +19005,6 @@ if (
                     </select>
                   </label>
 
-                  <label>
-                    <span>Volumen de la canción: {sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}%</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}
-                      onChange={(evento) => setSorteoSeleccionado((actual) => ({
-                        ...actual,
-                        presentacion_equipos_musica_volumen: Number(evento.target.value),
-                      }))}
-                      onMouseUp={(evento) => guardarOpcionPresentacionEquipos(
-                        { presentacion_equipos_musica_volumen: Number(evento.currentTarget.value) },
-                        '✓ Volumen guardado.'
-                      )}
-                      onTouchEnd={(evento) => guardarOpcionPresentacionEquipos(
-                        { presentacion_equipos_musica_volumen: Number(evento.currentTarget.value) },
-                        '✓ Volumen guardado.'
-                      )}
-                    />
-                  </label>
-
                   <label className="check-config-presentacion-equipos">
                     <input
                       type="checkbox"
@@ -19008,21 +19020,6 @@ if (
                   </label>
                 </div>
 
-                <div className="musica-config-presentacion-equipos">
-                  <div>
-                    <small>CANCIÓN</small>
-                    <strong>{sorteoSeleccionado.presentacion_equipos_musica_nombre || 'Sin canción configurada'}</strong>
-                  </div>
-                  <label className="boton boton-secundario">
-                    {sorteoSeleccionado.presentacion_equipos_musica_path ? 'Cambiar MP3' : 'Seleccionar MP3'}
-                    <input type="file" accept=".mp3,audio/mpeg" onChange={subirMusicaPresentacionEquipos} hidden />
-                  </label>
-                  {sorteoSeleccionado.presentacion_equipos_musica_path && (
-                    <button type="button" className="boton boton-secundario" onClick={eliminarMusicaPresentacionEquipos}>
-                      Eliminar canción
-                    </button>
-                  )}
-                </div>
               </section>
             )}
 
