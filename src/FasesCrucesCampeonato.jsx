@@ -89,7 +89,9 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
     Final: 2,
   }[config.ronda_inicial_eliminatorias] ?? 0
   const clasificadosPorGrupo = Number(config.equipos_pasan_a_cruces_por_grupo) || 0
-  const clasificadosNormales = clasificacion.filter((fila) => Number(fila.posicion) <= clasificadosPorGrupo)
+  const clasificadosNormales = esLiguilla
+    ? clasificacion.filter((fila) => Number(fila.posicion) <= equiposNecesarios)
+    : clasificacion.filter((fila) => Number(fila.posicion) <= clasificadosPorGrupo)
   const cuadroNormalCompleto = !especial && equiposNecesarios > 0 && clasificadosNormales.length === equiposNecesarios
 
   async function generarCuadro() {
@@ -137,7 +139,10 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                 <section className="aviso-cuadro-normal">
                   <strong>Cruces normales</strong>
                   <p>Los equipos clasificados comenzarán en {config.ronda_inicial_eliminatorias || 'la ronda inicial'} aplicando el criterio «{config.criterio_generar_cruces || 'Por clasificación'}».</p>
-                  <p>{clasificadosNormales.length} de {equiposNecesarios || '—'} equipos preparados desde la clasificación de {config.hay_regrupos ? 'ReGrupos' : 'Grupos'}.</p>
+                  <p>{clasificadosNormales.length} de {equiposNecesarios || '—'} equipos preparados desde la clasificación de {esLiguilla ? 'la liguilla' : (config.hay_regrupos ? 'ReGrupos' : 'Grupos')}.</p>
+                  {esLiguilla && (
+                    <p>El cuadro puede generarse ahora con la clasificación actual. Solo cuentan los resultados ya jugados; no es necesario completar las jornadas pendientes.</p>
+                  )}
                   {config.hay_copa_palas_playa && esLiguilla && (
                     <p>🏖️ La Copa Palas de Playa se creará con los {participantesPalasLiguilla.length} equipos clasificados desde la posición {posicionInicioPalas}. El ganador de cada partido se salva y el perdedor continúa.</p>
                   )}
@@ -147,12 +152,18 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                   {config.hay_copa_palas_playa && <p>El criterio aplicado será «{config.criterio_palas_playa || 'Por Clasificación'}».</p>}
                 </section>
                 {!cuadroNormalCompleto && (
-                  <p className="mensaje-login">La ronda y el número de clasificados por grupo no aportan exactamente los equipos necesarios para crear el cuadro.</p>
+                  <p className="mensaje-login">
+                    {esLiguilla
+                      ? `La ronda elegida necesita ${equiposNecesarios || '—'} equipos clasificados.`
+                      : 'La ronda y el número de clasificados por grupo no aportan exactamente los equipos necesarios para crear el cuadro.'}
+                  </p>
                 )}
                 <section className="barra-generar-cuadro">
                   <div>
                     <strong>{mensaje || (cuadroNormalCompleto ? 'Clasificación preparada' : 'Configuración incompleta')}</strong>
-                    <span>Se crearán los partidos reales en Supabase y las siguientes rondas avanzarán automáticamente.</span>
+                    <span>{esLiguilla
+                      ? 'Se usará la clasificación actual para crear eliminatorias y, si está activada, Palas de Playa.'
+                      : 'Se crearán los partidos reales en Supabase y las siguientes rondas avanzarán automáticamente.'}</span>
                   </div>
                   <button type="button" className="boton boton-principal" disabled={generando || !cuadroNormalCompleto} onClick={generarCuadro}>
                     {generando ? 'Generando…' : 'Generar cuadro definitivo'}
