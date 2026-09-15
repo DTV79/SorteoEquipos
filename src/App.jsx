@@ -17409,11 +17409,6 @@ if (
     },
   ]
 
-  const musicaEquiposUrl =
-    sorteoSeleccionado.presentacion_equipos_musica_path
-      ? obtenerUrlMusica(sorteoSeleccionado.presentacion_equipos_musica_path)
-      : null
-
   const pistasMusica = [
     {
       tipo: 'espera',
@@ -17740,25 +17735,18 @@ if (
           <div className="musica-config-presentacion-equipos">
             <div><small>CANCIÓN DE LA PRESENTACIÓN DE EQUIPOS</small><strong>{sorteoSeleccionado.presentacion_equipos_musica_nombre || 'Sin canción configurada'}</strong></div>
 
-            {musicaEquiposUrl && (
+            {sorteoSeleccionado.presentacion_equipos_musica_path && (
               <audio
                 className="preview-audio-musica preview-audio-segundo-acto"
                 data-tipo-musica="equipos"
                 controls
                 preload="metadata"
-                src={musicaEquiposUrl}
+                src={obtenerUrlMusica(sorteoSeleccionado.presentacion_equipos_musica_path)}
                 onLoadedMetadata={(evento) => {
                   evento.currentTarget.volume = Math.max(
                     0,
                     Math.min(1, Number(sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65) / 100)
                   )
-                }}
-                onVolumeChange={(evento) => {
-                  if (evento.currentTarget.muted) return
-                  setSorteoSeleccionado((actual) => ({
-                    ...actual,
-                    presentacion_equipos_musica_volumen: Math.round(evento.currentTarget.volume * 100),
-                  }))
                 }}
               />
             )}
