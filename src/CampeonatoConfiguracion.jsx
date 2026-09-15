@@ -37,7 +37,7 @@ const VALORES_INICIALES = {
   puntos_maximos_por_set: 15,
   sistema_puntuacion: 'Competitivo',
   sistemas_puntuacion: SISTEMAS_PUNTUACION_INICIALES,
-  ordenar_clasificacion: '',
+  ordenar_clasificacion: 'A',
   modo_generar_jornadas: '',
   url_inscripcion: '',
   mostrar_ranking_historico: true,
@@ -104,6 +104,9 @@ function normalizarConfiguracion(datos) {
     config[campo] = aBooleano(config[campo])
   })
   config.hay_copa_palas_playa = normalizarSiNoIndefinido(datos?.hay_copa_palas_playa)
+  config.ordenar_clasificacion = ['A', 'B', 'C'].includes(config.ordenar_clasificacion)
+    ? config.ordenar_clasificacion
+    : 'A'
 
   // Corrige combinaciones antiguas o incompletas sin eliminar la opción «—».
   if (config.tipo_campeonato === 'Liguilla') {
@@ -395,7 +398,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   ⚙ Configurar puntos
                 </button>
               </div>
-              {config.tipo_campeonato === 'Liguilla' && <><Campo etiqueta="Ordenar clasificación"><input name="ordenar_clasificacion" value={config.ordenar_clasificacion || ''} onChange={cambiar} placeholder="Sin definir" /></Campo><Campo etiqueta="Generación de jornadas"><input name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar} placeholder="Sin definir" /></Campo></>}
+              {config.tipo_campeonato === 'Liguilla' && <>
+                <Campo etiqueta="Ordenar clasificación" ayuda="El criterio se aplica al recalcular la tabla y al preparar la siguiente jornada.">
+                  <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiar}>
+                    <option value="A">A · Puntos y rendimiento proporcional</option>
+                    <option value="B">B · Puntos y mayor participación</option>
+                    <option value="C">C · Eficacia real por partido</option>
+                  </select>
+                </Campo>
+                <Campo etiqueta="Generación de jornadas"><input name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar} placeholder="Sin definir" /></Campo>
+              </>}
             </div>
             {mostrarPuntuaciones && (
               <div className="configurador-puntuaciones">
