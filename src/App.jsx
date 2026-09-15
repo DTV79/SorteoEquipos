@@ -343,7 +343,11 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
   const [sonidoActivo] = useState(() => Boolean(sonidoActivoInicial))
   const [reloj, setReloj] = useState(Date.now())
   const audioRef = useRef(null)
-  const equipos = datos?.equipos ?? []
+  const equiposOriginales = datos?.equipos ?? []
+  const equipos = [
+    ...equiposOriginales.filter((equipo) => !equipo?.mostrar_corona),
+    ...equiposOriginales.filter((equipo) => Boolean(equipo?.mostrar_corona)),
+  ]
   const duracion = limitarNumero(datos?.presentacion_equipos_duracion_ms, 3000, 60000, 8000)
 
   useEffect(() => {
