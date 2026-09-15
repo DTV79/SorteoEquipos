@@ -105,7 +105,8 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
     if (errorGeneracion || data?.ok !== true) {
       setError(errorGeneracion?.message || data?.error || 'No se pudo generar el cuadro.')
     } else {
-      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de ${especial ? 'cuartos' : (data.ronda_inicial || 'la ronda inicial').toLowerCase()}.${data.copa_palas ? ' La Copa Palas de Playa también queda preparada.' : ''} Las siguientes rondas aparecerán al guardar los resultados.`)
+      const jornadasRetiradas = Number(data.jornadas_pendientes_retiradas) || 0
+      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de ${especial ? 'cuartos' : (data.ronda_inicial || 'la ronda inicial').toLowerCase()}.${data.copa_palas ? ' La Copa Palas de Playa también queda preparada.' : ''}${jornadasRetiradas ? ` Se retiraron ${jornadasRetiradas} jornadas completamente pendientes.` : ''} Las siguientes rondas aparecerán al guardar los resultados.`)
     }
     setGenerando(false)
   }
@@ -141,7 +142,7 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                   <p>Los equipos clasificados comenzarán en {config.ronda_inicial_eliminatorias || 'la ronda inicial'} aplicando el criterio «{config.criterio_generar_cruces || 'Por clasificación'}».</p>
                   <p>{clasificadosNormales.length} de {equiposNecesarios || '—'} equipos preparados desde la clasificación de {esLiguilla ? 'la liguilla' : (config.hay_regrupos ? 'ReGrupos' : 'Grupos')}.</p>
                   {esLiguilla && (
-                    <p>El cuadro puede generarse ahora con la clasificación actual. Solo cuentan los resultados ya jugados; no es necesario completar las jornadas pendientes.</p>
+                    <p>El cuadro puede generarse ahora con la clasificación actual. Solo cuentan los resultados ya jugados y las jornadas completamente pendientes se retirarán automáticamente.</p>
                   )}
                   {config.hay_copa_palas_playa && esLiguilla && (
                     <p>🏖️ La Copa Palas de Playa se creará con los {participantesPalasLiguilla.length} equipos clasificados desde la posición {posicionInicioPalas}. El ganador de cada partido se salva y el perdedor continúa.</p>
@@ -162,7 +163,7 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                   <div>
                     <strong>{mensaje || (cuadroNormalCompleto ? 'Clasificación preparada' : 'Configuración incompleta')}</strong>
                     <span>{esLiguilla
-                      ? 'Se usará la clasificación actual para crear eliminatorias y, si está activada, Palas de Playa.'
+                      ? 'Se usará la clasificación actual y el criterio configurado para crear eliminatorias y, si está activada, Palas de Playa.'
                       : 'Se crearán los partidos reales en Supabase y las siguientes rondas avanzarán automáticamente.'}</span>
                   </div>
                   <button type="button" className="boton boton-principal" disabled={generando || !cuadroNormalCompleto} onClick={generarCuadro}>
