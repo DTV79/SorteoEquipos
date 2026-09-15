@@ -112,6 +112,8 @@ function normalizarConfiguracion(datos) {
   if (config.tipo_campeonato === 'Liguilla') {
     config.estructura_primera_fase = 'Liguilla Única'
     config.num_grupos_iniciales = 1
+    config.hay_regrupos = false
+    config.repetir_enfrentamientos_regrupos = false
   } else if (config.tipo_campeonato === 'Grupos') {
     if (!['2 Grupos', '4 Grupos'].includes(config.estructura_primera_fase)) {
       config.estructura_primera_fase = '2 Grupos'
@@ -179,6 +181,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         if (value === 'Liguilla') {
           siguiente.estructura_primera_fase = 'Liguilla Única'
           siguiente.num_grupos_iniciales = 1
+          siguiente.hay_regrupos = false
+          siguiente.repetir_enfrentamientos_regrupos = false
         } else if (value === 'Grupos') {
           siguiente.estructura_primera_fase = ['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)
             ? actual.estructura_primera_fase
@@ -213,9 +217,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setGuardando(true)
     setMensaje({ tipo: '', texto: 'Guardando configuración…' })
 
+    const configuracionAGuardar = config.tipo_campeonato === 'Liguilla'
+      ? { ...config, hay_regrupos: false, repetir_enfrentamientos_regrupos: false }
+      : config
+
     const { data, error } = await supabaseCampeonato.rpc(
       'admin_guardar_configuracion',
-      { p_codigo: codigo, p_configuracion: config }
+      { p_codigo: codigo, p_configuracion: configuracionAGuardar }
     )
 
     if (error || data?.ok !== true) {
@@ -334,8 +342,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 <small>Esta versión todavía requiere grupos iguales; no genera automáticamente un reparto 5 + 4.</small>
               </div>
             )}
-            <label className="interruptor-configuracion"><input type="checkbox" name="hay_regrupos" checked={config.hay_regrupos} onChange={cambiar} /><span>Segunda fase por ReGrupos</span></label>
-            {config.hay_regrupos && <div className="bloque-dependiente"><div className="rejilla-configuracion"><Campo etiqueta="Equipos que pasan por grupo"><input type="number" min="2" name="equipos_pasan_a_regrupos" value={config.equipos_pasan_a_regrupos} onChange={cambiar} /></Campo><Campo etiqueta="Puntos por victoria arrastrada"><input type="number" min="0" name="puntos_partido_arrastrado" value={config.puntos_partido_arrastrado} onChange={cambiar} /></Campo></div><label className="interruptor-configuracion"><input type="checkbox" name="repetir_enfrentamientos_regrupos" checked={config.repetir_enfrentamientos_regrupos} onChange={cambiar} /><span>Repetir en ReGrupos los enfrentamientos ya jugados</span></label><small className="ayuda-regrupos">Si no se repiten, el partido anterior se arrastra al nuevo ReGrupo y no se duplica.</small></div>}
+            <label className={`interruptor-configuracion${!esGrupos ? ' desactivado' : ''}`}>
+              <input type="checkbox" name="hay_regrupos" checked={esGrupos && config.hay_regrupos} onChange={cambiar} disabled={!esGrupos} />
+              <span>Segunda fase por ReGrupos</span>
+            </label>
+            {!esGrupos && <small className="ayuda-campo-desactivado">Solo está disponible en campeonatos por Grupos.</small>}
+            {esGrupos && config.hay_regrupos && <div className="bloque-dependiente"><div className="rejilla-configuracion"><Campo etiqueta="Equipos que pasan por grupo"><input type="number" min="2" name="equipos_pasan_a_regrupos" value={config.equipos_pasan_a_regrupos} onChange={cambiar} /></Campo><Campo etiqueta="Puntos por victoria arrastrada"><input type="number" min="0" name="puntos_partido_arrastrado" value={config.puntos_partido_arrastrado} onChange={cambiar} /></Campo></div><label className="interruptor-configuracion"><input type="checkbox" name="repetir_enfrentamientos_regrupos" checked={config.repetir_enfrentamientos_regrupos} onChange={cambiar} /><span>Repetir en ReGrupos los enfrentamientos ya jugados</span></label><small className="ayuda-regrupos">Si no se repiten, el partido anterior se arrastra al nuevo ReGrupo y no se duplica.</small></div>}
           </fieldset>
 
           <fieldset>
@@ -383,7 +395,15 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   ? 'Desde esta posición hasta el último clasificado disputarán Palas de Playa.'
                   : 'En Grupos/ReGrupos los participantes se determinan automáticamente por el formato.'}
               >
-                <input type="number" min="1" name="posicion_inicio_palas_playa" value={config.posicion_inicio_palas_playa} onChange={cambiar} disabled={config.tipo_campeonato !== 'Liguilla'} />
+                <input
+                  type="number"
+                  min="1"
+                  name="posicion_inicio_palas_playa"
+                  value={config.tipo_campeonato === 'Liguilla' ? config.posicion_inicio_palas_playa : ''}
+                  placeholder="—"
+                  onChange={cambiar}
+                  disabled={config.tipo_campeonato !== 'Liguilla'}
+                />
               </Campo>
               <Campo etiqueta="Criterio Palas de Playa" ayuda="Se aplica tanto en Liguilla como en Grupos/ReGrupos.">
                 <select name="criterio_palas_playa" value={config.criterio_palas_playa} onChange={cambiar}>
