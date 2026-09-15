@@ -88,14 +88,13 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setCargando(true)
     setError('')
 
-    const { data, error: errorConsulta } =
-      await supabaseCampeonato.rpc(
-        'admin_listar_partidos',
-        { p_codigo: codigoElegido }
-      )
+    const [{ data, error: errorConsulta }, { data: datosDescansos, error: errorDescansos }] = await Promise.all([
+      supabaseCampeonato.rpc('admin_listar_partidos', { p_codigo: codigoElegido }),
+      supabaseCampeonato.rpc('admin_listar_descansos', { p_codigo: codigoElegido }),
+    ])
 
-    if (errorConsulta) {
-      setError(errorConsulta.message)
+    if (errorConsulta || errorDescansos) {
+      setError(errorConsulta?.message || errorDescansos?.message)
       setCargando(false)
       return
     }
@@ -109,7 +108,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       return
     }
 
-    setPartidos(data.partidos ?? [])
+    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? [])])
     setJugadores(data.jugadores ?? [])
     setCargando(false)
   }, [])
@@ -484,6 +483,23 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(false)
   }
 
+  async function generarSiguienteJornadaLiguilla() {
+    setGenerandoGrupos(true)
+    setMensajeGenerador(null)
+    const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
+      'admin_generar_siguiente_jornada_liguilla',
+      { p_codigo: codigo }
+    )
+    if (errorGeneracion || data?.ok !== true) {
+      setMensajeGenerador({ tipo: 'error', texto: errorGeneracion?.message || data?.error || 'No se pudo generar la siguiente jornada.' })
+    } else {
+      const descanso = data.descansa ? ` Descansa ${data.descansa} (${data.puntos_descanso} puntos).` : ''
+      setMensajeGenerador({ tipo: 'correcto', texto: `Jornada ${data.jornada}: ${data.partidos} partidos generados.${descanso}` })
+      await cargarPartidos(codigo)
+    }
+    setGenerandoGrupos(false)
+  }
+
   async function prepararPartidosRegrupos() {
     setGenerandoGrupos(true)
     setMensajeGenerador(null)
@@ -698,6 +714,18 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </div>
         )}
 
+        {!String(estructuraPrimeraFase).toLowerCase().includes('grupo') && faseActiva === 'GR' && (
+          <section className="generador-partidos-grupos">
+            <div>
+              <strong>Liguilla · siguiente jornada</strong>
+              <span>La primera jornada es aleatoria; después aplica el modo configurado, evita repeticiones y reparte los descansos.</span>
+            </div>
+            <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarSiguienteJornadaLiguilla}>
+              {generandoGrupos ? 'Generando…' : partidosFaseActiva.length > 0 ? 'Generar siguiente jornada' : 'Generar primera jornada'}
+            </button>
+          </section>
+        )}
+
         {String(estructuraPrimeraFase).toLowerCase().includes('grupo') && faseActiva === 'GR' && (
           <section className="generador-partidos-grupos">
             <div>
@@ -775,6 +803,24 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             const claveRondaAnterior = ['MM', 'PP'].includes(faseActiva) ? partidosVisibles[indice - 1]?.codigo_ronda : partidosVisibles[indice - 1]?.jornada
             const abreJornada = indice === 0 || claveRondaAnterior !== claveRonda
             const nombreRonda = ({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
+
+            if (partido.es_descanso) {
+              return (
+                <Fragment key={partido.id_partido}>
+                  {abreJornada && <h3 className="separador-jornada">{`Jornada ${partido.jornada}`}</h3>}
+                  <article className="tarjeta-partido-campeonato tarjeta-descanso-campeonato">
+                    <div className="partido-cabecera-campeonato">
+                      <span>Liguilla · Jornada {partido.jornada}</span>
+                      <b className="badge-partido descanso">Descanso</b>
+                    </div>
+                    <div className="equipos-campeonato descanso">
+                      <strong>💤 {partido.equipo_1}</strong>
+                      <span>{partido.puntos_descanso} puntos</span>
+                    </div>
+                  </article>
+                </Fragment>
+              )
+            }
 
             return (
               <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
