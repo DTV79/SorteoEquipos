@@ -1,0 +1,23 @@
+name: Verificar integracion primera fase
+on: [push]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/primera-fase-configuracion-react
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: python3 .github/scripts/integrar_primera_fase.py
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/CampeonatoConfiguracion.jsx src/CampeonatoConfiguracion.css
+          git commit -m "feat: generar primera fase desde configuracion"
+          git push origin HEAD:feat/primera-fase-configuracion-react
