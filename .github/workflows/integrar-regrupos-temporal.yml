@@ -20,3 +20,4 @@ jobs:
           git add src/CampeonatoConfiguracion.jsx src/CampeonatoConfiguracion.css
           git commit -m "feat: generar ReGrupos desde configuracion"
           git push
+# build 1
