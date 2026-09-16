@@ -157,6 +157,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [previsualizandoPrimeraFase, setPrevisualizandoPrimeraFase] = useState(false)
   const [generandoPrimeraFase, setGenerandoPrimeraFase] = useState(false)
   const [errorPrimeraFase, setErrorPrimeraFase] = useState('')
+  const [previsualizacionRegrupos, setPrevisualizacionRegrupos] = useState(null)
+  const [previsualizandoRegrupos, setPrevisualizandoRegrupos] = useState(false)
+  const [generandoRegrupos, setGenerandoRegrupos] = useState(false)
+  const [errorRegrupos, setErrorRegrupos] = useState('')
 
   useEffect(() => {
     let cancelado = false
@@ -303,6 +307,33 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     }
     setPrevisualizacionPrimeraFase(null)
     setMensaje({ tipo: 'correcto', texto: data?.mensaje || 'Primera fase generada correctamente.' })
+  }
+
+  async function previsualizarRegrupos() {
+    setPrevisualizandoRegrupos(true)
+    setErrorRegrupos('')
+    setPrevisualizacionRegrupos(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_regrupos', { p_codigo: codigo })
+    setPrevisualizandoRegrupos(false)
+    if (error || data?.ok !== true) {
+      setErrorRegrupos(error?.message || data?.error || 'No se pudieron preparar los ReGrupos.')
+      return
+    }
+    setPrevisualizacionRegrupos(data)
+  }
+
+  async function generarRegrupos() {
+    if (!previsualizacionRegrupos) return
+    setGenerandoRegrupos(true)
+    setErrorRegrupos('')
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_regrupos', { p_codigo: codigo })
+    setGenerandoRegrupos(false)
+    if (error || data?.ok !== true) {
+      setErrorRegrupos(error?.message || data?.error || 'No se pudieron generar los ReGrupos.')
+      return
+    }
+    setPrevisualizacionRegrupos(null)
+    setMensaje({ tipo: 'correcto', texto: `ReGrupos generados: ${data.partidos_nuevos ?? 0} partidos nuevos y ${data.partidos_arrastrados ?? 0} arrastrados.` })
   }
 
   async function abrirMantenimiento(tipo) {
@@ -609,6 +640,36 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               </div>
             )}
           </fieldset>
+
+          {config.tipo_campeonato === 'Grupos' && config.hay_regrupos && (
+            <fieldset className="generacion-regrupos">
+              <legend>Generación de ReGrupos</legend>
+              <p>Solo se habilitan cuando toda la fase de grupos está terminada. Primero se muestra exactamente qué equipos formarán cada ReGrupo y qué partidos se crearán o se arrastrarán.</p>
+              <button type="button" className="boton boton-secundario" onClick={previsualizarRegrupos} disabled={previsualizandoRegrupos || generandoRegrupos}>
+                {previsualizandoRegrupos ? 'Comprobando…' : 'Previsualizar ReGrupos'}
+              </button>
+              {errorRegrupos && <p className="error-generacion-primera-fase">{errorRegrupos}</p>}
+              {previsualizacionRegrupos && (
+                <div className="resumen-generacion-primera-fase">
+                  <strong>{previsualizacionRegrupos.repetir_enfrentamientos ? 'Liguilla completa · se permiten repetidos' : 'Sin repetir enfrentamientos · con arrastre'}</strong>
+                  <span>Equipos: {previsualizacionRegrupos.equipos ?? 0}</span>
+                  <span>ReGrupos: {previsualizacionRegrupos.numero_regrupos ?? 0}</span>
+                  <span>Partidos nuevos: {previsualizacionRegrupos.partidos_nuevos ?? 0}</span>
+                  <span>Partidos arrastrados: {previsualizacionRegrupos.partidos_arrastrados ?? 0}</span>
+                  {!previsualizacionRegrupos.repetir_enfrentamientos && <span>Puntos por victoria arrastrada: {config.puntos_partido_arrastrado}</span>}
+                  {Array.isArray(previsualizacionRegrupos.regrupos) && previsualizacionRegrupos.regrupos.map((grupo) => (
+                    <div className="detalle-regrupo" key={grupo.codigo}>
+                      <b>{grupo.nombre || `ReGrupo ${grupo.codigo}`}</b>
+                      <span>{Array.isArray(grupo.equipos) ? grupo.equipos.join(' · ') : ''}</span>
+                    </div>
+                  ))}
+                  <button type="button" className="boton boton-principal" onClick={generarRegrupos} disabled={generandoRegrupos}>
+                    {generandoRegrupos ? 'Generando…' : 'Confirmar y generar ReGrupos'}
+                  </button>
+                </div>
+              )}
+            </fieldset>
+          )}
 
           <fieldset className="zona-peligro-campeonato">
             <legend>Mantenimiento del campeonato</legend>
