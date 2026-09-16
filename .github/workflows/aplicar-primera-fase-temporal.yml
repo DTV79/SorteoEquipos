@@ -14,10 +14,10 @@ jobs:
           node-version: 22
       - run: python3 .github/scripts/integrar_primera_fase.py
       - run: npm ci
-      - run: npm run build
+      - run: npm run build > build-primera-fase.log 2>&1 || true
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/CampeonatoConfiguracion.jsx src/CampeonatoConfiguracion.css
-          git commit -m "feat: generar primera fase desde configuracion"
+          git add src/CampeonatoConfiguracion.jsx src/CampeonatoConfiguracion.css build-primera-fase.log
+          git commit -m "test: registrar build primera fase"
           git push origin HEAD:feat/primera-fase-configuracion-react
