@@ -1,10 +1,10 @@
 name: Integrar eliminatorias temporal
 on:
   push:
-    branches: [feat/previsualizacion-eliminatorias]
+    branches:
+      - feat/previsualizacion-eliminatorias
 jobs:
   integrar:
-    if: ${{ !contains(github.event.head_commit.message, '[integrado-eliminatorias]') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,99 +14,80 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Integrar UI
+      - name: Integrar UI una sola vez
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('src/CampeonatoConfiguracion.jsx')
           s=p.read_text()
-          s=s.replace("  const [errorRegrupos, setErrorRegrupos] = useState('')", "  const [errorRegrupos, setErrorRegrupos] = useState('')\n  const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)\n  const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)\n  const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)\n  const [errorEliminatorias, setErrorEliminatorias] = useState('')\n  const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)")
-          s=s.replace("        setConfig(normalizarConfiguracion(data.configuracion))", "        setConfig(normalizarConfiguracion(data.configuracion))\n        setHayCambiosSinGuardar(false)", 1)
-          s=s.replace("  function cambiar(evento) {", "  function marcarConfiguracionModificada() {\n    setHayCambiosSinGuardar(true)\n    setPrevisualizacionPrimeraFase(null)\n    setPrevisualizacionRegrupos(null)\n    setPrevisualizacionEliminatorias(null)\n  }\n\n  function cambiar(evento) {\n    marcarConfiguracionModificada()")
-          s=s.replace("  function cambiarPuntuacion(evento) {", "  function cambiarPuntuacion(evento) {\n    marcarConfiguracionModificada()")
-          s=s.replace("      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })", "      setHayCambiosSinGuardar(false)\n      setPrevisualizacionEliminatorias(null)\n      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })")
-          anchor="  async function abrirMantenimiento(tipo) {"
-          funcs="""  async function previsualizarEliminatorias() {
+          if 'previsualizacionEliminatorias' not in s:
+            s=s.replace("  const [errorRegrupos, setErrorRegrupos] = useState('')", "  const [errorRegrupos, setErrorRegrupos] = useState('')\n  const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)\n  const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)\n  const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)\n  const [errorEliminatorias, setErrorEliminatorias] = useState('')\n  const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)")
+            s=s.replace("        setConfig(normalizarConfiguracion(data.configuracion))", "        setConfig(normalizarConfiguracion(data.configuracion))\n        setHayCambiosSinGuardar(false)", 1)
+            s=s.replace("  function cambiar(evento) {", "  function marcarConfiguracionModificada() {\n    setHayCambiosSinGuardar(true)\n    setPrevisualizacionPrimeraFase(null)\n    setPrevisualizacionRegrupos(null)\n    setPrevisualizacionEliminatorias(null)\n  }\n\n  function cambiar(evento) {\n    marcarConfiguracionModificada()")
+            s=s.replace("  function cambiarPuntuacion(evento) {", "  function cambiarPuntuacion(evento) {\n    marcarConfiguracionModificada()")
+            s=s.replace("      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })", "      setHayCambiosSinGuardar(false)\n      setPrevisualizacionEliminatorias(null)\n      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })")
+            anchor="  async function abrirMantenimiento(tipo) {"
+            funcs="""  async function previsualizarEliminatorias() {
     if (hayCambiosSinGuardar) return
     setPrevisualizandoEliminatorias(true)
     setErrorEliminatorias('')
     setPrevisualizacionEliminatorias(null)
     const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias', { p_codigo: codigo })
     setPrevisualizandoEliminatorias(false)
-    if (error || data?.ok !== true) {
-      setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.')
-      return
-    }
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
     setPrevisualizacionEliminatorias(data)
   }
 
   async function generarEliminatorias() {
     if (!previsualizacionEliminatorias?.puede_generar || hayCambiosSinGuardar) return
-    setGenerandoEliminatorias(true)
-    setErrorEliminatorias('')
+    setGenerandoEliminatorias(true); setErrorEliminatorias('')
     const { data, error } = await supabaseCampeonato.rpc('admin_generar_cuadro_normal', { p_codigo: codigo })
     setGenerandoEliminatorias(false)
-    if (error || data?.ok !== true) {
-      setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.')
-      return
-    }
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
     setPrevisualizacionEliminatorias(null)
     setMensaje({ tipo: 'correcto', texto: data?.mensaje || `Eliminatorias generadas desde ${config.ronda_inicial_eliminatorias}.` })
   }
 
 """
-          assert anchor in s
-          s=s.replace(anchor, funcs+anchor)
-          s=s.replace('<option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>', '<option>Por Clasificación</option><option>No Enfrentados</option><option>Aleatorio</option></select></Campo>', 1)
-          old="""                  onChange={(evento) => {
+            s=s.replace(anchor, funcs+anchor)
+            s=s.replace('<option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>', '<option>Por Clasificación</option><option>No Enfrentados</option><option>Aleatorio</option></select></Campo>', 1)
+            old="""                  onChange={(evento) => {
                     const valor = evento.target.value
                     setConfig((actual) => ({"""
-          new="""                  onChange={(evento) => {
+            new="""                  onChange={(evento) => {
                     const valor = evento.target.value
                     marcarConfiguracionModificada()
                     setConfig((actual) => ({"""
-          s=s.replace(old,new,1)
-          s=s.replace('disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}', 'disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}')
-          s=s.replace('disabled={previsualizandoRegrupos || generandoRegrupos}', 'disabled={previsualizandoRegrupos || generandoRegrupos || hayCambiosSinGuardar}')
-          insert_before='          <fieldset className="zona-peligro-campeonato">'
-          panel="""          <fieldset className="generacion-eliminatorias">
+            s=s.replace(old,new,1)
+            s=s.replace('disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}', 'disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}')
+            s=s.replace('disabled={previsualizandoRegrupos || generandoRegrupos}', 'disabled={previsualizandoRegrupos || generandoRegrupos || hayCambiosSinGuardar}')
+            marker='          <fieldset className="zona-peligro-campeonato">'
+            panel="""          <fieldset className="generacion-eliminatorias">
             <legend>Generación de Eliminatorias</legend>
             <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
-            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>
-              {previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}
-            </button>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
-            {previsualizacionEliminatorias && (
-              <div className="resumen-generacion-primera-fase">
-                <strong>{previsualizacionEliminatorias.ronda_inicial} · {previsualizacionEliminatorias.criterio_cruces}</strong>
-                <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span>
-                <span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
-                {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
-                {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido) => (
-                  <div className="detalle-cruce-eliminatoria" key={partido.orden}>
-                    <b>Cruce {partido.orden}</b>
-                    <span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span>
-                  </div>
-                ))}
-                <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>
-                  {generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}
-                </button>
-              </div>
-            )}
+            {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
+              <strong>{previsualizacionEliminatorias.ronda_inicial} · {previsualizacionEliminatorias.criterio_cruces}</strong>
+              <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
+              {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
+              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido) => <div className="detalle-cruce-eliminatoria" key={partido.orden}><b>Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+              <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>
+            </div>}
           </fieldset>
 
 """
-          assert insert_before in s
-          s=s.replace(insert_before,panel+insert_before)
-          p.write_text(s)
+            s=s.replace(marker,panel+marker)
+            p.write_text(s)
           PY
       - run: npm ci
       - run: npm run build
-      - name: Guardar integración
+      - name: Guardar integración si cambió
         run: |
+          if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add src/CampeonatoConfiguracion.jsx
-          git commit -m "Integra previsualización de eliminatorias [integrado-eliminatorias]"
+          git commit -m "Integra previsualización de eliminatorias"
           git push
