@@ -117,6 +117,9 @@ function normalizarConfiguracion(datos) {
     config.num_grupos_iniciales = 1
     config.hay_regrupos = false
     config.repetir_enfrentamientos_regrupos = false
+    if (config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
+      config.formato_acceso_eliminatorias = 'Cruces normales'
+    }
   } else if (config.tipo_campeonato === 'Grupos') {
     if (!['2 Grupos', '4 Grupos'].includes(config.estructura_primera_fase)) {
       config.estructura_primera_fase = '2 Grupos'
@@ -188,6 +191,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           siguiente.num_grupos_iniciales = 1
           siguiente.hay_regrupos = false
           siguiente.repetir_enfrentamientos_regrupos = false
+          if (actual.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
+            siguiente.formato_acceso_eliminatorias = 'Cruces normales'
+          }
         } else if (value === 'Grupos') {
           siguiente.estructura_primera_fase = ['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)
             ? actual.estructura_primera_fase
@@ -197,6 +203,32 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       }
       if (name === 'estructura_primera_fase') {
         siguiente.num_grupos_iniciales = value === '4 Grupos' ? 4 : value === '2 Grupos' ? 2 : 1
+      }
+      if (name === 'equipos_por_grupo' && nuevoValor !== '') {
+        const capacidad = Math.max(2, Number(nuevoValor))
+        siguiente.equipos_pasan_a_regrupos = Math.min(Number(actual.equipos_pasan_a_regrupos || capacidad), capacidad)
+        siguiente.equipos_pasan_a_cruces_por_grupo = Math.min(Number(actual.equipos_pasan_a_cruces_por_grupo || capacidad), capacidad)
+      }
+      if (name === 'equipos_pasan_a_regrupos' && nuevoValor !== '' && Number(nuevoValor) > Number(actual.equipos_por_grupo)) {
+        siguiente.equipos_pasan_a_regrupos = Number(actual.equipos_por_grupo)
+      }
+      if (name === 'equipos_pasan_a_cruces_por_grupo' && actual.tipo_campeonato === 'Grupos' && nuevoValor !== '' && Number(nuevoValor) > Number(actual.equipos_por_grupo)) {
+        siguiente.equipos_pasan_a_cruces_por_grupo = Number(actual.equipos_por_grupo)
+      }
+      if (name === 'hay_regrupos' && !checked) {
+        siguiente.repetir_enfrentamientos_regrupos = false
+        if (actual.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
+          siguiente.formato_acceso_eliminatorias = 'Cruces normales'
+        }
+      }
+      if (name === 'repetir_enfrentamientos_regrupos' && checked) {
+        siguiente.puntos_partido_arrastrado = 0
+      }
+      if (name === 'puntos_objetivo_set' && nuevoValor !== '' && Number(actual.puntos_maximos_por_set) < Number(nuevoValor)) {
+        siguiente.puntos_maximos_por_set = Number(nuevoValor)
+      }
+      if (name === 'puntos_maximos_por_set' && nuevoValor !== '' && Number(nuevoValor) < Number(actual.puntos_objetivo_set)) {
+        siguiente.puntos_maximos_por_set = Number(actual.puntos_objetivo_set)
       }
       return siguiente
     })
@@ -347,7 +379,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               </Campo>
               {esGrupos && <Campo etiqueta="Equipos previstos por grupo" ayuda="De momento todos los grupos deben tener el mismo número."><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
               <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
-              <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
             </div>
             {esGrupos && (
               <div className="resumen-formato-especial">
@@ -362,16 +394,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               <span>Segunda fase por ReGrupos</span>
             </label>
             {!esGrupos && <small className="ayuda-campo-desactivado">Solo está disponible en campeonatos por Grupos.</small>}
-            {esGrupos && config.hay_regrupos && <div className="bloque-dependiente"><div className="rejilla-configuracion"><Campo etiqueta="Equipos que pasan por grupo"><input type="number" min="2" name="equipos_pasan_a_regrupos" value={config.equipos_pasan_a_regrupos} onChange={cambiar} /></Campo><Campo etiqueta="Puntos por victoria arrastrada"><input type="number" min="0" name="puntos_partido_arrastrado" value={config.puntos_partido_arrastrado} onChange={cambiar} /></Campo></div><label className="interruptor-configuracion"><input type="checkbox" name="repetir_enfrentamientos_regrupos" checked={config.repetir_enfrentamientos_regrupos} onChange={cambiar} /><span>Repetir en ReGrupos los enfrentamientos ya jugados</span></label><small className="ayuda-regrupos">Si no se repiten, el partido anterior se arrastra al nuevo ReGrupo y no se duplica.</small></div>}
+            {esGrupos && config.hay_regrupos && <div className="bloque-dependiente"><div className="rejilla-configuracion"><Campo etiqueta="Equipos que pasan por grupo"><input type="number" min="2" max={config.equipos_por_grupo || undefined} name="equipos_pasan_a_regrupos" value={config.equipos_pasan_a_regrupos} onChange={cambiar} /></Campo><Campo etiqueta="Puntos por victoria arrastrada" ayuda={config.repetir_enfrentamientos_regrupos ? 'Al repetir todos los partidos, no se arrastran puntos.' : 'Se aplica al enfrentamiento anterior que no se vuelve a jugar.'}><input type="number" min="0" name="puntos_partido_arrastrado" value={config.repetir_enfrentamientos_regrupos ? 0 : config.puntos_partido_arrastrado} onChange={cambiar} disabled={config.repetir_enfrentamientos_regrupos} /></Campo></div><label className="interruptor-configuracion"><input type="checkbox" name="repetir_enfrentamientos_regrupos" checked={config.repetir_enfrentamientos_regrupos} onChange={cambiar} /><span>Repetir en ReGrupos los enfrentamientos ya jugados</span></label><small className="ayuda-regrupos">Si no se repiten, el partido anterior se arrastra al nuevo ReGrupo y no se duplica.</small></div>}
           </fieldset>
 
           <fieldset>
             <legend>Eliminatorias</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Formato de acceso">
+              <Campo etiqueta="Formato de acceso" ayuda={!config.hay_regrupos ? 'El acceso especial solo está disponible cuando hay ReGrupos.' : 'Define cómo se enlazan ReGrupos y eliminatorias.'}>
                 <select name="formato_acceso_eliminatorias" value={config.formato_acceso_eliminatorias} onChange={cambiar}>
                   <option>Cruces normales</option>
-                  <option>Campeones de ReGrupo directos a semifinales</option>
+                  <option disabled={!config.hay_regrupos}>Campeones de ReGrupo directos a semifinales</option>
                 </select>
               </Campo>
               <Campo etiqueta="Ronda inicial" ayuda="Elige — mientras todavía no esté decidida."><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias || ''} onChange={cambiar}><option value="">—</option><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
