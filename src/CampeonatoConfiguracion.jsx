@@ -257,6 +257,27 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     }))
   }
 
+  async function cambiarEstadoTorneo(evento) {
+    const estadoAnterior = config.estado_torneo
+    const nuevoEstado = evento.target.value
+    setConfig((actual) => ({ ...actual, estado_torneo: nuevoEstado }))
+    setMensaje({ tipo: '', texto: 'Actualizando estado del torneo…' })
+
+    const { data, error } = await supabaseCampeonato.rpc(
+      'admin_guardar_estado_torneo',
+      { p_codigo: codigo, p_estado: nuevoEstado }
+    )
+
+    if (error || data?.ok !== true) {
+      setConfig((actual) => ({ ...actual, estado_torneo: estadoAnterior }))
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo actualizar el estado del torneo.' })
+      return
+    }
+
+    setConfig((actual) => ({ ...actual, estado_torneo: data.estado_torneo || nuevoEstado }))
+    setMensaje({ tipo: 'correcto', texto: `Estado actualizado a «${data.estado_torneo || nuevoEstado}». La web pública ya leerá este estado.` })
+  }
+
   async function guardar(evento) {
     evento.preventDefault()
     setGuardando(true)
@@ -420,7 +441,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               <Campo etiqueta="Lugar"><input name="lugar_campeonato" value={config.lugar_campeonato || ''} onChange={cambiar} /></Campo>
               <Campo etiqueta="Horario"><input name="horario_campeonato" value={config.horario_campeonato || ''} onChange={cambiar} /></Campo>
               <Campo etiqueta="Estado del torneo" ayuda="Controlará las pantallas visibles en la web pública.">
-                <select name="estado_torneo" value={config.estado_torneo} onChange={cambiar}>
+                <select name="estado_torneo" value={config.estado_torneo} onChange={cambiarEstadoTorneo}>
                   <option>Pretorneo</option><option>Inscripciones</option><option>En juego</option><option>Finalizado</option>
                 </select>
               </Campo>
