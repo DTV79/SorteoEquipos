@@ -161,6 +161,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [previsualizandoRegrupos, setPrevisualizandoRegrupos] = useState(false)
   const [generandoRegrupos, setGenerandoRegrupos] = useState(false)
   const [errorRegrupos, setErrorRegrupos] = useState('')
+  const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)
+  const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)
+  const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)
+  const [errorEliminatorias, setErrorEliminatorias] = useState('')
+  const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -176,6 +181,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo cargar la configuración.' })
       } else {
         setConfig(normalizarConfiguracion(data.configuracion))
+        setHayCambiosSinGuardar(false)
       }
       setCargando(false)
     }
@@ -184,7 +190,15 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     return () => { cancelado = true }
   }, [codigo])
 
+  function marcarConfiguracionModificada() {
+    setHayCambiosSinGuardar(true)
+    setPrevisualizacionPrimeraFase(null)
+    setPrevisualizacionRegrupos(null)
+    setPrevisualizacionEliminatorias(null)
+  }
+
   function cambiar(evento) {
+    marcarConfiguracionModificada()
     const { name, type, checked, value } = evento.target
     let nuevoValor = type === 'checkbox' ? checked : value
     if (CAMPOS_NUMERICOS.has(name)) {
@@ -243,6 +257,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   function cambiarPuntuacion(evento) {
+    marcarConfiguracionModificada()
     const { name, value } = evento.target
     const puntos = value === '' ? '' : Math.max(0, Number(value))
     setConfig((actual) => ({
@@ -298,6 +313,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       if (data.configuracion) {
         setConfig(normalizarConfiguracion(data.configuracion))
       }
+      setHayCambiosSinGuardar(false)
+      setPrevisualizacionEliminatorias(null)
       setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })
     }
     setGuardando(false)
@@ -355,6 +372,27 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     }
     setPrevisualizacionRegrupos(null)
     setMensaje({ tipo: 'correcto', texto: `ReGrupos generados: ${data.partidos_nuevos ?? 0} partidos nuevos y ${data.partidos_arrastrados ?? 0} arrastrados.` })
+  }
+
+  async function previsualizarEliminatorias() {
+    if (hayCambiosSinGuardar) return
+    setPrevisualizandoEliminatorias(true)
+    setErrorEliminatorias('')
+    setPrevisualizacionEliminatorias(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias', { p_codigo: codigo })
+    setPrevisualizandoEliminatorias(false)
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
+    setPrevisualizacionEliminatorias(data)
+  }
+
+  async function generarEliminatorias() {
+    if (!previsualizacionEliminatorias?.puede_generar || hayCambiosSinGuardar) return
+    setGenerandoEliminatorias(true); setErrorEliminatorias('')
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_cuadro_normal', { p_codigo: codigo })
+    setGenerandoEliminatorias(false)
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
+    setPrevisualizacionEliminatorias(null)
+    setMensaje({ tipo: 'correcto', texto: data?.mensaje || `Eliminatorias generadas desde ${config.ronda_inicial_eliminatorias}.` })
   }
 
   async function abrirMantenimiento(tipo) {
@@ -490,7 +528,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 </select>
               </Campo>
               <Campo etiqueta="Ronda inicial" ayuda="Elige — mientras todavía no esté decidida."><select name="ronda_inicial_eliminatorias" value={config.ronda_inicial_eliminatorias || ''} onChange={cambiar}><option value="">—</option><option>Octavos</option><option>Cuartos</option><option>Semifinales</option><option>Final</option></select></Campo>
-              <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>
+              <Campo etiqueta="Criterio de cruces"><select name="criterio_generar_cruces" value={config.criterio_generar_cruces} onChange={cambiar}><option>Por Clasificación</option><option>No Enfrentados</option><option>Aleatorio</option></select></Campo>
             </div>
             {config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales' && (
               <div className="resumen-formato-especial">
@@ -506,6 +544,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   value={config.hay_copa_palas_playa === true ? 'si' : config.hay_copa_palas_playa === false ? 'no' : ''}
                   onChange={(evento) => {
                     const valor = evento.target.value
+                    marcarConfiguracionModificada()
                     setConfig((actual) => ({
                       ...actual,
                       hay_copa_palas_playa: valor === 'si' ? true : valor === 'no' ? false : '',
@@ -641,7 +680,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset className="generacion-primera-fase">
             <legend>Generación de la competición</legend>
             <p>La configuración guardada decide cómo se crea la primera fase. La previsualización no crea ni modifica partidos.</p>
-            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}>
               {previsualizandoPrimeraFase ? 'Comprobando…' : 'Previsualizar primera fase'}
             </button>
             {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla o Grupos.</small>}
@@ -666,7 +705,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <fieldset className="generacion-regrupos">
               <legend>Generación de ReGrupos</legend>
               <p>Solo se habilitan cuando toda la fase de grupos está terminada. Primero se muestra exactamente qué equipos formarán cada ReGrupo y qué partidos se crearán o se arrastrarán.</p>
-              <button type="button" className="boton boton-secundario" onClick={previsualizarRegrupos} disabled={previsualizandoRegrupos || generandoRegrupos}>
+              <button type="button" className="boton boton-secundario" onClick={previsualizarRegrupos} disabled={previsualizandoRegrupos || generandoRegrupos || hayCambiosSinGuardar}>
                 {previsualizandoRegrupos ? 'Comprobando…' : 'Previsualizar ReGrupos'}
               </button>
               {errorRegrupos && <p className="error-generacion-primera-fase">{errorRegrupos}</p>}
@@ -691,6 +730,21 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               )}
             </fieldset>
           )}
+
+          <fieldset className="generacion-eliminatorias">
+            <legend>Generación de Eliminatorias</legend>
+            <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
+            {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
+            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
+            {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
+            {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
+              <strong>{previsualizacionEliminatorias.ronda_inicial} · {previsualizacionEliminatorias.criterio_cruces}</strong>
+              <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
+              {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
+              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido) => <div className="detalle-cruce-eliminatoria" key={partido.orden}><b>Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+              <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>
+            </div>}
+          </fieldset>
 
           <fieldset className="zona-peligro-campeonato">
             <legend>Mantenimiento del campeonato</legend>
