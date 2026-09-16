@@ -145,6 +145,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [resumenMantenimiento, setResumenMantenimiento] = useState(null)
   const [errorMantenimiento, setErrorMantenimiento] = useState('')
   const [confirmacionMantenimiento, setConfirmacionMantenimiento] = useState('')
+  const [borrarEquiposMantenimiento, setBorrarEquiposMantenimiento] = useState(false)
   const [procesandoMantenimiento, setProcesandoMantenimiento] = useState(false)
   const [mostrarPuntuaciones, setMostrarPuntuaciones] = useState(false)
   const [sistemaPuntuacionEditado, setSistemaPuntuacionEditado] = useState('Competitivo')
@@ -246,6 +247,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setResumenMantenimiento(null)
     setErrorMantenimiento('')
     setConfirmacionMantenimiento('')
+    setBorrarEquiposMantenimiento(false)
     const { data, error } = await supabaseCampeonato.rpc(
       'admin_resumen_mantenimiento_campeonato',
       { p_codigo: codigo }
@@ -264,10 +266,14 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     const funcion = accionMantenimiento === 'vaciar'
       ? 'admin_vaciar_datos_deportivos'
       : 'admin_eliminar_campeonato_definitivamente'
-    const { data, error } = await supabaseCampeonato.rpc(funcion, {
+    const parametros = {
       p_codigo: codigo,
       p_confirmacion: confirmacionMantenimiento,
-    })
+      ...(accionMantenimiento === 'vaciar'
+        ? { p_borrar_equipos: borrarEquiposMantenimiento }
+        : {}),
+    }
+    const { data, error } = await supabaseCampeonato.rpc(funcion, parametros)
     setProcesandoMantenimiento(false)
     if (error || data?.ok !== true) {
       setErrorMantenimiento(error?.message || data?.error || 'No se pudo completar la operación.')
@@ -279,7 +285,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       return
     }
     setConfig((actual) => ({ ...actual, estado_torneo: 'Inscripciones' }))
-    setMensaje({ tipo: 'correcto', texto: `Datos deportivos eliminados. ${codigo} se conserva con su configuración e inscripciones.` })
+    setMensaje({
+      tipo: 'correcto',
+      texto: borrarEquiposMantenimiento
+        ? `Datos deportivos y equipos eliminados. ${codigo} conserva su configuración e inscripciones.`
+        : `Datos deportivos eliminados. Se conservan los equipos, la configuración y las inscripciones de ${codigo}.`,
+    })
   }
 
   if (cargando) {
@@ -518,7 +529,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <div className="acciones-mantenimiento-campeonato">
               <div>
                 <strong>Vaciar datos deportivos</strong>
-                <span>Borra equipos, partidos, resultados, clasificaciones, Histórico e ISP de esta edición. Conserva el campeonato, su configuración, solicitudes e inscripciones.</span>
+                <span>Borra partidos, resultados, clasificaciones, Histórico e ISP de esta edición. Antes de confirmar podrás elegir si conservas los equipos o si también los borras.</span>
                 <button type="button" className="boton boton-advertencia" onClick={() => abrirMantenimiento('vaciar')}>Vaciar datos deportivos</button>
               </div>
               <div>
@@ -564,8 +575,21 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <h3 id="titulo-mantenimiento-campeonato">{accionMantenimiento === 'vaciar' ? 'Vaciar datos deportivos' : 'Eliminar campeonato definitivamente'}</h3>
             {errorMantenimiento ? <p className="error-modal-mantenimiento">{errorMantenimiento}</p> : !resumenMantenimiento ? <p>Revisando los datos relacionados…</p> : <>
               <p>{accionMantenimiento === 'vaciar' ? `Se conservarán la configuración y las ${resumenMantenimiento.inscripciones} inscripciones.` : 'Esta edición desaparecerá completamente y no podrá recuperarse.'}</p>
+              {accionMantenimiento === 'vaciar' && (
+                <fieldset className="opciones-vaciado-equipos">
+                  <legend>¿Qué hacemos con los equipos?</legend>
+                  <label className={!borrarEquiposMantenimiento ? 'seleccionada' : ''}>
+                    <input type="radio" name="borrar_equipos_mantenimiento" checked={!borrarEquiposMantenimiento} onChange={() => setBorrarEquiposMantenimiento(false)} disabled={procesandoMantenimiento} />
+                    <span><strong>Conservar equipos</strong><small>Mantiene las parejas creadas. Se borran sus partidos, resultados, clasificación y asignación de grupo.</small></span>
+                  </label>
+                  <label className={borrarEquiposMantenimiento ? 'seleccionada peligro' : ''}>
+                    <input type="radio" name="borrar_equipos_mantenimiento" checked={borrarEquiposMantenimiento} onChange={() => setBorrarEquiposMantenimiento(true)} disabled={procesandoMantenimiento} />
+                    <span><strong>Borrar también los equipos</strong><small>Elimina las parejas de esta edición; después tendrás que volver a crearlas o importarlas.</small></span>
+                  </label>
+                </fieldset>
+              )}
               <dl className="resumen-borrado">
-                <div><dt>Equipos</dt><dd>{resumenMantenimiento.equipos}</dd></div>
+                <div><dt>Equipos</dt><dd>{accionMantenimiento === 'vaciar' && !borrarEquiposMantenimiento ? `${resumenMantenimiento.equipos} conservados` : resumenMantenimiento.equipos}</dd></div>
                 <div><dt>Partidos</dt><dd>{resumenMantenimiento.partidos}</dd></div>
                 <div><dt>Sets</dt><dd>{resumenMantenimiento.sets}</dd></div>
                 <div><dt>Clasificaciones</dt><dd>{resumenMantenimiento.clasificaciones}</dd></div>
