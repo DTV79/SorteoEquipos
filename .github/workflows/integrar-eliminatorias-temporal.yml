@@ -4,7 +4,7 @@ on:
     branches: [feat/previsualizacion-eliminatorias]
 jobs:
   integrar:
-    if: "!contains(github.event.head_commit.message, '[integrado-eliminatorias]')"
+    if: ${{ !contains(github.event.head_commit.message, '[integrado-eliminatorias]') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,8 +58,6 @@ jobs:
           assert anchor in s
           s=s.replace(anchor, funcs+anchor)
           s=s.replace('<option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>', '<option>Por Clasificación</option><option>No Enfrentados</option><option>Aleatorio</option></select></Campo>', 1)
-          # Palas selector must remain unchanged; replacement count=1 targets cruces.
-          # Mark tri-state Palas changes dirty as they bypass cambiar().
           old="""                  onChange={(evento) => {
                     const valor = evento.target.value
                     setConfig((actual) => ({"""
@@ -68,7 +66,6 @@ jobs:
                     marcarConfiguracionModificada()
                     setConfig((actual) => ({"""
           s=s.replace(old,new,1)
-          # Disable existing previews while visible form differs from saved DB configuration.
           s=s.replace('disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}', 'disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}')
           s=s.replace('disabled={previsualizandoRegrupos || generandoRegrupos}', 'disabled={previsualizandoRegrupos || generandoRegrupos || hayCambiosSinGuardar}')
           insert_before='          <fieldset className="zona-peligro-campeonato">'
