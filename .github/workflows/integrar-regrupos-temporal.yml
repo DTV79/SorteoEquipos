@@ -4,7 +4,6 @@ permissions:
   contents: write
 jobs:
   build:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,4 +19,4 @@ jobs:
           git add src/CampeonatoConfiguracion.jsx src/CampeonatoConfiguracion.css
           git commit -m "feat: generar ReGrupos desde configuracion"
           git push
-# build 1
+# build 2
