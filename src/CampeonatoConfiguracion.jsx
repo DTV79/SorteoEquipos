@@ -153,6 +153,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [mostrarPuntuaciones, setMostrarPuntuaciones] = useState(false)
   const [sistemaPuntuacionEditado, setSistemaPuntuacionEditado] = useState('Competitivo')
   const [mostrarInfoClasificacion, setMostrarInfoClasificacion] = useState(false)
+  const [previsualizacionPrimeraFase, setPrevisualizacionPrimeraFase] = useState(null)
+  const [previsualizandoPrimeraFase, setPrevisualizandoPrimeraFase] = useState(false)
+  const [generandoPrimeraFase, setGenerandoPrimeraFase] = useState(false)
+  const [errorPrimeraFase, setErrorPrimeraFase] = useState('')
 
   useEffect(() => {
     let cancelado = false
@@ -272,6 +276,33 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })
     }
     setGuardando(false)
+  }
+
+  async function previsualizarPrimeraFase() {
+    setPrevisualizandoPrimeraFase(true)
+    setErrorPrimeraFase('')
+    setPrevisualizacionPrimeraFase(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_primera_fase', { p_codigo: codigo })
+    setPrevisualizandoPrimeraFase(false)
+    if (error || data?.ok !== true) {
+      setErrorPrimeraFase(error?.message || data?.error || 'No se pudo preparar la primera fase.')
+      return
+    }
+    setPrevisualizacionPrimeraFase(data)
+  }
+
+  async function generarPrimeraFase() {
+    if (!previsualizacionPrimeraFase) return
+    setGenerandoPrimeraFase(true)
+    setErrorPrimeraFase('')
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_primera_fase', { p_codigo: codigo })
+    setGenerandoPrimeraFase(false)
+    if (error || data?.ok !== true) {
+      setErrorPrimeraFase(error?.message || data?.error || 'No se pudo generar la primera fase.')
+      return
+    }
+    setPrevisualizacionPrimeraFase(null)
+    setMensaje({ tipo: 'correcto', texto: data?.mensaje || 'Primera fase generada correctamente.' })
   }
 
   async function abrirMantenimiento(tipo) {
@@ -553,6 +584,30 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <legend>Mantenimiento de la web</legend>
             <label className="interruptor-configuracion"><input type="checkbox" name="modo_mantenimiento" checked={config.modo_mantenimiento} onChange={cambiar} /><span>Ocultar la web al público</span></label>
             {config.modo_mantenimiento && <div className="campos-texto-configuracion bloque-dependiente"><Campo etiqueta="Título"><input name="titulo_mantenimiento" value={config.titulo_mantenimiento || ''} onChange={cambiar} /></Campo><Campo etiqueta="Mensaje"><textarea name="mensaje_mantenimiento" value={config.mensaje_mantenimiento || ''} onChange={cambiar} rows="3" /></Campo></div>}
+          </fieldset>
+
+          <fieldset className="generacion-primera-fase">
+            <legend>Generación de la competición</legend>
+            <p>La configuración guardada decide cómo se crea la primera fase. La previsualización no crea ni modifica partidos.</p>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}>
+              {previsualizandoPrimeraFase ? 'Comprobando…' : 'Previsualizar primera fase'}
+            </button>
+            {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla o Grupos.</small>}
+            {errorPrimeraFase && <p className="error-generacion-primera-fase">{errorPrimeraFase}</p>}
+            {previsualizacionPrimeraFase && (
+              <div className="resumen-generacion-primera-fase">
+                <strong>{previsualizacionPrimeraFase.tipo_campeonato || config.tipo_campeonato}</strong>
+                {previsualizacionPrimeraFase.mensaje && <span>{previsualizacionPrimeraFase.mensaje}</span>}
+                {previsualizacionPrimeraFase.total_equipos != null && <span>Equipos: {previsualizacionPrimeraFase.total_equipos}</span>}
+                {previsualizacionPrimeraFase.num_grupos != null && <span>Grupos: {previsualizacionPrimeraFase.num_grupos}</span>}
+                {previsualizacionPrimeraFase.partidos_previstos != null && <span>Partidos previstos: {previsualizacionPrimeraFase.partidos_previstos}</span>}
+                {previsualizacionPrimeraFase.jornadas_previstas != null && <span>Jornadas previstas: {previsualizacionPrimeraFase.jornadas_previstas}</span>}
+                {previsualizacionPrimeraFase.hay_descanso === true && <span>Habrá descanso por número impar de equipos.</span>}
+                <button type="button" className="boton boton-principal" onClick={generarPrimeraFase} disabled={generandoPrimeraFase}>
+                  {generandoPrimeraFase ? 'Generando…' : 'Confirmar y generar primera fase'}
+                </button>
+              </div>
+            )}
           </fieldset>
 
           <fieldset className="zona-peligro-campeonato">
