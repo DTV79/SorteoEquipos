@@ -1,0 +1,66 @@
+from pathlib import Path
+p=Path('src/CampeonatoConfiguracion.jsx')
+s=p.read_text()
+if 'previsualizacionEliminatorias' in s:
+    raise SystemExit(0)
+s=s.replace("  const [errorRegrupos, setErrorRegrupos] = useState('')", "  const [errorRegrupos, setErrorRegrupos] = useState('')\n  const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)\n  const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)\n  const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)\n  const [errorEliminatorias, setErrorEliminatorias] = useState('')\n  const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)")
+s=s.replace("        setConfig(normalizarConfiguracion(data.configuracion))", "        setConfig(normalizarConfiguracion(data.configuracion))\n        setHayCambiosSinGuardar(false)", 1)
+s=s.replace("  function cambiar(evento) {", "  function marcarConfiguracionModificada() {\n    setHayCambiosSinGuardar(true)\n    setPrevisualizacionPrimeraFase(null)\n    setPrevisualizacionRegrupos(null)\n    setPrevisualizacionEliminatorias(null)\n  }\n\n  function cambiar(evento) {\n    marcarConfiguracionModificada()")
+s=s.replace("  function cambiarPuntuacion(evento) {", "  function cambiarPuntuacion(evento) {\n    marcarConfiguracionModificada()")
+s=s.replace("      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })", "      setHayCambiosSinGuardar(false)\n      setPrevisualizacionEliminatorias(null)\n      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })")
+anchor="  async function abrirMantenimiento(tipo) {"
+funcs="""  async function previsualizarEliminatorias() {
+    if (hayCambiosSinGuardar) return
+    setPrevisualizandoEliminatorias(true)
+    setErrorEliminatorias('')
+    setPrevisualizacionEliminatorias(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias', { p_codigo: codigo })
+    setPrevisualizandoEliminatorias(false)
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
+    setPrevisualizacionEliminatorias(data)
+  }
+
+  async function generarEliminatorias() {
+    if (!previsualizacionEliminatorias?.puede_generar || hayCambiosSinGuardar) return
+    setGenerandoEliminatorias(true); setErrorEliminatorias('')
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_cuadro_normal', { p_codigo: codigo })
+    setGenerandoEliminatorias(false)
+    if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
+    setPrevisualizacionEliminatorias(null)
+    setMensaje({ tipo: 'correcto', texto: data?.mensaje || `Eliminatorias generadas desde ${config.ronda_inicial_eliminatorias}.` })
+  }
+
+"""
+assert anchor in s
+s=s.replace(anchor,funcs+anchor)
+s=s.replace('<option>Por Clasificación</option><option>No Enfrentados</option></select></Campo>', '<option>Por Clasificación</option><option>No Enfrentados</option><option>Aleatorio</option></select></Campo>',1)
+old="""                  onChange={(evento) => {
+                    const valor = evento.target.value
+                    setConfig((actual) => ({"""
+new="""                  onChange={(evento) => {
+                    const valor = evento.target.value
+                    marcarConfiguracionModificada()
+                    setConfig((actual) => ({"""
+s=s.replace(old,new,1)
+s=s.replace('disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}', 'disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}')
+s=s.replace('disabled={previsualizandoRegrupos || generandoRegrupos}', 'disabled={previsualizandoRegrupos || generandoRegrupos || hayCambiosSinGuardar}')
+marker='          <fieldset className="zona-peligro-campeonato">'
+panel="""          <fieldset className="generacion-eliminatorias">
+            <legend>Generación de Eliminatorias</legend>
+            <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
+            {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
+            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
+            {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
+            {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
+              <strong>{previsualizacionEliminatorias.ronda_inicial} · {previsualizacionEliminatorias.criterio_cruces}</strong>
+              <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
+              {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
+              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido) => <div className="detalle-cruce-eliminatoria" key={partido.orden}><b>Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+              <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>
+            </div>}
+          </fieldset>
+
+"""
+assert marker in s
+s=s.replace(marker,panel+marker)
+p.write_text(s)
