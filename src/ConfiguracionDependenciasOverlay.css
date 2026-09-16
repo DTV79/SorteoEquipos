@@ -1,0 +1,1 @@
+.ayuda-dependencia-configuracion{display:block;margin-top:5px;color:#fbbf24;font-size:11px;line-height:1.4}.campo-configuracion:has(input:disabled)>.ayuda-dependencia-configuracion,.campo-configuracion:has(select:disabled)>.ayuda-dependencia-configuracion{opacity:.9}
