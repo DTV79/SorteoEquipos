@@ -10312,3 +10312,41 @@ body:has(.presentacion-equipos-tv) {
   font-size: clamp(14px, 1.8dvh, 21px);
   line-height: 1.05;
 }
+
+
+/* Ajuste TV 3: resumen más legible y margen inferior para caricaturas. */
+.resumen-final-publico-tv .avatar-resumen-final {
+  width: clamp(60px, 7dvh, 84px);
+  height: clamp(60px, 7dvh, 84px);
+  flex-basis: clamp(60px, 7dvh, 84px);
+}
+
+.resumen-final-publico-tv .jugador-resumen-final {
+  gap: clamp(9px, .9vw, 15px);
+}
+
+.resumen-final-publico-tv .jugador-resumen-final strong {
+  font-size: clamp(17px, 2.2dvh, 26px);
+  line-height: 1;
+}
+
+.presentacion-equipos-tv .escenario-presentacion-equipos {
+  padding-bottom: clamp(28px, 4dvh, 52px);
+}
+
+.presentacion-equipos-tv .jugadores-presentacion-equipos {
+  transform: translateY(clamp(-28px, -2.5dvh, -14px));
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos {
+  flex-basis: min(58dvh, 610px);
+  height: min(58dvh, 610px);
+  max-height: calc(100dvh - 195px);
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .presentacion-equipos-tv .imagen-presentacion-equipos {
+    flex-basis: min(50dvh, 500px);
+    height: min(50dvh, 500px);
+  }
+}
