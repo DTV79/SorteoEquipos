@@ -477,6 +477,174 @@
   background: #f1f5f9;
 }
 
+/* Cabecera económica más elegante y con contraste */
+.gastos-campeonato .cabecera-campeonato {
+  position: relative;
+  overflow: hidden;
+  padding: 24px 26px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #0f172a 0%, #172554 62%, #14532d 135%);
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, .18);
+}
+
+.gastos-campeonato .cabecera-campeonato::after {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -95px;
+  top: -125px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .055);
+  pointer-events: none;
+}
+
+.gastos-campeonato .cabecera-campeonato > * {
+  position: relative;
+  z-index: 1;
+}
+
+.gastos-campeonato .cabecera-campeonato .etiqueta {
+  color: #86efac;
+  letter-spacing: .16em;
+  font-weight: 800;
+}
+
+.gastos-campeonato .cabecera-campeonato h2 {
+  margin-top: 5px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.gastos-campeonato .cabecera-campeonato .descripcion-admin {
+  color: #cbd5e1;
+}
+
+.gastos-campeonato .cabecera-campeonato .acciones-cabecera-configuracion .boton {
+  color: #0f172a;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid rgba(255, 255, 255, .78);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, .18);
+}
+
+.gastos-campeonato .cabecera-campeonato .acciones-cabecera-configuracion .boton:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.gastos-campeonato .gastos-pestanas {
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+}
+
+.gastos-campeonato .gastos-pestanas button {
+  color: #334155;
+  border-color: transparent;
+  background: transparent;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.gastos-campeonato .gastos-pestanas button:hover {
+  background: #fff;
+  color: #0f172a;
+}
+
+.gastos-campeonato .gastos-pestanas button.activo {
+  color: #fff;
+  background: linear-gradient(135deg, #172554, #1e3a8a);
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(30, 58, 138, .22);
+}
+
+/* Selección masiva de los jugadores inscritos */
+.host-seleccion-masiva-jugadores {
+  margin-bottom: 16px;
+}
+
+.seleccion-masiva-jugadores {
+  padding: 16px 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff, #eff6ff);
+  box-shadow: 0 8px 22px rgba(30, 64, 175, .07);
+}
+
+.seleccion-masiva-texto {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.seleccion-masiva-icono {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  background: #dbeafe;
+  font-size: 1.25rem;
+}
+
+.seleccion-masiva-texto strong {
+  display: block;
+  color: #172554;
+  font-size: 1rem;
+}
+
+.seleccion-masiva-texto p {
+  margin: 4px 0 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.seleccion-masiva-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.boton-masivo {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #334155;
+  background: #fff;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.boton-masivo:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, .08);
+}
+
+.boton-masivo.principal {
+  color: #fff;
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.boton-masivo.quitar {
+  color: #991b1b;
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.seleccion-masiva-aviso {
+  display: block;
+  margin-top: 11px;
+  color: #64748b;
+}
+
 @media (max-width: 1000px) {
   .resumen-economia-grid,
   .actividad-resumen-grid,
@@ -498,6 +666,11 @@
   .gastos-campeonato .panel-campeonato {
     padding-left: 10px;
     padding-right: 10px;
+  }
+
+  .gastos-campeonato .cabecera-campeonato {
+    padding: 18px;
+    border-radius: 17px;
   }
 
   .resumen-economia-grid,
@@ -532,5 +705,18 @@
   .gastos-pestanas {
     margin-left: -2px;
     margin-right: -2px;
+  }
+
+  .seleccion-masiva-jugadores {
+    padding: 14px;
+  }
+
+  .seleccion-masiva-botones {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .boton-masivo {
+    width: 100%;
   }
 }
