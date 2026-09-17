@@ -5,32 +5,10 @@
 .resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}
 .resumen-deuda-persona .pendiente strong{color:#c2410c}
 
-/* En Asistencia y cobros dejamos un único campo manual: la cuota individual.
-   Los pagos se gestionan exclusivamente con Pagar / Anular pago. */
-.gastos-campeonato .cobro-actividad-persona{
-  display:grid!important;
-  grid-template-columns:1fr!important;
-  gap:7px!important;
-}
-.gastos-campeonato .cobro-actividad-persona>label:first-of-type{
-  display:block!important;
-  grid-column:1/-1!important;
-  width:100%!important;
-}
-.gastos-campeonato .cobro-actividad-persona>label:first-of-type>span{
-  font-size:0!important;
-}
-.gastos-campeonato .cobro-actividad-persona>label:first-of-type>span::before{
-  content:'Cuota individual (opcional)';
-  font-size:.75rem!important;
-  font-weight:800;
-  color:#334155;
-}
-.gastos-campeonato .cobro-actividad-persona>label:nth-of-type(n+2),
-.gastos-campeonato .cobro-actividad-persona>.boton-pagado,
-.gastos-campeonato .cobro-actividad-persona .boton-pagado{
-  display:none!important;
-}
+/* El importe individual ya no se usa. La asistencia solo indica si la persona
+   participa en la actividad y el pago se gestiona con Pagar / Anular pago. */
+.gastos-campeonato .cobro-actividad-persona{display:none!important}
+.gastos-campeonato .check-asistencia small{display:none!important}
 
 .host-deuda-actividad{grid-column:1/-1}
 
@@ -44,8 +22,6 @@
   background:#f8fbff;
 }
 
-/* La cuota individual ya aparece en el campo editable de la actividad.
-   Aquí mostramos solo el resumen económico para no repetir información. */
 .deuda-actividad-datos{
   display:flex;
   flex-direction:column;
