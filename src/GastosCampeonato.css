@@ -1,0 +1,536 @@
+.gastos-campeonato {
+  min-height: 100vh;
+}
+
+.gastos-campeonato .panel-campeonato {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.gastos-pestanas {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 22px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gastos-pestanas button {
+  border: 1px solid #d8dee9;
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gastos-pestanas button.activo {
+  background: #172554;
+  border-color: #172554;
+  color: #fff;
+}
+
+.mensaje-economia {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.mensaje-economia.correcto {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.mensaje-economia.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.resumen-economia-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.resumen-economia-grid article,
+.actividad-resumen,
+.bloque-economia,
+.persona-economia,
+.config-actividad {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.resumen-economia-grid article {
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.resumen-economia-grid article span,
+.resumen-economia-grid article small {
+  color: #64748b;
+}
+
+.resumen-economia-grid article strong {
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.resumen-economia-grid article.positivo strong {
+  color: #15803d;
+}
+
+.resumen-economia-grid article.negativo strong,
+.resumen-economia-grid article.pendiente strong {
+  color: #b91c1c;
+}
+
+.bloque-economia {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.titulo-bloque-economia {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.titulo-bloque-economia h3 {
+  margin: 0 0 4px;
+}
+
+.titulo-bloque-economia p {
+  margin: 0;
+  color: #64748b;
+}
+
+.actividad-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.actividad-resumen {
+  padding: 16px;
+}
+
+.actividad-resumen > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.actividad-resumen > header div {
+  display: grid;
+  gap: 3px;
+}
+
+.actividad-resumen > header span {
+  color: #64748b;
+  font-size: .82rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.actividad-resumen > header b {
+  white-space: nowrap;
+  font-size: .85rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 6px 9px;
+}
+
+.actividad-cifras {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.actividad-cifras span {
+  display: grid;
+  gap: 2px;
+  padding: 9px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.actividad-cifras small {
+  color: #64748b;
+}
+
+.resumen-menus {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.resumen-menus ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.lista-movimientos {
+  display: grid;
+  gap: 10px;
+}
+
+.lista-movimientos article {
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  padding: 13px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  background: #fff;
+}
+
+.movimiento-principal,
+.lista-movimientos article > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.lista-movimientos small,
+.movimiento-detalles {
+  color: #64748b;
+}
+
+.movimiento-detalles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: .88rem;
+}
+
+.tipo-movimiento {
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.tipo-movimiento.gasto {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.tipo-movimiento.ingreso {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.lista-movimientos b.gasto,
+.movimiento-importe-acciones b.gasto {
+  color: #b91c1c;
+}
+
+.lista-movimientos b.ingreso,
+.movimiento-importe-acciones b.ingreso {
+  color: #15803d;
+}
+
+.movimiento-importe-acciones {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.movimiento-importe-acciones > div {
+  display: flex;
+  gap: 10px;
+}
+
+.boton-enlace {
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.boton-enlace.peligro {
+  color: #b91c1c;
+}
+
+.formulario-economia,
+.formulario-invitado,
+.campos-config-actividad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.formulario-economia label,
+.formulario-invitado label,
+.campos-config-actividad label,
+.cobro-actividad-persona label,
+.menu-persona {
+  display: grid;
+  gap: 6px;
+}
+
+.formulario-economia label > span,
+.formulario-invitado label > span,
+.campos-config-actividad label > span,
+.cobro-actividad-persona label > span,
+.menu-persona > span {
+  font-size: .84rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.formulario-economia input,
+.formulario-economia select,
+.formulario-economia textarea,
+.formulario-invitado input,
+.formulario-invitado select,
+.campos-config-actividad input,
+.campos-config-actividad select,
+.cobro-actividad-persona input,
+.menu-persona input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 11px;
+  font: inherit;
+}
+
+.formulario-economia .campo-ancho {
+  grid-column: span 2;
+}
+
+.formulario-economia .campo-completo,
+.acciones-formulario-economia {
+  grid-column: 1 / -1;
+}
+
+.input-euro {
+  position: relative;
+}
+
+.input-euro input {
+  padding-right: 34px !important;
+}
+
+.input-euro b {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
+.formulario-invitado {
+  grid-template-columns: 1.2fr .8fr 1fr 1.2fr auto;
+  align-items: end;
+}
+
+.lista-personas-economia {
+  display: grid;
+  gap: 12px;
+}
+
+.persona-economia {
+  padding: 14px;
+}
+
+.persona-economia > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.persona-economia > header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.persona-economia > header span {
+  color: #64748b;
+  font-size: .86rem;
+}
+
+.actividades-persona {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.actividad-persona {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.actividad-persona.asiste {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.check-asistencia {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.check-asistencia input {
+  margin-top: 4px;
+}
+
+.check-asistencia span {
+  display: grid;
+  gap: 2px;
+}
+
+.check-asistencia small {
+  color: #64748b;
+}
+
+.cobro-actividad-persona {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.menu-persona {
+  margin-top: 10px;
+}
+
+.pie-guardar-asistencia {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.lista-config-actividades {
+  display: grid;
+  gap: 12px;
+}
+
+.config-actividad {
+  padding: 14px;
+}
+
+.config-actividad > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.config-actividad > header span {
+  font-size: .8rem;
+  color: #64748b;
+}
+
+.config-actividad > button {
+  margin-top: 12px;
+}
+
+.checks-config-actividad {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  justify-content: center;
+}
+
+.checks-config-actividad label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .9rem;
+}
+
+.checks-config-actividad input {
+  width: auto;
+}
+
+.gastos-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  overflow: auto;
+  background: #f1f5f9;
+}
+
+@media (max-width: 1000px) {
+  .resumen-economia-grid,
+  .actividad-resumen-grid,
+  .actividades-persona {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formulario-economia,
+  .campos-config-actividad {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formulario-invitado {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .gastos-campeonato .panel-campeonato {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .resumen-economia-grid,
+  .actividad-resumen-grid,
+  .actividades-persona,
+  .formulario-economia,
+  .formulario-invitado,
+  .campos-config-actividad {
+    grid-template-columns: 1fr;
+  }
+
+  .formulario-economia .campo-ancho,
+  .formulario-economia .campo-completo,
+  .acciones-formulario-economia {
+    grid-column: auto;
+  }
+
+  .titulo-bloque-economia,
+  .lista-movimientos article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .movimiento-importe-acciones {
+    justify-items: start;
+  }
+
+  .cobro-actividad-persona {
+    grid-template-columns: 1fr;
+  }
+
+  .gastos-pestanas {
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+}
