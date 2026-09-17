@@ -629,7 +629,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   ⚙ Configurar puntos
                 </button>
               </div>
-              {config.tipo_campeonato === 'Liguilla' && <>
+              {['Liguilla', 'Grupos'].includes(config.tipo_campeonato) && (
                 <div className="campo-configuracion">
                   <div className="etiqueta-con-informacion">
                     <span>Ordenar clasificación</span>
@@ -645,8 +645,14 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                     <option value="B">B · Puntos y mayor participación</option>
                     <option value="C">C · Eficacia real por partido</option>
                   </select>
-                  <small>Se aplica al recalcular la tabla y al preparar la siguiente jornada.</small>
+                  <small>
+                    {config.tipo_campeonato === 'Grupos'
+                      ? 'Se aplica por separado dentro de cada Grupo y, si están activos, también en cada ReGrupo.'
+                      : 'Se aplica al recalcular la tabla y al preparar la siguiente jornada.'}
+                  </small>
                 </div>
+              )}
+              {config.tipo_campeonato === 'Liguilla' && (
                 <Campo etiqueta="Generación de jornadas" ayuda="La primera jornada siempre es aleatoria. Esta opción decide cómo se crean las siguientes.">
                   <select name="modo_generar_jornadas" value={config.modo_generar_jornadas || ''} onChange={cambiar}>
                     <option value="">— Sin definir</option>
@@ -654,7 +660,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                     <option value="Aleatorio">Aleatorio sin repetir</option>
                   </select>
                 </Campo>
-              </>}
+              )}
             </div>
             {mostrarPuntuaciones && (
               <div className="configurador-puntuaciones">
@@ -822,7 +828,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <section className="modal-informacion-clasificacion" role="dialog" aria-modal="true" aria-labelledby="titulo-info-clasificacion" onMouseDown={(evento) => evento.stopPropagation()}>
             <button type="button" className="cerrar-modal-informacion" aria-label="Cerrar" onClick={() => setMostrarInfoClasificacion(false)}>×</button>
             <h3 id="titulo-info-clasificacion">Cómo se ordena la clasificación</h3>
-            <p>El sistema elegido también determina el orden que utiliza el método suizo para preparar la siguiente jornada.</p>
+            <p>El criterio se aplica dentro de cada clasificación. En Grupos y ReGrupos ordena cada grupo por separado; en Liguilla también determina el orden que utiliza el método suizo para preparar la siguiente jornada.</p>
             <article>
               <strong>A · Puntos y rendimiento proporcional</strong>
               <p>Prioriza los puntos totales y, en caso de empate, la eficacia por partido. Compensa mejor a los equipos que hayan descansado.</p>
