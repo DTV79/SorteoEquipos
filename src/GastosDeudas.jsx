@@ -288,16 +288,6 @@ export default function GastosDeudas({ codigo }) {
 
   useEffect(() => {
     const click = (e) => {
-      const botonGuardar = e.target.closest(
-        '.gastos-campeonato .titulo-bloque-economia .boton-principal'
-      )
-      if (botonGuardar && botonGuardar.textContent?.includes('Guardar')) {
-        ;[250, 600, 1100].forEach((ms) =>
-          window.setTimeout(() => localizar(), ms)
-        )
-        return
-      }
-
       const tab = e.target.closest('.gastos-pestanas button')
       if (!tab) return
 
@@ -330,37 +320,25 @@ export default function GastosDeudas({ codigo }) {
       })
   }
 
-  async function guardarPago(persona, actividad, seccion, importePagado, accion) {
+  async function guardarPago(persona, actividad, _seccion, importePagado, accion) {
     const clave = `${accion}-${persona.id_persona}-${actividad.id_actividad}`
     setGuardandoPago(clave)
 
-    const asis = asistenciaDe(persona, actividad.id_actividad)
-    const esCampeonatoJugador =
-      persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO'
-
-    const checkbox = seccion?.querySelector('.check-asistencia input[type="checkbox"]')
-    const campoMenu = seccion?.querySelector('.menu-persona input')
-    const asisteActual = esCampeonatoJugador ||
-      (checkbox ? Boolean(checkbox.checked) : Boolean(asis?.asiste))
-    const menuActual = campoMenu ? campoMenu.value : (asis?.menu || '')
-
-    const fila = {
-      id_persona: persona.id_persona,
-      id_actividad: actividad.id_actividad,
-      asiste: asisteActual,
-      importe: null,
-      pagado: Math.max(numero(importePagado), 0),
-      menu: menuActual,
-      observaciones: asis?.observaciones || '',
-    }
-
     const { data, error } = await supabaseCampeonato.rpc(
-      'admin_economia_guardar_asistencias',
-      { p_codigo: codigo, p_datos: [fila] }
+      'admin_economia_guardar_pago',
+      {
+        p_codigo: codigo,
+        p_id_persona: persona.id_persona,
+        p_id_actividad: actividad.id_actividad,
+        p_pagado: Math.max(numero(importePagado), 0),
+      }
     )
 
     setGuardandoPago('')
     if (error || data?.ok !== true) return
+
+    // El pago se guarda de forma independiente: nunca modifica asistencia,
+    // menú ni observaciones.
     await cargar()
   }
 
