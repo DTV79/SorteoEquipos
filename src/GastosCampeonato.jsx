@@ -811,7 +811,10 @@ export default function GastosCampeonato({ codigo, onVolver }) {
           <button
             type="button"
             className={pestana === 'resumen' ? 'activo' : ''}
-            onClick={() => setPestana('resumen')}
+            onClick={() => {
+              setPestana('resumen')
+              cargar()
+            }}
           >
             Resumen
           </button>
