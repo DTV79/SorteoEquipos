@@ -10,6 +10,16 @@
 .gastos-campeonato .actividad-campeonato-fija .check-asistencia{cursor:default}
 .gastos-campeonato .actividad-campeonato-fija .check-asistencia input{accent-color:#2563eb;opacity:.8;cursor:not-allowed}
 
+/* Orden fijo dentro de cada actividad: título/check, resumen económico y menú. */
+.gastos-campeonato .actividad-con-deuda{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+}
+.gastos-campeonato .actividad-con-deuda>.check-asistencia{order:1}
+.gastos-campeonato .actividad-con-deuda>.host-deuda-actividad{order:2;width:100%}
+.gastos-campeonato .actividad-con-deuda>.menu-persona{order:3;width:100%}
+
 .host-asistencia-masiva{margin:0 0 14px}
 .asistencia-masiva{
   display:flex;
@@ -57,7 +67,6 @@
   gap:0;
   min-width:0;
 }
-.deuda-actividad-datos>span:first-child{display:none}
 .deuda-actividad-datos span{
   display:flex;
   flex-direction:row;
