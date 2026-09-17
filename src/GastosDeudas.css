@@ -5,7 +5,31 @@
 .resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}
 .resumen-deuda-persona .pendiente strong{color:#c2410c}
 
-.actividad-con-deuda>.cobro-actividad-persona .boton-pagado{display:none}
+/* En cada actividad solo dejamos el ajuste individual opcional.
+   El pago se gestiona exclusivamente con Pagar / Anular pago. */
+.actividad-con-deuda>.cobro-actividad-persona{
+  display:grid;
+  grid-template-columns:1fr!important;
+  gap:7px;
+}
+.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type{
+  grid-column:1/-1;
+  width:100%;
+}
+.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type>span{
+  font-size:0;
+}
+.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type>span::before{
+  content:'Cuota individual (opcional)';
+  font-size:.75rem;
+  font-weight:800;
+  color:#334155;
+}
+.actividad-con-deuda>.cobro-actividad-persona>label:nth-of-type(2),
+.actividad-con-deuda>.cobro-actividad-persona .boton-pagado{
+  display:none!important;
+}
+
 .host-deuda-actividad{grid-column:1/-1}
 
 .deuda-actividad-resumen{
