@@ -4624,6 +4624,44 @@ async function crearBombosAutomaticos() {
 }
 
 
+function obtenerClaveOrdenJugador(jugador) {
+  const nombreCompleto = [
+    jugador?.nombre,
+    jugador?.apellidos,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return String(
+    jugador?.alias ||
+    nombreCompleto ||
+    jugador?.codigo_jugador ||
+    ''
+  ).trim()
+}
+
+function compararJugadoresPorAlias(a, b) {
+  const porAlias = obtenerClaveOrdenJugador(a)
+    .localeCompare(
+      obtenerClaveOrdenJugador(b),
+      'es',
+      { sensitivity: 'base' }
+    )
+
+  if (porAlias !== 0) {
+    return porAlias
+  }
+
+  return String(a?.codigo_jugador || '')
+    .localeCompare(
+      String(b?.codigo_jugador || ''),
+      'es',
+      { numeric: true, sensitivity: 'base' }
+    )
+}
+
+
 async function cargarCatalogoGeneral() {
   const {
     data,
@@ -4641,20 +4679,21 @@ async function cargarCatalogoGeneral() {
       activo
     `)
     .eq('activo', true)
-    .order(
-      'nombre',
-      { ascending: true }
-    )
 
   if (error) {
     throw error
   }
 
+  const listaOrdenada =
+    [...(data ?? [])].sort(
+      compararJugadoresPorAlias
+    )
+
   setCatalogoJugadores(
-    data ?? []
+    listaOrdenada
   )
 
-  return data ?? []
+  return listaOrdenada
 }
 
 async function abrirGestionCatalogo() {
@@ -4887,9 +4926,7 @@ async function guardarEdicionJugadorCatalogo(evento) {
         .map((jugador) =>
           jugador.id === actualizado.id ? actualizado : jugador
         )
-        .sort((a, b) =>
-          String(a.nombre).localeCompare(String(b.nombre), 'es')
-        )
+        .sort(compararJugadoresPorAlias)
     )
 
     setJugadorCatalogoEditando(null)
@@ -5055,11 +5092,7 @@ async function crearJugadorSoloCatalogo(evento) {
             fotoPath,
         },
       ].sort(
-        (a, b) =>
-          String(a.nombre).localeCompare(
-            String(b.nombre),
-            'es'
-          )
+        compararJugadoresPorAlias
       )
     )
 
