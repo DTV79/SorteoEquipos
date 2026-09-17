@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import GastosCampeonato from './GastosCampeonato'
 import GastosActividadBorrado from './GastosActividadBorrado'
@@ -9,6 +9,8 @@ export default function GastosCampeonatoLauncher() {
   const [destino, setDestino] = useState(null)
   const [abierto, setAbierto] = useState(false)
   const [codigo, setCodigo] = useState('')
+  const [versionEconomia, setVersionEconomia] = useState(0)
+  const refrescarEconomia = useCallback(() => setVersionEconomia((v) => v + 1), [])
 
   useEffect(() => {
     function localizarMenu() {
@@ -39,8 +41,8 @@ export default function GastosCampeonatoLauncher() {
     )}
     {abierto && codigo && createPortal(
       <div className="gastos-overlay">
-        <GastosCampeonato codigo={codigo} onVolver={() => setAbierto(false)} />
-        <GastosActividadBorrado codigo={codigo} />
+        <GastosCampeonato key={`${codigo}-${versionEconomia}`} codigo={codigo} onVolver={() => setAbierto(false)} />
+        <GastosActividadBorrado codigo={codigo} onCambio={refrescarEconomia} />
       </div>,
       document.body
     )}
