@@ -5177,7 +5177,9 @@ async function confirmarEliminarJugadorCatalogo() {
     )
 
     setCatalogoGestionMensaje(
-      'Jugador eliminado del catálogo.'
+      data?.accion === 'inactivo'
+        ? 'El jugador tiene historial deportivo y se ha marcado como inactivo. Se conservan su histórico, fotos y caricaturas.'
+        : 'Jugador eliminado definitivamente del catálogo.'
     )
 
     setJugadorCatalogoPendienteEliminar(
@@ -14330,11 +14332,11 @@ if (
               </div>
 
               <h3>
-                ¿Eliminar jugador del catálogo?
+                ¿Dar de baja al jugador?
               </h3>
 
               <p>
-                Se eliminará la ficha global de{' '}
+                Se aplicará la baja de{' '}
                 <strong>
                   {jugadorCatalogoPendienteEliminar.alias ||
                     jugadorCatalogoPendienteEliminar.nombre}
@@ -14342,7 +14344,7 @@ if (
               </p>
 
               <div className="modal-aviso">
-                Si el jugador todavía participa en algún sorteo, el sistema no permitirá borrarlo. Primero tendrás que eliminarlo de esos sorteos.
+                Si tiene historial deportivo, se conservará como inactivo y mantendrá sus partidos, estadísticas, ISP, fotos y caricaturas. Si no tiene historial deportivo, se eliminará definitivamente del catálogo.
               </div>
 
               <div className="modal-acciones">
