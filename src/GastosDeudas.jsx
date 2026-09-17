@@ -29,8 +29,15 @@ function repartirIgual(total, personas) {
   const resultado = new Map()
   if (!ids.length) return resultado
 
-  const parte = Math.round((numero(total) / ids.length) * 100) / 100
-  ids.forEach((id) => resultado.set(id, parte))
+  // Reparto exacto en céntimos: si no divide justo, algunas personas pagan
+  // un céntimo más para que la suma coincida exactamente con el gasto.
+  const totalCentimos = Math.round(numero(total) * 100)
+  const baseCentimos = Math.floor(totalCentimos / ids.length)
+  const resto = totalCentimos - baseCentimos * ids.length
+
+  ids.forEach((id, indice) => {
+    resultado.set(id, (baseCentimos + (indice < resto ? 1 : 0)) / 100)
+  })
   return resultado
 }
 
