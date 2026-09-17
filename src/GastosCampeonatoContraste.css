@@ -1,62 +1,20 @@
 /* Contraste y acabado visual de Asistencia y cobros */
-.gastos-campeonato .titulo-bloque-economia h3 {
-  color: #0f172a;
-  font-weight: 800;
-}
+.gastos-campeonato .titulo-bloque-economia h3 { color:#0f172a; font-weight:800; }
+.gastos-campeonato .persona-economia > header strong { color:#0f172a; font-size:1rem; font-weight:800; letter-spacing:.01em; }
+.gastos-campeonato .persona-economia > header span { color:#475569; font-weight:600; }
+.gastos-campeonato .actividad-persona .check-asistencia strong { color:#1e293b; font-weight:800; }
+.gastos-campeonato .actividad-persona.asiste .check-asistencia strong { color:#1e3a8a; }
+.gastos-campeonato .actividad-persona .check-asistencia small { color:#64748b; font-weight:600; }
+.gastos-campeonato .cobro-actividad-persona label > span,.gastos-campeonato .menu-persona > span { color:#334155; font-weight:800; }
+.gastos-campeonato .boton-pagado { grid-column:1/-1; width:max-content; border:1px solid #cbd5e1; border-radius:9px; padding:7px 11px; background:#fff; color:#334155; font:inherit; font-size:.82rem; font-weight:750; cursor:pointer; transition:background .16s ease,border-color .16s ease,transform .16s ease; }
+.gastos-campeonato .boton-pagado:hover { background:#f8fafc; border-color:#93c5fd; transform:translateY(-1px); }
+.gastos-campeonato .actividad-persona.asiste { box-shadow:inset 0 0 0 1px rgba(59,130,246,.08); }
 
-.gastos-campeonato .persona-economia > header strong {
-  color: #0f172a;
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: .01em;
-}
+/* Botones que sobre fondo blanco quedaban sin texto visible */
+.gastos-campeonato .titulo-bloque-economia > .boton-secundario { color:#fff; background:#1e3a8a; border:1px solid #1e3a8a; font-weight:800; }
+.gastos-campeonato .titulo-bloque-economia > .boton-secundario:hover { background:#1d4ed8; }
 
-.gastos-campeonato .persona-economia > header span {
-  color: #475569;
-  font-weight: 600;
-}
-
-.gastos-campeonato .actividad-persona .check-asistencia strong {
-  color: #1e293b;
-  font-weight: 800;
-}
-
-.gastos-campeonato .actividad-persona.asiste .check-asistencia strong {
-  color: #1e3a8a;
-}
-
-.gastos-campeonato .actividad-persona .check-asistencia small {
-  color: #64748b;
-  font-weight: 600;
-}
-
-.gastos-campeonato .cobro-actividad-persona label > span,
-.gastos-campeonato .menu-persona > span {
-  color: #334155;
-  font-weight: 800;
-}
-
-.gastos-campeonato .boton-pagado {
-  grid-column: 1 / -1;
-  width: max-content;
-  border: 1px solid #cbd5e1;
-  border-radius: 9px;
-  padding: 7px 11px;
-  background: #ffffff;
-  color: #334155;
-  font: inherit;
-  font-size: .82rem;
-  font-weight: 750;
-  cursor: pointer;
-  transition: background .16s ease, border-color .16s ease, transform .16s ease;
-}
-
-.gastos-campeonato .boton-pagado:hover {
-  background: #f8fafc;
-  border-color: #93c5fd;
-  transform: translateY(-1px);
-}
-
-.gastos-campeonato .actividad-persona.asiste {
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .08);
-}
+.gastos-campeonato .config-actividad > header { align-items:center; flex-wrap:wrap; }
+.gastos-campeonato .boton-borrar-actividad { margin-left:auto; padding:7px 10px; border:1px solid #fecaca; border-radius:9px; background:#fff7f7; color:#b91c1c; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; }
+.gastos-campeonato .boton-borrar-actividad:hover { background:#fee2e2; }
+.gastos-campeonato .boton-borrar-actividad:disabled { opacity:.55; cursor:wait; }
