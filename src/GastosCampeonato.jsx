@@ -62,6 +62,33 @@ const movimientoVacio = () => ({
   observaciones: '',
 })
 
+function escaparHtml(valor) {
+  return String(valor ?? '').replace(/[&<>"']/g, (caracter) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[caracter])
+}
+
+function repartirCentimosExactos(total, personas) {
+  const ids = [...personas]
+    .map((p) => numero(p.id_persona))
+    .sort((a, b) => a - b)
+  const resultado = new Map()
+  if (!ids.length) return resultado
+
+  const totalCentimos = Math.round(numero(total) * 100)
+  const baseCentimos = Math.floor(totalCentimos / ids.length)
+  const resto = totalCentimos - baseCentimos * ids.length
+
+  ids.forEach((id, indice) => {
+    resultado.set(id, (baseCentimos + (indice < resto ? 1 : 0)) / 100)
+  })
+  return resultado
+}
+
 function asistenciaEconomia(persona, idActividad) {
   return (
     persona.asistencias?.find(
@@ -166,12 +193,12 @@ function calcularEconomiaDistribuida(datos) {
   })
 
   gruposReparto.forEach(({ idActividad, elegibles, total }) => {
-    const parte = elegibles.length
-      ? Math.round((numero(total) / elegibles.length) * 100) / 100
-      : 0
+    const reparto = repartirCentimosExactos(total, elegibles)
 
     elegibles.forEach((persona) => {
-      const item = porPersona.get(numero(persona.id_persona))
+      const idPersona = numero(persona.id_persona)
+      const parte = numero(reparto.get(idPersona))
+      const item = porPersona.get(idPersona)
       if (!item || !parte) return
       const actividad = item.actividades.get(numero(idActividad))
       if (actividad) {
@@ -288,7 +315,7 @@ function calcularEconomiaDistribuida(datos) {
     }
   })
 
-  return { resumen, resumenActividades }
+  return { resumen, resumenActividades, porPersona, personas, actividades }
 }
 
 export default function GastosCampeonato({ codigo, onVolver }) {
@@ -310,6 +337,8 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     relacionado_con: '',
     observaciones: '',
   })
+  const [observacionesResumen, setObservacionesResumen] = useState('')
+  const [guardandoObservaciones, setGuardandoObservaciones] = useState(false)
 
   const cargar = useCallback(async () => {
     if (!codigo) return
@@ -352,6 +381,14 @@ export default function GastosCampeonato({ codigo, onVolver }) {
       personas: data.personas ?? [],
       movimientos: data.movimientos ?? [],
     })
+
+    const { data: observacionesGuardadas } = await supabaseCampeonato.rpc(
+      'admin_economia_obtener_observaciones',
+      { p_codigo: codigo }
+    )
+    setObservacionesResumen(
+      typeof observacionesGuardadas === 'string' ? observacionesGuardadas : ''
+    )
     setCargando(false)
   }, [codigo])
 
@@ -447,6 +484,193 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     }))
   }
 
+
+  async function guardarObservacionesResumen() {
+    setGuardandoObservaciones(true)
+    const { data, error: errorGuardado } = await supabaseCampeonato.rpc(
+      'admin_economia_guardar_observaciones',
+      {
+        p_codigo: codigo,
+        p_observaciones: observacionesResumen,
+      }
+    )
+    setGuardandoObservaciones(false)
+
+    if (errorGuardado || data?.ok !== true) {
+      setMensaje({
+        tipo: 'error',
+        texto:
+          errorGuardado?.message ||
+          data?.error ||
+          'No se pudieron guardar las observaciones.',
+      })
+      return
+    }
+
+    setMensaje({
+      tipo: 'correcto',
+      texto: 'Observaciones guardadas.',
+    })
+  }
+
+  function generarPdfResumen() {
+    const ventana = window.open('', '_blank', 'width=980,height=900')
+    if (!ventana) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'El navegador bloqueó la ventana del PDF. Permite ventanas emergentes para esta página.',
+      })
+      return
+    }
+    ventana.opener = null
+
+    const movimientosGasto = datos.movimientos.filter(
+      (movimiento) => movimiento.tipo === 'gasto'
+    )
+    const actividadesPdf = economiaDistribuida.actividades || []
+    const personasPdf = economiaDistribuida.personas || []
+    const porPersonaPdf = economiaDistribuida.porPersona || new Map()
+
+    const cabecerasActividad = actividadesPdf
+      .map(
+        (actividad) =>
+          `<th>${escaparHtml(actividad.nombre)}</th>`
+      )
+      .join('')
+
+    const filasPersonas = personasPdf
+      .map((persona) => {
+        const deuda = porPersonaPdf.get(numero(persona.id_persona))
+        if (!deuda) return ''
+        const importesActividad = actividadesPdf
+          .map((actividad) => {
+            const dato = deuda.actividades.get(numero(actividad.id_actividad))
+            return `<td class="num">${escaparHtml(euros(dato?.total || 0))}</td>`
+          })
+          .join('')
+
+        return `<tr>
+          <td><strong>${escaparHtml(persona.nombre)}</strong><br><small>${escaparHtml(etiquetaTipoPersona(persona.tipo))}</small></td>
+          ${importesActividad}
+          <td class="num"><strong>${escaparHtml(euros(deuda.total))}</strong></td>
+          <td class="num pagado">${escaparHtml(euros(deuda.pagado))}</td>
+          <td class="num pendiente">${escaparHtml(euros(deuda.pendiente))}</td>
+        </tr>`
+      })
+      .join('')
+
+    const filasGastos = movimientosGasto
+      .map((movimiento) => {
+        const actividad = actividadesPdf.find(
+          (item) => numero(item.id_actividad) === numero(movimiento.id_actividad)
+        )
+        const cantidad =
+          movimiento.cantidad != null && numero(movimiento.cantidad) > 0
+            ? numero(movimiento.cantidad).toLocaleString('es-ES')
+            : ''
+        return `<tr>
+          <td>${escaparHtml(movimiento.concepto)}</td>
+          <td>${escaparHtml(cantidad)}</td>
+          <td>${escaparHtml(actividad?.nombre || 'General del campeonato')}</td>
+          <td>${escaparHtml(repartoTexto(movimiento))}</td>
+          <td class="num">${escaparHtml(euros(movimiento.importe))}</td>
+        </tr>`
+      })
+      .join('')
+
+    const menusPdf = resumenActividades
+      .filter((actividad) => actividad.menus.length > 0)
+      .map(
+        (actividad) => `<div class="menu-bloque">
+          <strong>${escaparHtml(actividad.nombre)}</strong>
+          <ul>
+            ${actividad.menus
+              .map(
+                ([menu, cantidad]) =>
+                  `<li>${cantidad} × ${escaparHtml(menu)}</li>`
+              )
+              .join('')}
+          </ul>
+        </div>`
+      )
+      .join('')
+
+    const nombreCampeonato = datos.campeonato?.nombre || codigo
+    const fechaInforme = new Date().toLocaleDateString('es-ES')
+
+    ventana.document.write(`<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Resumen económico - ${escaparHtml(nombreCampeonato)}</title>
+<style>
+  @page{size:A4;margin:12mm}
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:0;font-size:11px}
+  h1{font-size:22px;margin:0 0 3px;color:#10214d}
+  h2{font-size:15px;margin:22px 0 8px;color:#10214d}
+  p{margin:4px 0}
+  .cabecera{border-bottom:3px solid #173c8f;padding-bottom:10px;margin-bottom:14px}
+  .sub{color:#5b6474}
+  .metricas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .metrica{border:1px solid #d9e2ef;border-radius:8px;padding:9px}
+  .metrica small{display:block;color:#687386}
+  .metrica strong{font-size:16px}
+  table{width:100%;border-collapse:collapse;margin-top:7px}
+  th,td{border:1px solid #dbe3ee;padding:6px 7px;vertical-align:top}
+  th{background:#eef4ff;color:#173c8f;text-align:left}
+  td.num,th.num{text-align:right;white-space:nowrap}
+  td.pagado{color:#14733e}
+  td.pendiente{color:#b54708;font-weight:700}
+  small{color:#687386}
+  .observaciones{white-space:pre-wrap;border:1px solid #dbe3ee;border-radius:8px;padding:10px;min-height:42px;background:#fbfcfe}
+  .menus{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .menu-bloque{border:1px solid #dbe3ee;border-radius:8px;padding:9px}
+  .menu-bloque ul{margin:6px 0 0;padding-left:18px}
+  .menu-bloque li{margin:3px 0}
+  .pie{margin-top:18px;color:#7a8494;font-size:9px;text-align:center}
+  @media print{button{display:none}}
+</style>
+</head>
+<body>
+  <div class="cabecera">
+    <h1>Resumen económico</h1>
+    <p><strong>${escaparHtml(nombreCampeonato)}</strong> · ${escaparHtml(codigo)}</p>
+    <p class="sub">Generado el ${escaparHtml(fechaInforme)}</p>
+  </div>
+
+  <div class="metricas">
+    <div class="metrica"><small>Gastos totales</small><strong>${escaparHtml(euros(resumen.gastos))}</strong></div>
+    <div class="metrica"><small>Cobrado</small><strong>${escaparHtml(euros(resumen.cobradoTotal))}</strong></div>
+    <div class="metrica"><small>Pendiente</small><strong>${escaparHtml(euros(resumen.pendiente))}</strong></div>
+  </div>
+
+  <h2>Gastos por concepto</h2>
+  <table>
+    <thead><tr><th>Concepto</th><th>Cant.</th><th>Actividad</th><th>Reparto</th><th class="num">Importe</th></tr></thead>
+    <tbody>${filasGastos}</tbody>
+    <tfoot><tr><th colspan="4">TOTAL GASTOS</th><th class="num">${escaparHtml(euros(resumen.gastos))}</th></tr></tfoot>
+  </table>
+
+  <h2>Importe por persona</h2>
+  <table>
+    <thead><tr><th>Persona</th>${cabecerasActividad}<th>Total</th><th>Pagado</th><th>Pendiente</th></tr></thead>
+    <tbody>${filasPersonas}</tbody>
+  </table>
+
+  ${menusPdf ? `<h2>Menús / opciones</h2><div class="menus">${menusPdf}</div>` : ''}
+
+  <h2>Observaciones</h2>
+  <div class="observaciones">${escaparHtml(observacionesResumen || 'Sin observaciones.')}</div>
+
+  <div class="pie">Sprint Pádel · Resumen preparado para compartir por WhatsApp</div>
+<script>
+  window.addEventListener('load', () => setTimeout(() => window.print(), 250))
+</script>
+</body>
+</html>`)
+    ventana.document.close()
+  }
 
   async function guardarDetalleAsistencia(
     persona,
@@ -879,6 +1103,41 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                 <strong>{euros(resumen.costePorJugador)}</strong>
                 <small>Solo gastos de Campeonato · {resumen.jugadores} jugadores</small>
               </article>
+              <article className="resumen-observaciones">
+                <div className="resumen-observaciones-cabecera">
+                  <span>Observaciones</span>
+                  <button
+                    type="button"
+                    className="boton-enlace"
+                    disabled={guardandoObservaciones}
+                    onClick={guardarObservacionesResumen}
+                  >
+                    {guardandoObservaciones ? 'Guardando…' : 'Guardar'}
+                  </button>
+                </div>
+                <textarea
+                  value={observacionesResumen}
+                  onChange={(evento) =>
+                    setObservacionesResumen(evento.target.value)
+                  }
+                  rows="4"
+                  placeholder="Cosas a mejorar, notas para el próximo campeonato, datos que quieras recordar…"
+                />
+              </article>
+              <article className="resumen-exportar">
+                <span>Informe para compartir</span>
+                <strong>PDF</strong>
+                <small>
+                  Gastos por concepto, deuda de cada persona, menús y observaciones.
+                </small>
+                <button
+                  type="button"
+                  className="boton boton-principal"
+                  onClick={generarPdfResumen}
+                >
+                  Generar PDF
+                </button>
+              </article>
             </section>
 
             <section className="bloque-economia">
@@ -921,11 +1180,13 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                     {actividad.menus.length > 0 && (
                       <div className="resumen-menus">
                         <strong>Menús / opciones</strong>
-                        {actividad.menus.map(([menu, cantidad]) => (
-                          <span key={menu}>
-                            {cantidad} × {menu}
-                          </span>
-                        ))}
+                        <ul>
+                          {actividad.menus.map(([menu, cantidad]) => (
+                            <li key={menu}>
+                              {cantidad} × {menu}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                   </article>
