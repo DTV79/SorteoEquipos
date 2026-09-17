@@ -18,3 +18,21 @@
 .gastos-campeonato .boton-borrar-actividad { margin-left:auto; padding:7px 10px; border:1px solid #fecaca; border-radius:9px; background:#fff7f7; color:#b91c1c; font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; }
 .gastos-campeonato .boton-borrar-actividad:hover { background:#fee2e2; }
 .gastos-campeonato .boton-borrar-actividad:disabled { opacity:.55; cursor:wait; }
+
+.economia-modal-fondo { position:fixed; inset:0; z-index:100000; display:grid; place-items:center; padding:20px; background:rgba(15,23,42,.48); backdrop-filter:blur(2px); }
+.economia-modal-confirmacion { width:min(430px,100%); border:1px solid #e2e8f0; border-radius:18px; background:#fff; box-shadow:0 24px 70px rgba(15,23,42,.28); padding:24px; text-align:center; }
+.economia-modal-icono { width:52px; height:52px; margin:0 auto 10px; display:grid; place-items:center; border-radius:50%; background:#fee2e2; font-size:1.45rem; }
+.economia-modal-confirmacion h3 { margin:0 0 10px; color:#0f172a; font-size:1.18rem; }
+.economia-modal-confirmacion p { margin:7px 0; color:#334155; line-height:1.45; }
+.economia-modal-confirmacion .economia-modal-ayuda { color:#64748b; font-size:.88rem; }
+.economia-modal-error { margin-top:14px !important; padding:10px 12px; border:1px solid #fecaca; border-radius:10px; background:#fff1f2; color:#b91c1c !important; font-weight:700; }
+.economia-modal-acciones { display:flex; justify-content:center; gap:10px; margin-top:20px; }
+.economia-modal-acciones button { min-width:120px; border-radius:10px; padding:10px 14px; font:inherit; font-weight:800; cursor:pointer; }
+.economia-modal-cancelar { border:1px solid #cbd5e1; background:#fff; color:#334155; }
+.economia-modal-eliminar { border:1px solid #b91c1c; background:#b91c1c; color:#fff; }
+.economia-modal-acciones button:disabled { opacity:.6; cursor:wait; }
+
+.economia-aviso-flotante { position:fixed; z-index:100001; right:22px; bottom:22px; display:flex; align-items:center; gap:12px; max-width:min(430px,calc(100vw - 32px)); padding:12px 14px; border-radius:12px; box-shadow:0 14px 35px rgba(15,23,42,.22); font-weight:750; }
+.economia-aviso-flotante.correcto { background:#ecfdf5; border:1px solid #86efac; color:#166534; }
+.economia-aviso-flotante.error { background:#fff1f2; border:1px solid #fecaca; color:#b91c1c; }
+.economia-aviso-flotante button { border:0; background:transparent; color:inherit; font-size:1.25rem; line-height:1; cursor:pointer; }
