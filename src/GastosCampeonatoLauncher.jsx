@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import GastosCampeonato from './GastosCampeonato'
 import GastosActividadBorrado from './GastosActividadBorrado'
+import GastosMovimientoMejoras from './GastosMovimientoMejoras'
+import GastosDeudas from './GastosDeudas'
 import './GastosCampeonatoSimplificado.css'
 import './GastosCampeonatoContraste.css'
 
@@ -43,6 +45,8 @@ export default function GastosCampeonatoLauncher() {
       <div className="gastos-overlay">
         <GastosCampeonato key={`${codigo}-${versionEconomia}`} codigo={codigo} onVolver={() => setAbierto(false)} />
         <GastosActividadBorrado codigo={codigo} onCambio={refrescarEconomia} />
+        <GastosMovimientoMejoras codigo={codigo} />
+        <GastosDeudas codigo={codigo} onCambio={refrescarEconomia} />
       </div>,
       document.body
     )}
