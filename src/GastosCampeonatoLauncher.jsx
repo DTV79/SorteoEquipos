@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import GastosCampeonato from './GastosCampeonato'
+import './GastosCampeonatoSimplificado.css'
 
 function normalizar(texto) {
   return String(texto || '')
