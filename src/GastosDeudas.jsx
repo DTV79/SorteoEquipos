@@ -22,21 +22,15 @@ function asistenciaDe(persona, idActividad) {
   )
 }
 
-function repartirCentimos(total, personas) {
+function repartirIgual(total, personas) {
   const ids = [...personas]
     .map((p) => numero(p.id_persona))
     .sort((a, b) => a - b)
   const resultado = new Map()
   if (!ids.length) return resultado
 
-  const centimos = Math.round(numero(total) * 100)
-  const base = Math.floor(centimos / ids.length)
-  let resto = centimos - base * ids.length
-
-  ids.forEach((id) => {
-    resultado.set(id, (base + (resto > 0 ? 1 : 0)) / 100)
-    if (resto > 0) resto -= 1
-  })
+  const parte = Math.round((numero(total) / ids.length) * 100) / 100
+  ids.forEach((id) => resultado.set(id, parte))
   return resultado
 }
 
@@ -99,8 +93,8 @@ export default function GastosDeudas({ codigo, onCambio }) {
     })
 
     // Agrupamos primero los gastos que se reparten exactamente entre las mismas
-    // personas y en la misma actividad. Así los céntimos sobrantes se distribuyen
-    // una sola vez sobre el total del grupo, en lugar de repetirse gasto a gasto.
+    // personas y en la misma actividad. El total del grupo se divide una sola vez
+    // y todos reciben exactamente el mismo importe redondeado a dos decimales.
     const gruposReparto = new Map()
 
     ;(data.movimientos || [])
@@ -141,7 +135,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
       })
 
     gruposReparto.forEach(({ idActividad, elegibles, total }) => {
-      const reparto = repartirCentimos(total, elegibles)
+      const reparto = repartirIgual(total, elegibles)
 
       elegibles.forEach((persona) => {
         const id = numero(persona.id_persona)
