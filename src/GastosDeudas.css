@@ -1,1 +1,103 @@
-.host-resumen-deuda-persona{margin-left:auto}.resumen-deuda-persona{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px 10px;font-size:.78rem}.resumen-deuda-persona span{padding:6px 9px;border-radius:9px;background:#f8fafc;color:#475569}.resumen-deuda-persona strong{margin-left:4px;color:#0f172a}.resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}.resumen-deuda-persona .pendiente strong{color:#c2410c}.actividad-con-deuda>.cobro-actividad-persona .boton-pagado{display:none}.host-deuda-actividad{grid-column:1/-1}.deuda-actividad-resumen{display:grid;gap:9px;margin-top:10px;padding:10px;border:1px solid #bfdbfe;border-radius:11px;background:#f8fbff}.deuda-actividad-datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.deuda-actividad-datos span{display:flex;flex-direction:column;gap:2px;min-width:0;padding:7px 8px;border-radius:8px;background:#fff;border:1px solid #e2e8f0}.deuda-actividad-datos small{font-size:.68rem;line-height:1.15;color:#64748b;font-weight:700}.deuda-actividad-datos b{font-size:.83rem;color:#1e293b}.deuda-actividad-datos .total{background:#eff6ff;border-color:#bfdbfe}.deuda-actividad-datos .total small,.deuda-actividad-datos .total b{color:#1e3a8a}.deuda-actividad-datos .pagado{background:#f0fdf4;border-color:#bbf7d0}.deuda-actividad-datos .pagado small,.deuda-actividad-datos .pagado b{color:#166534}.deuda-actividad-datos .pendiente{background:#fff7ed;border-color:#fed7aa}.deuda-actividad-datos .pendiente small,.deuda-actividad-datos .pendiente b{color:#c2410c}.deuda-actividad-datos .sin-pendiente{background:#f8fafc}.deuda-actividad-datos .total{grid-column:1/-1}.deuda-actividad-acciones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.deuda-actividad-acciones button{width:100%;border-radius:9px;padding:8px 9px;font:inherit;font-size:.76rem;font-weight:800;cursor:pointer}.deuda-actividad-acciones button:disabled{opacity:.6;cursor:wait}.boton-pagar-deuda{border:1px solid #16a34a;background:#16a34a;color:#fff}.boton-pagar-deuda:hover{background:#15803d}.boton-anular-pago{border:1px solid #fecaca;background:#fff7f7;color:#b91c1c}.boton-anular-pago:hover{background:#fee2e2}@media(max-width:760px){.host-resumen-deuda-persona{width:100%;margin:7px 0 0}.resumen-deuda-persona{justify-content:flex-start}.deuda-actividad-datos{grid-template-columns:1fr 1fr}.deuda-actividad-acciones{grid-template-columns:1fr}}
+.host-resumen-deuda-persona{margin-left:auto}
+.resumen-deuda-persona{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px 10px;font-size:.78rem}
+.resumen-deuda-persona span{padding:6px 9px;border-radius:9px;background:#f8fafc;color:#475569}
+.resumen-deuda-persona strong{margin-left:4px;color:#0f172a}
+.resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}
+.resumen-deuda-persona .pendiente strong{color:#c2410c}
+
+.actividad-con-deuda>.cobro-actividad-persona .boton-pagado{display:none}
+.host-deuda-actividad{grid-column:1/-1}
+
+.deuda-actividad-resumen{
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+  padding:10px 11px;
+  border:1px solid #bfdbfe;
+  border-radius:11px;
+  background:#f8fbff;
+}
+
+/* La cuota individual ya aparece en el campo editable de la actividad.
+   Aquí mostramos solo el resumen económico para no repetir información. */
+.deuda-actividad-datos{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  min-width:0;
+}
+.deuda-actividad-datos>span:first-child{display:none}
+.deuda-actividad-datos span{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+  padding:7px 2px;
+  border:0;
+  border-bottom:1px solid #e2e8f0;
+  border-radius:0;
+  background:transparent;
+}
+.deuda-actividad-datos span:last-child{border-bottom:0}
+.deuda-actividad-datos small{
+  min-width:0;
+  font-size:.73rem;
+  line-height:1.2;
+  color:#64748b;
+  font-weight:700;
+  white-space:normal;
+}
+.deuda-actividad-datos b{
+  flex:0 0 auto;
+  margin:0;
+  font-size:.84rem;
+  color:#1e293b;
+  white-space:nowrap;
+}
+.deuda-actividad-datos .total{
+  order:-1;
+  padding:8px 9px;
+  margin-bottom:3px;
+  border:1px solid #bfdbfe;
+  border-radius:8px;
+  background:#eff6ff;
+}
+.deuda-actividad-datos .total small,
+.deuda-actividad-datos .total b{color:#1e3a8a;font-weight:800}
+.deuda-actividad-datos .pagado small,
+.deuda-actividad-datos .pagado b{color:#166534}
+.deuda-actividad-datos .pendiente{
+  padding:7px 8px;
+  margin-top:3px;
+  border:1px solid #fed7aa;
+  border-radius:8px;
+  background:#fff7ed;
+}
+.deuda-actividad-datos .pendiente small,
+.deuda-actividad-datos .pendiente b{color:#c2410c;font-weight:800}
+.deuda-actividad-datos .sin-pendiente small,
+.deuda-actividad-datos .sin-pendiente b{color:#475569}
+
+.deuda-actividad-acciones{display:grid;grid-template-columns:1fr;gap:7px}
+.deuda-actividad-acciones button{
+  width:100%;
+  border-radius:9px;
+  padding:8px 9px;
+  font:inherit;
+  font-size:.76rem;
+  font-weight:800;
+  cursor:pointer;
+}
+.deuda-actividad-acciones button:disabled{opacity:.6;cursor:wait}
+.boton-pagar-deuda{border:1px solid #16a34a;background:#16a34a;color:#fff}
+.boton-pagar-deuda:hover{background:#15803d}
+.boton-anular-pago{border:1px solid #fecaca;background:#fff7f7;color:#b91c1c}
+.boton-anular-pago:hover{background:#fee2e2}
+
+@media(max-width:760px){
+  .host-resumen-deuda-persona{width:100%;margin:7px 0 0}
+  .resumen-deuda-persona{justify-content:flex-start}
+  .deuda-actividad-resumen{padding:10px}
+}
