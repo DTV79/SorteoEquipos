@@ -550,7 +550,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
           .join('')
 
         return `<tr>
-          <td><strong>${escaparHtml(persona.nombre)}</strong><br><small>${escaparHtml(etiquetaTipoPersona(persona.tipo))}</small></td>
+          <td><span class="nombre">${escaparHtml(persona.nombre)}</span><span class="tipo-persona">${escaparHtml(etiquetaTipoPersona(persona.tipo))}</span></td>
           ${importesActividad}
           <td class="num"><strong>${escaparHtml(euros(deuda.total))}</strong></td>
           <td class="num pagado">${escaparHtml(euros(deuda.pagado))}</td>
@@ -570,29 +570,11 @@ export default function GastosCampeonato({ codigo, onVolver }) {
             : ''
         return `<tr>
           <td>${escaparHtml(movimiento.concepto)}</td>
-          <td>${escaparHtml(cantidad)}</td>
-          <td>${escaparHtml(actividad?.nombre || 'General del campeonato')}</td>
-          <td>${escaparHtml(repartoTexto(movimiento))}</td>
+          <td class="centro">${escaparHtml(cantidad)}</td>
+          <td>${escaparHtml(actividad?.nombre || 'General')}</td>
           <td class="num">${escaparHtml(euros(movimiento.importe))}</td>
         </tr>`
       })
-      .join('')
-
-    const menusPdf = resumenActividades
-      .filter((actividad) => actividad.menus.length > 0)
-      .map(
-        (actividad) => `<div class="menu-bloque">
-          <strong>${escaparHtml(actividad.nombre)}</strong>
-          <ul>
-            ${actividad.menus
-              .map(
-                ([menu, cantidad]) =>
-                  `<li>${cantidad} × ${escaparHtml(menu)}</li>`
-              )
-              .join('')}
-          </ul>
-        </div>`
-      )
       .join('')
 
     const nombreCampeonato = datos.campeonato?.nombre || codigo
@@ -604,39 +586,108 @@ export default function GastosCampeonato({ codigo, onVolver }) {
 <meta charset="utf-8">
 <title>Resumen económico - ${escaparHtml(nombreCampeonato)}</title>
 <style>
-  @page{size:A4;margin:12mm}
+  @page{size:A4 landscape;margin:7mm}
   *{box-sizing:border-box}
-  body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:0;font-size:11px}
-  h1{font-size:22px;margin:0 0 3px;color:#10214d}
-  h2{font-size:15px;margin:22px 0 8px;color:#10214d}
-  p{margin:4px 0}
-  .cabecera{border-bottom:3px solid #173c8f;padding-bottom:10px;margin-bottom:14px}
-  .sub{color:#5b6474}
-  .metricas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-  .metrica{border:1px solid #d9e2ef;border-radius:8px;padding:9px}
-  .metrica small{display:block;color:#687386}
-  .metrica strong{font-size:16px}
-  table{width:100%;border-collapse:collapse;margin-top:7px}
-  th,td{border:1px solid #dbe3ee;padding:6px 7px;vertical-align:top}
-  th{background:#eef4ff;color:#173c8f;text-align:left}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",Tahoma,Verdana,sans-serif;
+    font-synthesis:none;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:geometricPrecision;
+    color:#172033;
+    font-size:8.2px;
+    font-weight:400;
+  }
+  h1{font-size:17px;line-height:1.05;margin:0;color:#10214d;font-weight:700}
+  h2{font-size:11px;line-height:1.1;margin:0 0 5px;color:#10214d;font-weight:700}
+  p{margin:2px 0}
+  .cabecera{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:12px;
+    border-bottom:2px solid #173c8f;
+    padding-bottom:5px;
+    margin-bottom:6px;
+  }
+  .cabecera-info{text-align:right;color:#5b6474}
+  .metricas{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:5px;
+    margin:0 0 7px;
+  }
+  .metrica{
+    border:1px solid #d9e2ef;
+    border-radius:5px;
+    padding:5px 7px;
+  }
+  .metrica small{display:block;color:#687386;font-size:7.2px}
+  .metrica strong{font-size:11px;font-weight:700;color:#10214d}
+  .contenido{
+    display:grid;
+    grid-template-columns:minmax(0,.82fr) minmax(0,1.28fr);
+    gap:7mm;
+    align-items:start;
+  }
+  .bloque{min-width:0}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-size:7.6px;
+    line-height:1.15;
+  }
+  th,td{
+    border:1px solid #dbe3ee;
+    padding:3px 4px;
+    vertical-align:middle;
+    font-weight:400;
+  }
+  th{
+    background:#eaf1fb;
+    color:#173c8f;
+    text-align:left;
+    font-weight:700;
+  }
+  tbody tr:nth-child(even) td{background:#f4f7fb}
+  tbody tr:nth-child(odd) td{background:#fff}
+  tr{break-inside:avoid;page-break-inside:avoid}
   td.num,th.num{text-align:right;white-space:nowrap}
-  td.pagado{color:#14733e}
-  td.pendiente{color:#b54708;font-weight:700}
-  small{color:#687386}
-  .observaciones{white-space:pre-wrap;border:1px solid #dbe3ee;border-radius:8px;padding:10px;min-height:42px;background:#fbfcfe}
-  .menus{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .menu-bloque{border:1px solid #dbe3ee;border-radius:8px;padding:9px}
-  .menu-bloque ul{margin:6px 0 0;padding-left:18px}
-  .menu-bloque li{margin:3px 0}
-  .pie{margin-top:18px;color:#7a8494;font-size:9px;text-align:center}
-  @media print{button{display:none}}
+  td.centro,th.centro{text-align:center;white-space:nowrap}
+  .nombre{font-weight:650;color:#172033}
+  .tipo-persona{display:block;color:#7a8494;font-size:6.6px;margin-top:1px}
+  td.pagado{color:#14733e;font-weight:600}
+  td.pendiente{color:#b54708;font-weight:650}
+  tfoot th{background:#eef4ff;font-weight:700}
+  .gastos col:nth-child(1){width:50%}
+  .gastos col:nth-child(2){width:9%}
+  .gastos col:nth-child(3){width:25%}
+  .gastos col:nth-child(4){width:16%}
+  .personas col:nth-child(1){width:26%}
+  .personas col:nth-child(2){width:14%}
+  .personas col:nth-child(3){width:16%}
+  .personas col:nth-child(4){width:14%}
+  .personas col:nth-child(5){width:14%}
+  .personas col:nth-child(6){width:16%}
+  .pie{
+    margin-top:5px;
+    color:#8a93a2;
+    font-size:6.5px;
+    text-align:right;
+  }
+  @media print{
+    html,body{width:100%;height:auto}
+  }
 </style>
 </head>
 <body>
   <div class="cabecera">
-    <h1>Resumen económico</h1>
-    <p><strong>${escaparHtml(nombreCampeonato)}</strong> · ${escaparHtml(codigo)}</p>
-    <p class="sub">Generado el ${escaparHtml(fechaInforme)}</p>
+    <div>
+      <h1>Resumen económico</h1>
+      <p><strong>${escaparHtml(nombreCampeonato)}</strong> · ${escaparHtml(codigo)}</p>
+    </div>
+    <div class="cabecera-info">Generado el ${escaparHtml(fechaInforme)}</div>
   </div>
 
   <div class="metricas">
@@ -645,25 +696,48 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     <div class="metrica"><small>Pendiente</small><strong>${escaparHtml(euros(resumen.pendiente))}</strong></div>
   </div>
 
-  <h2>Gastos por concepto</h2>
-  <table>
-    <thead><tr><th>Concepto</th><th>Cant.</th><th>Actividad</th><th>Reparto</th><th class="num">Importe</th></tr></thead>
-    <tbody>${filasGastos}</tbody>
-    <tfoot><tr><th colspan="4">TOTAL GASTOS</th><th class="num">${escaparHtml(euros(resumen.gastos))}</th></tr></tfoot>
-  </table>
+  <div class="contenido">
+    <section class="bloque">
+      <h2>Gastos por concepto</h2>
+      <table class="gastos">
+        <colgroup><col><col><col><col></colgroup>
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th class="centro">Cant.</th>
+            <th>Actividad</th>
+            <th class="num">Importe</th>
+          </tr>
+        </thead>
+        <tbody>${filasGastos}</tbody>
+        <tfoot>
+          <tr>
+            <th colspan="3">TOTAL GASTOS</th>
+            <th class="num">${escaparHtml(euros(resumen.gastos))}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
 
-  <h2>Importe por persona</h2>
-  <table>
-    <thead><tr><th>Persona</th>${cabecerasActividad}<th>Total</th><th>Pagado</th><th>Pendiente</th></tr></thead>
-    <tbody>${filasPersonas}</tbody>
-  </table>
+    <section class="bloque">
+      <h2>Importe por persona</h2>
+      <table class="personas">
+        <colgroup><col><col><col><col><col><col></colgroup>
+        <thead>
+          <tr>
+            <th>Persona</th>
+            ${cabecerasActividad}
+            <th class="num">Total</th>
+            <th class="num">Pagado</th>
+            <th class="num">Pendiente</th>
+          </tr>
+        </thead>
+        <tbody>${filasPersonas}</tbody>
+      </table>
+    </section>
+  </div>
 
-  ${menusPdf ? `<h2>Menús / opciones</h2><div class="menus">${menusPdf}</div>` : ''}
-
-  <h2>Observaciones</h2>
-  <div class="observaciones">${escaparHtml(observacionesResumen || 'Sin observaciones.')}</div>
-
-  <div class="pie">Sprint Pádel · Resumen preparado para compartir por WhatsApp</div>
+  <div class="pie">Sprint Pádel · Resumen económico para compartir</div>
 <script>
   window.addEventListener('load', () => setTimeout(() => window.print(), 250))
 </script>
