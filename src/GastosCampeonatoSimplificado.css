@@ -1,0 +1,82 @@
+/* Configuración de eventos: vista sencilla para el uso habitual */
+.gastos-campeonato .config-actividad .campos-config-actividad,
+.gastos-campeonato .nueva-actividad {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Tipo y orden se mantienen internamente, pero no se muestran en la vista normal. */
+.gastos-campeonato .config-actividad label:has(> select[name="tipo"]),
+.gastos-campeonato .config-actividad label:has(> input[name="orden"]),
+.gastos-campeonato .nueva-actividad label:has(> select[name="tipo"]),
+.gastos-campeonato .nueva-actividad label:has(> input[name="orden"]) {
+  display: none;
+}
+
+.gastos-campeonato .config-actividad > header strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.gastos-campeonato .config-actividad > header span {
+  color: #64748b;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.gastos-campeonato .checks-config-actividad {
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.gastos-campeonato .checks-config-actividad label {
+  color: #334155;
+  font-weight: 700;
+}
+
+.gastos-campeonato .config-actividad > button.boton-secundario {
+  min-width: 170px;
+  padding: 10px 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #172554, #1e3a8a);
+  border: 1px solid #1e3a8a;
+  border-radius: 10px;
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(30, 58, 138, .16);
+}
+
+.gastos-campeonato .config-actividad > button.boton-secundario:hover {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+  transform: translateY(-1px);
+}
+
+.gastos-campeonato .config-actividad > button.boton-secundario:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.gastos-campeonato .nueva-actividad .campo-ancho {
+  grid-column: span 1;
+}
+
+.gastos-campeonato .nueva-actividad .checks-config-actividad,
+.gastos-campeonato .nueva-actividad .acciones-formulario-economia {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 680px) {
+  .gastos-campeonato .config-actividad .campos-config-actividad,
+  .gastos-campeonato .nueva-actividad {
+    grid-template-columns: 1fr;
+  }
+
+  .gastos-campeonato .nueva-actividad .checks-config-actividad,
+  .gastos-campeonato .nueva-actividad .acciones-formulario-economia {
+    grid-column: auto;
+  }
+
+  .gastos-campeonato .config-actividad > button.boton-secundario {
+    width: 100%;
+  }
+}
