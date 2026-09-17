@@ -5,10 +5,39 @@
 .resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}
 .resumen-deuda-persona .pendiente strong{color:#c2410c}
 
-/* El importe individual ya no se usa. La asistencia solo indica si la persona
-   participa en la actividad y el pago se gestiona con Pagar / Anular pago. */
 .gastos-campeonato .cobro-actividad-persona{display:none!important}
 .gastos-campeonato .check-asistencia small{display:none!important}
+.gastos-campeonato .actividad-campeonato-fija .check-asistencia{cursor:default}
+.gastos-campeonato .actividad-campeonato-fija .check-asistencia input{accent-color:#2563eb;opacity:.8;cursor:not-allowed}
+
+.host-asistencia-masiva{margin:0 0 14px}
+.asistencia-masiva{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:11px 12px;
+  border:1px solid #bfdbfe;
+  border-radius:12px;
+  background:#f8fbff;
+}
+.asistencia-masiva>div:first-child{display:flex;flex-direction:column;gap:2px}
+.asistencia-masiva strong{font-size:.84rem;color:#0f172a}
+.asistencia-masiva small{font-size:.74rem;line-height:1.3;color:#64748b}
+.asistencia-masiva-botones{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.asistencia-masiva-botones button{
+  border-radius:9px;
+  padding:8px 12px;
+  font:inherit;
+  font-size:.76rem;
+  font-weight:800;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.asistencia-masiva-botones .marcar{border:1px solid #16a34a;background:#16a34a;color:#fff}
+.asistencia-masiva-botones .marcar:hover{background:#15803d}
+.asistencia-masiva-botones .desmarcar{border:1px solid #cbd5e1;background:#fff;color:#334155}
+.asistencia-masiva-botones .desmarcar:hover{background:#f1f5f9}
 
 .host-deuda-actividad{grid-column:1/-1}
 
@@ -101,5 +130,8 @@
 @media(max-width:760px){
   .host-resumen-deuda-persona{width:100%;margin:7px 0 0}
   .resumen-deuda-persona{justify-content:flex-start}
+  .asistencia-masiva{align-items:stretch;flex-direction:column}
+  .asistencia-masiva-botones{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .asistencia-masiva-botones button{width:100%}
   .deuda-actividad-resumen{padding:10px}
 }
