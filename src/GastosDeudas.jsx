@@ -70,9 +70,6 @@ export default function GastosDeudas({ codigo }) {
       ])
     )
 
-    // En esta pantalla la deuda sale de los gastos realmente repartidos.
-    // No sumamos de nuevo el precio base de la actividad, porque eso duplicaba
-    // importes como la cena cuando el gasto ya estaba registrado y repartido.
     personas.forEach((persona) => {
       const item = porPersona.get(numero(persona.id_persona))
       actividades.forEach((actividad) => {
@@ -147,9 +144,6 @@ export default function GastosDeudas({ codigo }) {
       })
     })
 
-    // Calculamos pagado y pendiente al final, cuando ya conocemos el total real.
-    // Si quedó algún pago antiguo superior al total por un cálculo previo erróneo,
-    // visualmente se limita al total para que no genere estados imposibles.
     personas.forEach((persona) => {
       const item = porPersona.get(numero(persona.id_persona))
       item.total = numero(item.general)
@@ -294,6 +288,16 @@ export default function GastosDeudas({ codigo }) {
 
   useEffect(() => {
     const click = (e) => {
+      const botonGuardar = e.target.closest(
+        '.gastos-campeonato .titulo-bloque-economia .boton-principal'
+      )
+      if (botonGuardar && botonGuardar.textContent?.includes('Guardar')) {
+        ;[250, 600, 1100].forEach((ms) =>
+          window.setTimeout(() => localizar(), ms)
+        )
+        return
+      }
+
       const tab = e.target.closest('.gastos-pestanas button')
       if (!tab) return
 
@@ -357,9 +361,6 @@ export default function GastosDeudas({ codigo }) {
 
     setGuardandoPago('')
     if (error || data?.ok !== true) return
-
-    // Actualizamos solo este módulo económico; no remontamos el formulario base,
-    // para no mover ni borrar checks, menús u otros cambios en pantalla.
     await cargar()
   }
 
