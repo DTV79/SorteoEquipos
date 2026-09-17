@@ -9,6 +9,8 @@
 .gastos-campeonato .check-asistencia small{display:none!important}
 .gastos-campeonato .actividad-campeonato-fija .check-asistencia{cursor:default}
 .gastos-campeonato .actividad-campeonato-fija .check-asistencia input{accent-color:#2563eb;opacity:.8;cursor:not-allowed}
+/* El botón inferior hacía exactamente lo mismo que Guardar cambios. */
+.gastos-campeonato .pie-guardar-asistencia{display:none!important}
 
 /* Orden fijo dentro de cada actividad: título/check, resumen económico y menú. */
 .gastos-campeonato .actividad-con-deuda{
