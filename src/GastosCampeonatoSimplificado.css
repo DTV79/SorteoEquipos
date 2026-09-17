@@ -65,6 +65,73 @@
   grid-column: 1 / -1;
 }
 
+/* Contraste del módulo de economía sobre las tarjetas claras.
+   La app administrativa usa texto claro globalmente, por eso aquí fijamos
+   expresamente los colores de todos los contenidos que viven sobre fondo blanco. */
+.gastos-campeonato .resumen-economia-grid article strong {
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.gastos-campeonato .resumen-economia-grid article span {
+  color: #475569;
+  font-weight: 650;
+}
+
+.gastos-campeonato .resumen-economia-grid article small {
+  color: #64748b;
+}
+
+.gastos-campeonato .resumen-economia-grid article.positivo strong {
+  color: #15803d;
+}
+
+.gastos-campeonato .resumen-economia-grid article.negativo strong,
+.gastos-campeonato .resumen-economia-grid article.pendiente strong {
+  color: #b91c1c;
+}
+
+.gastos-campeonato .bloque-economia h3,
+.gastos-campeonato .actividad-resumen strong,
+.gastos-campeonato .actividad-cifras strong,
+.gastos-campeonato .resumen-menus strong,
+.gastos-campeonato .lista-movimientos strong,
+.gastos-campeonato .lista-movimientos b,
+.gastos-campeonato .persona-economia > header strong,
+.gastos-campeonato .check-asistencia strong,
+.gastos-campeonato .cobro-actividad-persona strong {
+  color: #0f172a;
+}
+
+.gastos-campeonato .titulo-bloque-economia p,
+.gastos-campeonato .actividad-resumen,
+.gastos-campeonato .resumen-menus,
+.gastos-campeonato .persona-economia,
+.gastos-campeonato .config-actividad {
+  color: #334155;
+}
+
+.gastos-campeonato .actividad-cifras small,
+.gastos-campeonato .actividad-resumen > header span,
+.gastos-campeonato .persona-economia > header span,
+.gastos-campeonato .check-asistencia small,
+.gastos-campeonato .lista-movimientos small,
+.gastos-campeonato .movimiento-detalles {
+  color: #64748b;
+}
+
+.gastos-campeonato input,
+.gastos-campeonato select,
+.gastos-campeonato textarea {
+  color: #0f172a;
+}
+
+.gastos-campeonato input::placeholder,
+.gastos-campeonato textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
 /* Orden del menú principal de Gestión del campeonato.
    Se mantiene exactamente el texto actual de cada módulo; solo cambia su posición. */
 .panel-inicio-campeonato .modulos-campeonato > :nth-child(1) { order: 1; }  /* Configuración */
