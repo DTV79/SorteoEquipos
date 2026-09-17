@@ -81,9 +81,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
         const asis = asistenciaDe(persona, actividad.id_actividad)
         const cuota =
           asis?.asiste && actividad.cobrable
-            ? asis.importe == null || asis.importe === ''
-              ? numero(actividad.precio_persona)
-              : numero(asis.importe)
+            ? numero(actividad.precio_persona)
             : 0
         const pagado = numero(asis?.pagado)
 
@@ -155,6 +153,13 @@ export default function GastosDeudas({ codigo, onCambio }) {
     if (!fresco) return
 
     window.setTimeout(() => {
+      const bloqueAsistencia = [...document.querySelectorAll('.gastos-campeonato .bloque-economia')]
+        .find((bloque) => bloque.querySelector('h3')?.textContent?.trim() === 'Asistencia y cobros')
+      const textoAyuda = bloqueAsistencia?.querySelector('.titulo-bloque-economia p')
+      if (textoAyuda) {
+        textoAyuda.textContent = 'Marca a qué actividad va cada persona. Los importes se calculan automáticamente según la configuración y el reparto de gastos.'
+      }
+
       const tarjetas = [
         ...document.querySelectorAll(
           '.gastos-campeonato .lista-personas-economia .persona-economia'
@@ -192,14 +197,6 @@ export default function GastosDeudas({ codigo, onCambio }) {
           if (!actividad) return
 
           seccion.classList.add('actividad-con-deuda')
-          const etiqueta = [
-            ...seccion.querySelectorAll('.cobro-actividad-persona label > span'),
-          ].find((s) =>
-            ['A cobrar', 'Cuota / ajuste', 'Cuota actividad'].includes(
-              s.textContent?.trim()
-            )
-          )
-          if (etiqueta) etiqueta.textContent = 'Cuota actividad'
 
           let host = seccion.querySelector(':scope > .host-deuda-actividad')
           if (!host) {
@@ -256,10 +253,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
       id_persona: persona.id_persona,
       id_actividad: actividad.id_actividad,
       asiste: Boolean(asis?.asiste),
-      importe:
-        asis?.importe == null || asis?.importe === ''
-          ? null
-          : numero(asis.importe),
+      importe: null,
       pagado: Math.max(numero(importePagado), 0),
       menu: asis?.menu || '',
       observaciones: asis?.observaciones || '',
