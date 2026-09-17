@@ -62,6 +62,235 @@ const movimientoVacio = () => ({
   observaciones: '',
 })
 
+function asistenciaEconomia(persona, idActividad) {
+  return (
+    persona.asistencias?.find(
+      (a) => numero(a.id_actividad) === numero(idActividad)
+    ) || null
+  )
+}
+
+function calcularEconomiaDistribuida(datos) {
+  const personas = (datos.personas || []).filter((p) => p.activo)
+  const actividades = [...(datos.actividades || [])]
+    .filter((a) => a.activo)
+    .sort(
+      (a, b) =>
+        numero(a.orden) - numero(b.orden) ||
+        numero(a.id_actividad) - numero(b.id_actividad)
+    )
+  const campeonato = actividades.find((a) => a.codigo === 'CAMPEONATO')
+  const porPersona = new Map(
+    personas.map((persona) => [
+      numero(persona.id_persona),
+      { total: 0, pagado: 0, pendiente: 0, general: 0, actividades: new Map() },
+    ])
+  )
+
+  personas.forEach((persona) => {
+    const item = porPersona.get(numero(persona.id_persona))
+    actividades.forEach((actividad) => {
+      const asistencia = asistenciaEconomia(persona, actividad.id_actividad)
+      item.actividades.set(numero(actividad.id_actividad), {
+        total: 0,
+        reparto: 0,
+        pagadoRegistrado: numero(asistencia?.pagado),
+        pagado: 0,
+        pendiente: 0,
+      })
+    })
+  })
+
+  const gastosPorActividad = new Map()
+  const gruposReparto = new Map()
+  let gastos = 0
+  let ingresosManuales = 0
+
+  ;(datos.movimientos || []).forEach((movimiento) => {
+    const importe = numero(movimiento.importe)
+    if (movimiento.tipo === 'ingreso') {
+      ingresosManuales += importe
+      return
+    }
+    if (movimiento.tipo !== 'gasto') return
+
+    gastos += importe
+
+    let idActividadGasto = numero(movimiento.id_actividad)
+    if (
+      !idActividadGasto &&
+      movimiento.modo_reparto !== 'no_repartir' &&
+      campeonato
+    ) {
+      idActividadGasto = numero(campeonato.id_actividad)
+    }
+    if (idActividadGasto) {
+      gastosPorActividad.set(
+        idActividadGasto,
+        numero(gastosPorActividad.get(idActividadGasto)) + importe
+      )
+    }
+
+    if (movimiento.modo_reparto === 'no_repartir') return
+
+    let elegibles = []
+    if (movimiento.modo_reparto === 'jugadores') {
+      elegibles = personas.filter((p) => p.tipo === 'jugador')
+    } else if (
+      movimiento.modo_reparto === 'actividad' &&
+      movimiento.id_actividad
+    ) {
+      elegibles = personas.filter(
+        (p) => asistenciaEconomia(p, movimiento.id_actividad)?.asiste
+      )
+    } else if (movimiento.modo_reparto === 'manual') {
+      const ids = new Set((movimiento.reparto_personas || []).map(numero))
+      elegibles = personas.filter((p) => ids.has(numero(p.id_persona)))
+    }
+
+    if (!elegibles.length) return
+
+    const idActividad = numero(
+      movimiento.id_actividad || campeonato?.id_actividad || 0
+    )
+    const ids = elegibles
+      .map((p) => numero(p.id_persona))
+      .sort((a, b) => a - b)
+    const clave = `${idActividad}|${ids.join(',')}`
+    const grupo = gruposReparto.get(clave)
+    if (grupo) {
+      grupo.total += importe
+    } else {
+      gruposReparto.set(clave, { idActividad, elegibles, total: importe })
+    }
+  })
+
+  gruposReparto.forEach(({ idActividad, elegibles, total }) => {
+    const parte = elegibles.length
+      ? Math.round((numero(total) / elegibles.length) * 100) / 100
+      : 0
+
+    elegibles.forEach((persona) => {
+      const item = porPersona.get(numero(persona.id_persona))
+      if (!item || !parte) return
+      const actividad = item.actividades.get(numero(idActividad))
+      if (actividad) {
+        actividad.reparto += parte
+        actividad.total += parte
+      } else {
+        item.general += parte
+      }
+    })
+  })
+
+  personas.forEach((persona) => {
+    const item = porPersona.get(numero(persona.id_persona))
+    item.total = numero(item.general)
+    item.pagado = 0
+
+    item.actividades.forEach((actividad) => {
+      actividad.total = Math.max(numero(actividad.total), 0)
+      actividad.pagado = Math.min(
+        Math.max(numero(actividad.pagadoRegistrado), 0),
+        actividad.total
+      )
+      actividad.pendiente = Math.max(
+        actividad.total - actividad.pagado,
+        0
+      )
+      item.total += actividad.total
+      item.pagado += actividad.pagado
+    })
+
+    item.pendiente = Math.max(item.total - item.pagado, 0)
+  })
+
+  const jugadores = personas.filter((p) => p.tipo === 'jugador').length
+  const cobrosPrevistos = [...porPersona.values()].reduce(
+    (total, item) => total + numero(item.total),
+    0
+  )
+  const cobradoPersonas = [...porPersona.values()].reduce(
+    (total, item) => total + numero(item.pagado),
+    0
+  )
+  const gastoCampeonato = campeonato
+    ? numero(gastosPorActividad.get(numero(campeonato.id_actividad)))
+    : 0
+
+  const resumen = {
+    cobrosPrevistos,
+    cobradoPersonas,
+    gastos,
+    ingresosManuales,
+    ingresosPrevistos: cobrosPrevistos + ingresosManuales,
+    cobradoTotal: cobradoPersonas + ingresosManuales,
+    pendiente: Math.max(cobrosPrevistos - cobradoPersonas, 0),
+    saldo: cobradoPersonas + ingresosManuales - gastos,
+    jugadores,
+    costePorJugador: jugadores ? gastoCampeonato / jugadores : 0,
+  }
+
+  const resumenActividades = actividades.map((actividad) => {
+    const idActividad = numero(actividad.id_actividad)
+    const asistentes = personas.filter((persona) => {
+      if (persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO') {
+        return true
+      }
+      return Boolean(asistenciaEconomia(persona, idActividad)?.asiste)
+    })
+    const previsto = personas.reduce(
+      (total, persona) =>
+        total +
+        numero(
+          porPersona
+            .get(numero(persona.id_persona))
+            ?.actividades.get(idActividad)?.total
+        ),
+      0
+    )
+    const cobrado = personas.reduce(
+      (total, persona) =>
+        total +
+        numero(
+          porPersona
+            .get(numero(persona.id_persona))
+            ?.actividades.get(idActividad)?.pagado
+        ),
+      0
+    )
+    const pagadores = personas.filter(
+      (persona) =>
+        numero(
+          porPersona
+            .get(numero(persona.id_persona))
+            ?.actividades.get(idActividad)?.total
+        ) > 0
+    ).length
+    const menus = {}
+    asistentes.forEach((persona) => {
+      const menu = asistenciaEconomia(persona, idActividad)?.menu?.trim()
+      if (menu) menus[menu] = (menus[menu] || 0) + 1
+    })
+
+    return {
+      ...actividad,
+      asistentes: asistentes.length,
+      pagadores,
+      previsto,
+      cobrado,
+      pendiente: Math.max(previsto - cobrado, 0),
+      gasto: numero(gastosPorActividad.get(idActividad)),
+      costePorAsistente: pagadores
+        ? numero(gastosPorActividad.get(idActividad)) / pagadores
+        : 0,
+      menus: Object.entries(menus).sort((a, b) => b[1] - a[1]),
+    }
+  })
+
+  return { resumen, resumenActividades }
+}
+
 export default function GastosCampeonato({ codigo, onVolver }) {
   const [datos, setDatos] = useState({
     campeonato: null,
@@ -177,87 +406,12 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     return asistencia.asiste ? numero(asistencia.pagado) : 0
   }
 
-  const resumen = useMemo(() => {
-    let cobrosPrevistos = 0
-    let cobradoPersonas = 0
-
-    personasActivas.forEach((persona) => {
-      actividadesActivas.forEach((actividad) => {
-        cobrosPrevistos += importePersonaActividad(persona, actividad)
-        cobradoPersonas += pagadoPersonaActividad(persona, actividad)
-      })
-    })
-
-    const gastos = datos.movimientos
-      .filter((item) => item.tipo === 'gasto')
-      .reduce((total, item) => total + numero(item.importe), 0)
-    const ingresosManuales = datos.movimientos
-      .filter((item) => item.tipo === 'ingreso')
-      .reduce((total, item) => total + numero(item.importe), 0)
-    const jugadores = personasActivas.filter(
-      (persona) => persona.tipo === 'jugador'
-    ).length
-
-    return {
-      cobrosPrevistos,
-      cobradoPersonas,
-      gastos,
-      ingresosManuales,
-      ingresosPrevistos: cobrosPrevistos + ingresosManuales,
-      cobradoTotal: cobradoPersonas + ingresosManuales,
-      pendiente: Math.max(cobrosPrevistos - cobradoPersonas, 0),
-      saldo: cobradoPersonas + ingresosManuales - gastos,
-      jugadores,
-      costePorJugador: jugadores ? gastos / jugadores : 0,
-    }
-  }, [actividadesActivas, datos.movimientos, personasActivas])
-
-  const resumenActividades = useMemo(
-    () =>
-      actividadesActivas.map((actividad) => {
-        const asistentes = personasActivas.filter((persona) =>
-          obtenerAsistencia(persona, actividad.id_actividad).asiste
-        )
-        const previsto = asistentes.reduce(
-          (total, persona) =>
-            total + importePersonaActividad(persona, actividad),
-          0
-        )
-        const cobrado = asistentes.reduce(
-          (total, persona) =>
-            total + pagadoPersonaActividad(persona, actividad),
-          0
-        )
-        const gasto = datos.movimientos
-          .filter(
-            (item) =>
-              item.tipo === 'gasto' &&
-              numero(item.id_actividad) === numero(actividad.id_actividad)
-          )
-          .reduce((total, item) => total + numero(item.importe), 0)
-        const menus = {}
-
-        asistentes.forEach((persona) => {
-          const menu = obtenerAsistencia(
-            persona,
-            actividad.id_actividad
-          ).menu?.trim()
-          if (menu) menus[menu] = (menus[menu] || 0) + 1
-        })
-
-        return {
-          ...actividad,
-          asistentes: asistentes.length,
-          previsto,
-          cobrado,
-          pendiente: Math.max(previsto - cobrado, 0),
-          gasto,
-          costePorAsistente: asistentes.length ? gasto / asistentes.length : 0,
-          menus: Object.entries(menus).sort((a, b) => b[1] - a[1]),
-        }
-      }),
-    [actividadesActivas, datos.movimientos, personasActivas]
+  const economiaDistribuida = useMemo(
+    () => calcularEconomiaDistribuida(datos),
+    [datos]
   )
+  const resumen = economiaDistribuida.resumen
+  const resumenActividades = economiaDistribuida.resumenActividades
 
   function cambiarAsistencia(idPersona, idActividad, campo, valor) {
     setDatos((actual) => ({
@@ -291,6 +445,39 @@ export default function GastosCampeonato({ codigo, onVolver }) {
         return { ...persona, asistencias }
       }),
     }))
+  }
+
+
+  async function guardarDetalleAsistencia(
+    persona,
+    actividad,
+    { asiste, menu, observaciones }
+  ) {
+    const { data, error: errorGuardado } = await supabaseCampeonato.rpc(
+      'admin_economia_guardar_detalles_asistencia',
+      {
+        p_codigo: codigo,
+        p_datos: [
+          {
+            id_persona: persona.id_persona,
+            id_actividad: actividad.id_actividad,
+            asiste: Boolean(asiste),
+            menu: menu || '',
+            observaciones: observaciones || '',
+          },
+        ],
+      }
+    )
+
+    if (errorGuardado || data?.ok !== true) {
+      setMensaje({
+        tipo: 'error',
+        texto:
+          errorGuardado?.message ||
+          data?.error ||
+          'No se pudo guardar la asistencia.',
+      })
+    }
   }
 
   async function guardarAsistencias() {
@@ -672,7 +859,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
               <article className={resumen.pendiente > 0 ? 'pendiente' : ''}>
                 <span>Pendiente de cobrar</span>
                 <strong>{euros(resumen.pendiente)}</strong>
-                <small>Solo cuotas de asistentes</small>
+                <small>Gastos repartidos todavía pendientes</small>
               </article>
               <article>
                 <span>Gastos</span>
@@ -687,7 +874,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
               <article>
                 <span>Coste por jugador</span>
                 <strong>{euros(resumen.costePorJugador)}</strong>
-                <small>{resumen.jugadores} jugadores activos</small>
+                <small>Solo gastos de Campeonato · {resumen.jugadores} jugadores</small>
               </article>
             </section>
 
@@ -725,15 +912,9 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                         Gastos <strong>{euros(actividad.gasto)}</strong>
                       </span>
                       <span>
-                        Coste/asistente{' '}
-                        <strong>{euros(actividad.costePorAsistente)}</strong>
+                        Pendiente <strong>{euros(actividad.pendiente)}</strong>
                       </span>
                     </div>
-                    {actividad.pendiente > 0 && (
-                      <p className="actividad-pendiente">
-                        Pendiente: {euros(actividad.pendiente)}
-                      </p>
-                    )}
                     {actividad.menus.length > 0 && (
                       <div className="resumen-menus">
                         <strong>Menús / opciones</strong>
@@ -1158,20 +1339,10 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                 <div>
                   <h3>Asistencia y cobros</h3>
                   <p>
-                    Marca a qué va cada persona. Un importe en blanco usa el
-                    precio base configurado para esa actividad.
+                    La asistencia se guarda al marcar o desmarcar. El menú se
+                    guarda automáticamente al salir del campo.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="boton boton-principal"
-                  disabled={guardando === 'asistencias'}
-                  onClick={guardarAsistencias}
-                >
-                  {guardando === 'asistencias'
-                    ? 'Guardando…'
-                    : 'Guardar cambios'}
-                </button>
               </div>
 
               <div className="lista-personas-economia">
@@ -1222,14 +1393,25 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                               <input
                                 type="checkbox"
                                 checked={Boolean(asistencia.asiste)}
-                                onChange={(evento) =>
+                                onChange={(evento) => {
+                                  const asiste = evento.target.checked
                                   cambiarAsistencia(
                                     persona.id_persona,
                                     actividad.id_actividad,
                                     'asiste',
-                                    evento.target.checked
+                                    asiste
                                   )
-                                }
+                                  guardarDetalleAsistencia(
+                                    persona,
+                                    actividad,
+                                    {
+                                      asiste,
+                                      menu: asistencia.menu || '',
+                                      observaciones:
+                                        asistencia.observaciones || '',
+                                    }
+                                  )
+                                }}
                               />
                               <span>
                                 <strong>{actividad.nombre}</strong>
@@ -1323,6 +1505,18 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                                         evento.target.value
                                       )
                                     }
+                                    onBlur={(evento) =>
+                                      guardarDetalleAsistencia(
+                                        persona,
+                                        actividad,
+                                        {
+                                          asiste: Boolean(asistencia.asiste),
+                                          menu: evento.target.value,
+                                          observaciones:
+                                            asistencia.observaciones || '',
+                                        }
+                                      )
+                                    }
                                     placeholder={
                                       actividad.tipo === 'cena'
                                         ? 'Ej. Solomillo cerdo pimienta'
@@ -1339,18 +1533,6 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                 ))}
               </div>
 
-              <div className="pie-guardar-asistencia">
-                <button
-                  type="button"
-                  className="boton boton-principal"
-                  disabled={guardando === 'asistencias'}
-                  onClick={guardarAsistencias}
-                >
-                  {guardando === 'asistencias'
-                    ? 'Guardando…'
-                    : 'Guardar asistencia y cobros'}
-                </button>
-              </div>
             </section>
           </>
         )}
