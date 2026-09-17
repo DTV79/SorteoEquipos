@@ -66,33 +66,26 @@ export default function GastosDeudas({ codigo }) {
     const porPersona = new Map(
       personas.map((p) => [
         numero(p.id_persona),
-        { total: 0, pagado: 0, actividades: new Map(), general: 0 },
+        { total: 0, pagado: 0, pendiente: 0, actividades: new Map(), general: 0 },
       ])
     )
 
+    // En esta pantalla la deuda sale de los gastos realmente repartidos.
+    // No sumamos de nuevo el precio base de la actividad, porque eso duplicaba
+    // importes como la cena cuando el gasto ya estaba registrado y repartido.
     personas.forEach((persona) => {
       const item = porPersona.get(numero(persona.id_persona))
       actividades.forEach((actividad) => {
         const asis = asistenciaDe(persona, actividad.id_actividad)
-        const participa =
-          (persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO') ||
-          Boolean(asis?.asiste)
-        const cuota =
-          participa && actividad.cobrable
-            ? numero(actividad.precio_persona)
-            : 0
-        const pagado = numero(asis?.pagado)
-
         item.actividades.set(numero(actividad.id_actividad), {
-          cuota,
+          cuota: 0,
           reparto: 0,
-          total: cuota,
-          pagado,
-          pendiente: Math.max(cuota - pagado, 0),
+          total: 0,
+          pagadoRegistrado: numero(asis?.pagado),
+          pagado: 0,
+          pendiente: 0,
           asis,
         })
-        item.total += cuota
-        item.pagado += pagado
       })
     })
 
@@ -148,16 +141,30 @@ export default function GastosDeudas({ codigo }) {
           const act = item.actividades.get(idActividad)
           act.reparto += parte
           act.total += parte
-          act.pendiente = Math.max(act.total - act.pagado, 0)
         } else {
           item.general += parte
         }
-        item.total += parte
       })
     })
 
+    // Calculamos pagado y pendiente al final, cuando ya conocemos el total real.
+    // Si quedó algún pago antiguo superior al total por un cálculo previo erróneo,
+    // visualmente se limita al total para que no genere estados imposibles.
     personas.forEach((persona) => {
       const item = porPersona.get(numero(persona.id_persona))
+      item.total = numero(item.general)
+      item.pagado = 0
+
+      item.actividades.forEach((act) => {
+        const total = Math.max(numero(act.total), 0)
+        const pagado = Math.min(Math.max(numero(act.pagadoRegistrado), 0), total)
+        act.total = total
+        act.pagado = pagado
+        act.pendiente = Math.max(total - pagado, 0)
+        item.total += total
+        item.pagado += pagado
+      })
+
       item.pendiente = Math.max(item.total - item.pagado, 0)
     })
 
@@ -319,14 +326,6 @@ export default function GastosDeudas({ codigo }) {
       })
   }
 
-  const refrescarDespuesDePago = useCallback(() => {
-    // No remontamos el componente principal: así no se pierden checks, menús u
-    // otros cambios todavía no guardados. Solo refrescamos los importes del pago.
-    ;[80, 250].forEach((ms) =>
-      window.setTimeout(() => localizar(), ms)
-    )
-  }, [localizar])
-
   async function guardarPago(persona, actividad, seccion, importePagado, accion) {
     const clave = `${accion}-${persona.id_persona}-${actividad.id_actividad}`
     setGuardandoPago(clave)
@@ -335,8 +334,6 @@ export default function GastosDeudas({ codigo }) {
     const esCampeonatoJugador =
       persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO'
 
-    // Tomamos asistencia y menú directamente de lo que el usuario está viendo.
-    // De este modo Pagar/Anular pago nunca pisa cambios locales no guardados.
     const checkbox = seccion?.querySelector('.check-asistencia input[type="checkbox"]')
     const campoMenu = seccion?.querySelector('.menu-persona input')
     const asisteActual = esCampeonatoJugador ||
@@ -360,7 +357,10 @@ export default function GastosDeudas({ codigo }) {
 
     setGuardandoPago('')
     if (error || data?.ok !== true) return
-    refrescarDespuesDePago()
+
+    // Actualizamos solo este módulo económico; no remontamos el formulario base,
+    // para no mover ni borrar checks, menús u otros cambios en pantalla.
+    await cargar()
   }
 
   if (!datos) return null
@@ -420,10 +420,6 @@ export default function GastosDeudas({ codigo }) {
             <div className="deuda-actividad-resumen" key={actividad.id_actividad}>
               <div className="deuda-actividad-datos">
                 <span>
-                  <small>Cuota actividad</small>
-                  <b>{euros(d.cuota)}</b>
-                </span>
-                <span>
                   <small>Su parte de gastos</small>
                   <b>{euros(d.reparto)}</b>
                 </span>
@@ -443,19 +439,7 @@ export default function GastosDeudas({ codigo }) {
 
               {(d.total > 0 || d.pagado > 0) && (
                 <div className="deuda-actividad-acciones">
-                  {d.pendiente > 0 && (
-                    <button
-                      type="button"
-                      className="boton-pagar-deuda"
-                      disabled={ocupado}
-                      onClick={() =>
-                        guardarPago(persona, actividad, seccion, d.total, 'pagar')
-                      }
-                    >
-                      {guardandoPago === clavePagar ? 'Guardando…' : 'Pagar'}
-                    </button>
-                  )}
-                  {d.pagado > 0 && (
+                  {d.pagado > 0 ? (
                     <button
                       type="button"
                       className="boton-anular-pago"
@@ -466,7 +450,18 @@ export default function GastosDeudas({ codigo }) {
                     >
                       {guardandoPago === claveAnular ? 'Anulando…' : 'Anular pago'}
                     </button>
-                  )}
+                  ) : d.pendiente > 0 ? (
+                    <button
+                      type="button"
+                      className="boton-pagar-deuda"
+                      disabled={ocupado}
+                      onClick={() =>
+                        guardarPago(persona, actividad, seccion, d.total, 'pagar')
+                      }
+                    >
+                      {guardandoPago === clavePagar ? 'Guardando…' : 'Pagar'}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>,
