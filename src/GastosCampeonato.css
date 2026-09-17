@@ -182,6 +182,47 @@
 .resumen-menus ul {
   margin: 8px 0 0;
   padding-left: 18px;
+  display: grid;
+  gap: 5px;
+}
+
+.resumen-menus li {
+  line-height: 1.35;
+}
+
+.resumen-observaciones {
+  grid-column: span 2;
+  align-content: start;
+}
+
+.resumen-observaciones-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.resumen-observaciones textarea {
+  width: 100%;
+  min-height: 92px;
+  margin-top: 9px;
+  padding: 10px 11px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.resumen-exportar {
+  align-content: start;
+}
+
+.resumen-exportar .boton {
+  width: 100%;
+  margin-top: 10px;
 }
 
 .lista-movimientos {
@@ -719,4 +760,9 @@
   .boton-masivo {
     width: 100%;
   }
+}
+
+@media(max-width:760px){
+  .resumen-observaciones{grid-column:1/-1}
+  .resumen-exportar{grid-column:1/-1}
 }
