@@ -5,28 +5,30 @@
 .resumen-deuda-persona .pendiente{background:#fff7ed;color:#9a3412}
 .resumen-deuda-persona .pendiente strong{color:#c2410c}
 
-/* En cada actividad solo dejamos el ajuste individual opcional.
-   El pago se gestiona exclusivamente con Pagar / Anular pago. */
-.actividad-con-deuda>.cobro-actividad-persona{
-  display:grid;
+/* En Asistencia y cobros dejamos un único campo manual: la cuota individual.
+   Los pagos se gestionan exclusivamente con Pagar / Anular pago. */
+.gastos-campeonato .cobro-actividad-persona{
+  display:grid!important;
   grid-template-columns:1fr!important;
-  gap:7px;
+  gap:7px!important;
 }
-.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type{
-  grid-column:1/-1;
-  width:100%;
+.gastos-campeonato .cobro-actividad-persona>label:first-of-type{
+  display:block!important;
+  grid-column:1/-1!important;
+  width:100%!important;
 }
-.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type>span{
-  font-size:0;
+.gastos-campeonato .cobro-actividad-persona>label:first-of-type>span{
+  font-size:0!important;
 }
-.actividad-con-deuda>.cobro-actividad-persona>label:first-of-type>span::before{
+.gastos-campeonato .cobro-actividad-persona>label:first-of-type>span::before{
   content:'Cuota individual (opcional)';
-  font-size:.75rem;
+  font-size:.75rem!important;
   font-weight:800;
   color:#334155;
 }
-.actividad-con-deuda>.cobro-actividad-persona>label:nth-of-type(2),
-.actividad-con-deuda>.cobro-actividad-persona .boton-pagado{
+.gastos-campeonato .cobro-actividad-persona>label:nth-of-type(n+2),
+.gastos-campeonato .cobro-actividad-persona>.boton-pagado,
+.gastos-campeonato .cobro-actividad-persona .boton-pagado{
   display:none!important;
 }
 
