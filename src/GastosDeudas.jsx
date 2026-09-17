@@ -34,7 +34,7 @@ function repartirIgual(total, personas) {
   return resultado
 }
 
-export default function GastosDeudas({ codigo, onCambio }) {
+export default function GastosDeudas({ codigo }) {
   const [datos, setDatos] = useState(null)
   const [destinos, setDestinos] = useState([])
   const [hostMasivo, setHostMasivo] = useState(null)
@@ -275,7 +275,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
             hostActividad.className = 'host-deuda-actividad'
             seccion.appendChild(hostActividad)
           }
-          hostsActividad.push({ host: hostActividad, actividad })
+          hostsActividad.push({ host: hostActividad, actividad, seccion })
         })
 
         nuevos.push({ persona, hostPersona, hostsActividad })
@@ -320,32 +320,36 @@ export default function GastosDeudas({ codigo, onCambio }) {
   }
 
   const refrescarDespuesDePago = useCallback(() => {
-    onCambio?.()
-    ;[120, 350, 700].forEach((ms) =>
-      window.setTimeout(() => {
-        const boton = [...document.querySelectorAll('.gastos-pestanas button')].find(
-          (x) => x.textContent?.includes('Asistencia y cobros')
-        )
-        if (boton && !boton.classList.contains('activo')) boton.click()
-        window.setTimeout(localizar, 40)
-      }, ms)
+    // No remontamos el componente principal: así no se pierden checks, menús u
+    // otros cambios todavía no guardados. Solo refrescamos los importes del pago.
+    ;[80, 250].forEach((ms) =>
+      window.setTimeout(() => localizar(), ms)
     )
-  }, [localizar, onCambio])
+  }, [localizar])
 
-  async function guardarPago(persona, actividad, importePagado, accion) {
+  async function guardarPago(persona, actividad, seccion, importePagado, accion) {
     const clave = `${accion}-${persona.id_persona}-${actividad.id_actividad}`
     setGuardandoPago(clave)
 
     const asis = asistenciaDe(persona, actividad.id_actividad)
     const esCampeonatoJugador =
       persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO'
+
+    // Tomamos asistencia y menú directamente de lo que el usuario está viendo.
+    // De este modo Pagar/Anular pago nunca pisa cambios locales no guardados.
+    const checkbox = seccion?.querySelector('.check-asistencia input[type="checkbox"]')
+    const campoMenu = seccion?.querySelector('.menu-persona input')
+    const asisteActual = esCampeonatoJugador ||
+      (checkbox ? Boolean(checkbox.checked) : Boolean(asis?.asiste))
+    const menuActual = campoMenu ? campoMenu.value : (asis?.menu || '')
+
     const fila = {
       id_persona: persona.id_persona,
       id_actividad: actividad.id_actividad,
-      asiste: esCampeonatoJugador || Boolean(asis?.asiste),
+      asiste: asisteActual,
       importe: null,
       pagado: Math.max(numero(importePagado), 0),
-      menu: asis?.menu || '',
+      menu: menuActual,
       observaciones: asis?.observaciones || '',
     }
 
@@ -400,7 +404,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
           hostPersona
         )}
 
-        {hostsActividad.map(({ host, actividad }) => {
+        {hostsActividad.map(({ host, actividad, seccion }) => {
           const d = p.actividades.get(numero(actividad.id_actividad)) || {
             cuota: 0,
             reparto: 0,
@@ -445,7 +449,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
                       className="boton-pagar-deuda"
                       disabled={ocupado}
                       onClick={() =>
-                        guardarPago(persona, actividad, d.total, 'pagar')
+                        guardarPago(persona, actividad, seccion, d.total, 'pagar')
                       }
                     >
                       {guardandoPago === clavePagar ? 'Guardando…' : 'Pagar'}
@@ -457,7 +461,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
                       className="boton-anular-pago"
                       disabled={ocupado}
                       onClick={() =>
-                        guardarPago(persona, actividad, 0, 'anular')
+                        guardarPago(persona, actividad, seccion, 0, 'anular')
                       }
                     >
                       {guardandoPago === claveAnular ? 'Anulando…' : 'Anular pago'}
