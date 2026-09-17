@@ -30,6 +30,7 @@ export default function GastosMovimientoMejoras({ codigo }) {
   const [cantidad, setCantidad] = useState('')
   const [idEditando, setIdEditando] = useState(null)
   const formActual = useRef(null)
+  const vigilanciaSubmit = useRef(null)
 
   const cargar = useCallback(async () => {
     if (!codigo) return null
@@ -88,6 +89,34 @@ export default function GastosMovimientoMejoras({ codigo }) {
     } else { setPagadoPor(''); setOtroPagador('') }
   }, [cargar])
 
+  const vigilarRestauracion = useCallback(() => {
+    if (vigilanciaSubmit.current) window.clearInterval(vigilanciaSubmit.current)
+    const inicio = Date.now()
+    vigilanciaSubmit.current = window.setInterval(() => {
+      const form = document.querySelector('.gastos-campeonato .formulario-movimiento-bloque form.formulario-economia')
+      if (!form) {
+        if (Date.now() - inicio > 8000) {
+          window.clearInterval(vigilanciaSubmit.current)
+          vigilanciaSubmit.current = null
+        }
+        return
+      }
+      const faltanMejoras =
+        !form.querySelector(':scope > .host-mejoras-movimiento') ||
+        !form.querySelector(':scope > .host-cantidad-movimiento')
+      if (faltanMejoras) {
+        window.clearInterval(vigilanciaSubmit.current)
+        vigilanciaSubmit.current = null
+        window.setTimeout(preparar, 20)
+        return
+      }
+      if (Date.now() - inicio > 8000) {
+        window.clearInterval(vigilanciaSubmit.current)
+        vigilanciaSubmit.current = null
+      }
+    }, 180)
+  }, [preparar])
+
   useEffect(() => {
     cargar()
     const click = (e) => {
@@ -125,7 +154,13 @@ export default function GastosMovimientoMejoras({ codigo }) {
       }
     }
     document.addEventListener('click', click)
-    return () => document.removeEventListener('click', click)
+    return () => {
+      document.removeEventListener('click', click)
+      if (vigilanciaSubmit.current) {
+        window.clearInterval(vigilanciaSubmit.current)
+        vigilanciaSubmit.current = null
+      }
+    }
   }, [cargar, preparar])
 
   useEffect(() => {
@@ -144,6 +179,7 @@ export default function GastosMovimientoMejoras({ codigo }) {
     const form = formActual.current
     if (!form || !host) return
     const onSubmit = () => {
+      vigilarRestauracion()
       const labels = [...form.querySelectorAll(':scope > label')]
       const por = (t) => labels.find((l) => normalizar(l.querySelector(':scope > span')?.textContent) === normalizar(t))?.querySelector('input,select')
       const concepto = por('Concepto')?.value?.trim()
@@ -163,11 +199,12 @@ export default function GastosMovimientoMejoras({ codigo }) {
         }
         setIdEditando(null); setSeleccion([]); setCantidad('')
         await cargar()
+        vigilarRestauracion()
       }, 900)
     }
     form.addEventListener('submit', onSubmit)
     return () => form.removeEventListener('submit', onSubmit)
-  }, [host, modo, seleccion, cantidad, idEditando, codigo, cargar])
+  }, [host, modo, seleccion, cantidad, idEditando, codigo, cargar, vigilarRestauracion])
 
   const jugadores = useMemo(() => datos.personas.filter((p) => p.tipo === 'jugador'), [datos.personas])
   const asistentes = useMemo(() => datos.personas.filter((p) => p.asistencias?.some((a) => a.asiste)), [datos.personas])
