@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import GastosCampeonato from './GastosCampeonato'
+import GastosActividadBorrado from './GastosActividadBorrado'
 import './GastosCampeonatoSimplificado.css'
 import './GastosCampeonatoContraste.css'
 
@@ -39,6 +40,7 @@ export default function GastosCampeonatoLauncher() {
     {abierto && codigo && createPortal(
       <div className="gastos-overlay">
         <GastosCampeonato codigo={codigo} onVolver={() => setAbierto(false)} />
+        <GastosActividadBorrado codigo={codigo} />
       </div>,
       document.body
     )}
