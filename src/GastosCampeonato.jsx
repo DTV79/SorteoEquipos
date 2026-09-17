@@ -597,33 +597,52 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     color:#172033;
     font-size:8.2px;
     font-weight:400;
+    background:#fff;
   }
-  h1{font-size:17px;line-height:1.05;margin:0;color:#10214d;font-weight:700}
-  h2{font-size:11px;line-height:1.1;margin:0 0 5px;color:#10214d;font-weight:700}
+  h1{font-size:18px;line-height:1.05;margin:0;color:#fff;font-weight:750}
+  h2{
+    font-size:11px;
+    line-height:1.1;
+    margin:0 0 5px;
+    padding-left:7px;
+    border-left:4px solid #22c55e;
+    color:#10214d;
+    font-weight:750;
+  }
   p{margin:2px 0}
   .cabecera{
     display:flex;
     align-items:flex-end;
     justify-content:space-between;
     gap:12px;
-    border-bottom:2px solid #173c8f;
-    padding-bottom:5px;
-    margin-bottom:6px;
+    padding:8px 10px;
+    margin-bottom:7px;
+    border:0;
+    border-radius:7px;
+    color:#fff;
+    background:linear-gradient(120deg,#10214d 0%,#173c8f 58%,#0f766e 100%);
   }
-  .cabecera-info{text-align:right;color:#5b6474}
+  .cabecera p{color:#e8eefc}
+  .cabecera-info{text-align:right;color:#d8e6ff;font-weight:600}
   .metricas{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:5px;
-    margin:0 0 7px;
+    gap:6px;
+    margin:0 0 8px;
   }
   .metrica{
-    border:1px solid #d9e2ef;
-    border-radius:5px;
-    padding:5px 7px;
+    border:0;
+    border-radius:6px;
+    padding:6px 8px;
+    box-shadow:inset 0 0 0 1px rgba(15,23,42,.08);
   }
-  .metrica small{display:block;color:#687386;font-size:7.2px}
-  .metrica strong{font-size:11px;font-weight:700;color:#10214d}
+  .metrica:nth-child(1){background:#e8f0ff}
+  .metrica:nth-child(2){background:#e8f8ef}
+  .metrica:nth-child(3){background:#fff1df}
+  .metrica small{display:block;color:#526173;font-size:7.2px;font-weight:650}
+  .metrica strong{font-size:11.5px;font-weight:800;color:#10214d}
+  .metrica:nth-child(2) strong{color:#13743d}
+  .metrica:nth-child(3) strong{color:#c04b00}
   .contenido{
     display:grid;
     grid-template-columns:minmax(0,.82fr) minmax(0,1.28fr);
@@ -633,33 +652,55 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   .bloque{min-width:0}
   table{
     width:100%;
-    border-collapse:collapse;
+    border-collapse:separate;
+    border-spacing:0;
     table-layout:fixed;
     font-size:7.6px;
     line-height:1.15;
+    overflow:hidden;
+    border:1px solid #cbd7e8;
+    border-radius:6px;
   }
   th,td{
-    border:1px solid #dbe3ee;
+    border-right:1px solid #d8e1ed;
+    border-bottom:1px solid #d8e1ed;
     padding:3px 4px;
     vertical-align:middle;
     font-weight:400;
   }
+  tr>*:last-child{border-right:0}
+  tbody tr:last-child td{border-bottom:0}
   th{
-    background:#eaf1fb;
-    color:#173c8f;
+    background:#173c8f;
+    color:#fff;
     text-align:left;
-    font-weight:700;
+    font-weight:750;
   }
-  tbody tr:nth-child(even) td{background:#f4f7fb}
+  tbody tr:nth-child(even) td{background:#edf4ff}
   tbody tr:nth-child(odd) td{background:#fff}
+  .personas tbody tr:nth-child(even) td:first-child{box-shadow:inset 4px 0 0 #22c55e}
+  .personas tbody tr:nth-child(odd) td:first-child{box-shadow:inset 4px 0 0 #38bdf8}
   tr{break-inside:avoid;page-break-inside:avoid}
   td.num,th.num{text-align:right;white-space:nowrap}
   td.centro,th.centro{text-align:center;white-space:nowrap}
-  .nombre{font-weight:650;color:#172033}
-  .tipo-persona{display:block;color:#7a8494;font-size:6.6px;margin-top:1px}
-  td.pagado{color:#14733e;font-weight:600}
-  td.pendiente{color:#b54708;font-weight:650}
-  tfoot th{background:#eef4ff;font-weight:700}
+  .nombre{font-weight:750;color:#10214d}
+  .tipo-persona{display:block;color:#6f7d90;font-size:6.6px;margin-top:1px}
+  td.pagado{
+    color:#13743d;
+    font-weight:750;
+    background:#effbf4!important;
+  }
+  td.pendiente{
+    color:#c04b00;
+    font-weight:750;
+    background:#fff5e9!important;
+  }
+  tfoot th{
+    background:#10214d;
+    color:#fff;
+    font-weight:800;
+    border-bottom:0;
+  }
   .gastos col:nth-child(1){width:50%}
   .gastos col:nth-child(2){width:9%}
   .gastos col:nth-child(3){width:25%}
@@ -672,12 +713,15 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   .personas col:nth-child(6){width:16%}
   .pie{
     margin-top:5px;
-    color:#8a93a2;
+    padding-top:3px;
+    border-top:1px solid #dbe3ee;
+    color:#7a8494;
     font-size:6.5px;
     text-align:right;
   }
   @media print{
     html,body{width:100%;height:auto}
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
 </head>
