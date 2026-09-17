@@ -37,6 +37,7 @@ function repartirIgual(total, personas) {
 export default function GastosDeudas({ codigo, onCambio }) {
   const [datos, setDatos] = useState(null)
   const [destinos, setDestinos] = useState([])
+  const [hostMasivo, setHostMasivo] = useState(null)
   const [guardandoPago, setGuardandoPago] = useState('')
 
   const cargar = useCallback(async () => {
@@ -73,8 +74,11 @@ export default function GastosDeudas({ codigo, onCambio }) {
       const item = porPersona.get(numero(persona.id_persona))
       actividades.forEach((actividad) => {
         const asis = asistenciaDe(persona, actividad.id_actividad)
+        const participa =
+          (persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO') ||
+          Boolean(asis?.asiste)
         const cuota =
-          asis?.asiste && actividad.cobrable
+          participa && actividad.cobrable
             ? numero(actividad.precio_persona)
             : 0
         const pagado = numero(asis?.pagado)
@@ -92,9 +96,6 @@ export default function GastosDeudas({ codigo, onCambio }) {
       })
     })
 
-    // Agrupamos primero los gastos que se reparten exactamente entre las mismas
-    // personas y en la misma actividad. El total del grupo se divide una sola vez
-    // y todos reciben exactamente el mismo importe redondeado a dos decimales.
     const gruposReparto = new Map()
 
     ;(data.movimientos || [])
@@ -169,27 +170,66 @@ export default function GastosDeudas({ codigo, onCambio }) {
     const fresco = await cargar()
     if (!fresco) return
 
+    const personasFrescas = (fresco.personas || []).filter((p) => p.activo)
+    const actividadesFrescas = [...(fresco.actividades || [])]
+      .filter((a) => a.activo)
+      .sort(
+        (a, b) =>
+          numero(a.orden) - numero(b.orden) ||
+          numero(a.id_actividad) - numero(b.id_actividad)
+      )
+    const campeonato = actividadesFrescas.find((a) => a.codigo === 'CAMPEONATO')
+
+    if (campeonato) {
+      const faltan = personasFrescas.filter(
+        (p) =>
+          p.tipo === 'jugador' &&
+          !asistenciaDe(p, campeonato.id_actividad)?.asiste
+      )
+      if (faltan.length) {
+        const filas = faltan.map((persona) => {
+          const asis = asistenciaDe(persona, campeonato.id_actividad)
+          return {
+            id_persona: persona.id_persona,
+            id_actividad: campeonato.id_actividad,
+            asiste: true,
+            importe: null,
+            pagado: Math.max(numero(asis?.pagado), 0),
+            menu: asis?.menu || '',
+            observaciones: asis?.observaciones || '',
+          }
+        })
+        await supabaseCampeonato.rpc('admin_economia_guardar_asistencias', {
+          p_codigo: codigo,
+          p_datos: filas,
+        })
+      }
+    }
+
     window.setTimeout(() => {
       const bloqueAsistencia = [...document.querySelectorAll('.gastos-campeonato .bloque-economia')]
         .find((bloque) => bloque.querySelector('h3')?.textContent?.trim() === 'Asistencia y cobros')
       const textoAyuda = bloqueAsistencia?.querySelector('.titulo-bloque-economia p')
       if (textoAyuda) {
-        textoAyuda.textContent = 'Marca a qué actividad va cada persona. Los importes se calculan automáticamente según la configuración y el reparto de gastos.'
+        textoAyuda.textContent = 'Campeonato queda marcado automáticamente para los jugadores. Usa los checks solo para cena, sorteo u otras actividades.'
       }
+
+      let host = bloqueAsistencia?.querySelector(':scope > .host-asistencia-masiva')
+      if (bloqueAsistencia && !host) {
+        host = document.createElement('div')
+        host.className = 'host-asistencia-masiva'
+        const titulo = bloqueAsistencia.querySelector(':scope > .titulo-bloque-economia')
+        titulo?.insertAdjacentElement('afterend', host)
+      }
+      setHostMasivo(host || null)
 
       const tarjetas = [
         ...document.querySelectorAll(
           '.gastos-campeonato .lista-personas-economia .persona-economia'
         ),
       ]
-      const personas = (fresco.personas || []).filter((p) => p.activo)
-      const actividades = [...(fresco.actividades || [])]
-        .filter((a) => a.activo)
-        .sort(
-          (a, b) =>
-            numero(a.orden) - numero(b.orden) ||
-            numero(a.id_actividad) - numero(b.id_actividad)
-        )
+      const personas = personasFrescas
+      const actividades = actividadesFrescas
       const nuevos = []
 
       tarjetas.forEach((tarjeta, i) => {
@@ -214,14 +254,28 @@ export default function GastosDeudas({ codigo, onCambio }) {
           if (!actividad) return
 
           seccion.classList.add('actividad-con-deuda')
+          seccion.dataset.actividadCodigo = actividad.codigo || ''
 
-          let host = seccion.querySelector(':scope > .host-deuda-actividad')
-          if (!host) {
-            host = document.createElement('div')
-            host.className = 'host-deuda-actividad'
-            seccion.appendChild(host)
+          const checkbox = seccion.querySelector('.check-asistencia input[type="checkbox"]')
+          if (
+            checkbox &&
+            persona.tipo === 'jugador' &&
+            actividad.codigo === 'CAMPEONATO'
+          ) {
+            if (!checkbox.checked) checkbox.click()
+            checkbox.disabled = true
+            seccion.classList.add('actividad-campeonato-fija')
+            const label = seccion.querySelector('.check-asistencia')
+            if (label) label.title = 'Los jugadores inscritos participan automáticamente en el campeonato.'
           }
-          hostsActividad.push({ host, actividad })
+
+          let hostActividad = seccion.querySelector(':scope > .host-deuda-actividad')
+          if (!hostActividad) {
+            hostActividad = document.createElement('div')
+            hostActividad.className = 'host-deuda-actividad'
+            seccion.appendChild(hostActividad)
+          }
+          hostsActividad.push({ host: hostActividad, actividad })
         })
 
         nuevos.push({ persona, hostPersona, hostsActividad })
@@ -229,7 +283,7 @@ export default function GastosDeudas({ codigo, onCambio }) {
 
       setDestinos(nuevos)
     }, 40)
-  }, [cargar])
+  }, [cargar, codigo])
 
   useEffect(() => {
     const click = (e) => {
@@ -241,12 +295,29 @@ export default function GastosDeudas({ codigo, onCambio }) {
         window.setTimeout(localizar, 120)
       } else {
         setDestinos([])
+        setHostMasivo(null)
       }
     }
 
     document.addEventListener('click', click)
     return () => document.removeEventListener('click', click)
   }, [localizar])
+
+  function aplicarAsistenciaMasiva(marcar) {
+    document
+      .querySelectorAll('.gastos-campeonato .lista-personas-economia .persona-economia')
+      .forEach((tarjeta) => {
+        const tipo = tarjeta.querySelector(':scope > header span')?.textContent || ''
+        if (!tipo.toLowerCase().includes('jugador')) return
+
+        tarjeta.querySelectorAll('.actividad-persona').forEach((seccion) => {
+          if (seccion.dataset.actividadCodigo === 'CAMPEONATO') return
+          const checkbox = seccion.querySelector('.check-asistencia input[type="checkbox"]')
+          if (!checkbox || checkbox.disabled) return
+          if (Boolean(checkbox.checked) !== Boolean(marcar)) checkbox.click()
+        })
+      })
+  }
 
   const refrescarDespuesDePago = useCallback(() => {
     onCambio?.()
@@ -266,10 +337,12 @@ export default function GastosDeudas({ codigo, onCambio }) {
     setGuardandoPago(clave)
 
     const asis = asistenciaDe(persona, actividad.id_actividad)
+    const esCampeonatoJugador =
+      persona.tipo === 'jugador' && actividad.codigo === 'CAMPEONATO'
     const fila = {
       id_persona: persona.id_persona,
       id_actividad: actividad.id_actividad,
-      asiste: Boolean(asis?.asiste),
+      asiste: esCampeonatoJugador || Boolean(asis?.asiste),
       importe: null,
       pagado: Math.max(numero(importePagado), 0),
       menu: asis?.menu || '',
@@ -289,6 +362,24 @@ export default function GastosDeudas({ codigo, onCambio }) {
   if (!datos) return null
 
   return <>
+    {hostMasivo && createPortal(
+      <div className="asistencia-masiva">
+        <div>
+          <strong>Asistencia de jugadores</strong>
+          <small>Campeonato está siempre marcado. Estos botones afectan a cena, sorteo y demás actividades.</small>
+        </div>
+        <div className="asistencia-masiva-botones">
+          <button type="button" className="marcar" onClick={() => aplicarAsistenciaMasiva(true)}>
+            ✓ Marcar todos
+          </button>
+          <button type="button" className="desmarcar" onClick={() => aplicarAsistenciaMasiva(false)}>
+            Desmarcar todos
+          </button>
+        </div>
+      </div>,
+      hostMasivo
+    )}
+
     {destinos.map(({ persona, hostPersona, hostsActividad }) => {
       const p = calculo.porPersona.get(numero(persona.id_persona)) || {
         total: 0,
