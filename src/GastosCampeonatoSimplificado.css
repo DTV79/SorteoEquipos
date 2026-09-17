@@ -65,6 +65,19 @@
   grid-column: 1 / -1;
 }
 
+/* Orden del menú principal de Gestión del campeonato.
+   Se mantiene exactamente el texto actual de cada módulo; solo cambia su posición. */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(1) { order: 1; }  /* Configuración */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(8) { order: 2; }  /* Normas */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(2) { order: 3; }  /* Jugadores */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(3) { order: 4; }  /* Equipos */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(4) { order: 5; }  /* Partidos */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(5) { order: 6; }  /* Clasificación */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(6) { order: 7; }  /* Fases */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(9) { order: 8; }  /* Cierre */
+.panel-inicio-campeonato .modulos-campeonato > :nth-child(7) { order: 9; }  /* Auditoría */
+.panel-inicio-campeonato .modulos-campeonato > .modulo-gastos-campeonato { order: 10; } /* Gastos */
+
 @media (max-width: 680px) {
   .gastos-campeonato .config-actividad .campos-config-actividad,
   .gastos-campeonato .nueva-actividad {
