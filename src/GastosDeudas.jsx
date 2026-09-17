@@ -98,6 +98,11 @@ export default function GastosDeudas({ codigo, onCambio }) {
       })
     })
 
+    // Agrupamos primero los gastos que se reparten exactamente entre las mismas
+    // personas y en la misma actividad. Así los céntimos sobrantes se distribuyen
+    // una sola vez sobre el total del grupo, en lugar de repetirse gasto a gasto.
+    const gruposReparto = new Map()
+
     ;(data.movimientos || [])
       .filter((m) => m.tipo === 'gasto' && m.modo_reparto !== 'no_repartir')
       .forEach((mov) => {
@@ -115,28 +120,46 @@ export default function GastosDeudas({ codigo, onCambio }) {
 
         if (!elegibles.length) return
 
-        const reparto = repartirCentimos(mov.importe, elegibles)
         const idActividad = numero(
           mov.id_actividad || campeonato?.id_actividad || 0
         )
+        const ids = elegibles
+          .map((p) => numero(p.id_persona))
+          .sort((a, b) => a - b)
+        const clave = `${idActividad}|${ids.join(',')}`
+        const existente = gruposReparto.get(clave)
 
-        elegibles.forEach((persona) => {
-          const id = numero(persona.id_persona)
-          const parte = numero(reparto.get(id))
-          const item = porPersona.get(id)
-          if (!item || !parte) return
-
-          if (idActividad && item.actividades.has(idActividad)) {
-            const act = item.actividades.get(idActividad)
-            act.reparto += parte
-            act.total += parte
-            act.pendiente = Math.max(act.total - act.pagado, 0)
-          } else {
-            item.general += parte
-          }
-          item.total += parte
-        })
+        if (existente) {
+          existente.total += numero(mov.importe)
+        } else {
+          gruposReparto.set(clave, {
+            idActividad,
+            elegibles,
+            total: numero(mov.importe),
+          })
+        }
       })
+
+    gruposReparto.forEach(({ idActividad, elegibles, total }) => {
+      const reparto = repartirCentimos(total, elegibles)
+
+      elegibles.forEach((persona) => {
+        const id = numero(persona.id_persona)
+        const parte = numero(reparto.get(id))
+        const item = porPersona.get(id)
+        if (!item || !parte) return
+
+        if (idActividad && item.actividades.has(idActividad)) {
+          const act = item.actividades.get(idActividad)
+          act.reparto += parte
+          act.total += parte
+          act.pendiente = Math.max(act.total - act.pagado, 0)
+        } else {
+          item.general += parte
+        }
+        item.total += parte
+      })
+    })
 
     personas.forEach((persona) => {
       const item = porPersona.get(numero(persona.id_persona))
