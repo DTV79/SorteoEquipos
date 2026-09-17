@@ -1,11 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import GastosCampeonato from './GastosCampeonato'
+
+function normalizar(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
 
 export default function GastosCampeonatoLauncher() {
   const [destino, setDestino] = useState(null)
   const [abierto, setAbierto] = useState(false)
   const [codigo, setCodigo] = useState('')
+  const [destinoMasivo, setDestinoMasivo] = useState(null)
+  const [actividadesMasivas, setActividadesMasivas] = useState([])
 
   useEffect(() => {
     function localizarMenu() {
@@ -20,6 +30,68 @@ export default function GastosCampeonatoLauncher() {
     return () => observador.disconnect()
   }, [])
 
+  useEffect(() => {
+    if (!abierto) {
+      setDestinoMasivo(null)
+      setActividadesMasivas([])
+      return undefined
+    }
+
+    function localizarAsistencia() {
+      const lista = document.querySelector(
+        '.gastos-campeonato .lista-personas-economia'
+      )
+
+      if (!lista) {
+        setDestinoMasivo(null)
+        setActividadesMasivas([])
+        return
+      }
+
+      let host = lista.parentElement?.querySelector(
+        ':scope > .host-seleccion-masiva-jugadores'
+      )
+
+      if (!host) {
+        host = document.createElement('div')
+        host.className = 'host-seleccion-masiva-jugadores'
+        lista.parentElement?.insertBefore(host, lista)
+      }
+
+      setDestinoMasivo((actual) => (actual === host ? actual : host))
+
+      const primerJugador = [...lista.querySelectorAll('.persona-economia')].find(
+        (tarjeta) =>
+          normalizar(tarjeta.querySelector('header span')?.textContent).includes(
+            'jugador'
+          )
+      )
+
+      const nombres = primerJugador
+        ? [...primerJugador.querySelectorAll('.actividad-persona')]
+            .map((actividad) =>
+              actividad.querySelector('.check-asistencia strong')?.textContent?.trim()
+            )
+            .filter(Boolean)
+        : []
+
+      setActividadesMasivas((actual) =>
+        JSON.stringify(actual) === JSON.stringify(nombres) ? actual : nombres
+      )
+    }
+
+    localizarAsistencia()
+    const observador = new MutationObserver(localizarAsistencia)
+    observador.observe(document.body, { childList: true, subtree: true })
+
+    return () => observador.disconnect()
+  }, [abierto])
+
+  const actividadesUnicas = useMemo(
+    () => [...new Set(actividadesMasivas)],
+    [actividadesMasivas]
+  )
+
   function abrir() {
     const seleccionado = window.sessionStorage.getItem(
       'sprint-padel-campeonato-seleccionado'
@@ -27,6 +99,37 @@ export default function GastosCampeonatoLauncher() {
     if (!seleccionado) return
     setCodigo(seleccionado)
     setAbierto(true)
+  }
+
+  function aplicarAsistenciaMasiva(modo, actividadObjetivo = '') {
+    const tarjetas = document.querySelectorAll(
+      '.gastos-campeonato .lista-personas-economia .persona-economia'
+    )
+
+    tarjetas.forEach((tarjeta) => {
+      const tipo = normalizar(tarjeta.querySelector('header span')?.textContent)
+      if (!tipo.includes('jugador')) return
+
+      tarjeta.querySelectorAll('.actividad-persona').forEach((actividad) => {
+        const nombre = actividad
+          .querySelector('.check-asistencia strong')
+          ?.textContent?.trim()
+        const checkbox = actividad.querySelector(
+          '.check-asistencia input[type="checkbox"]'
+        )
+
+        if (!checkbox) return
+
+        const coincide =
+          modo === 'todas' ||
+          (modo === 'actividad' && normalizar(nombre) === normalizar(actividadObjetivo))
+
+        const debeEstarMarcado = modo !== 'ninguna' && coincide
+
+        if (modo === 'ninguna' && checkbox.checked) checkbox.click()
+        if (debeEstarMarcado && !checkbox.checked) checkbox.click()
+      })
+    })
   }
 
   return (
@@ -54,6 +157,52 @@ export default function GastosCampeonatoLauncher() {
             />
           </div>,
           document.body
+        )}
+
+      {abierto && destinoMasivo &&
+        createPortal(
+          <section className="seleccion-masiva-jugadores">
+            <div className="seleccion-masiva-texto">
+              <span className="seleccion-masiva-icono">👥</span>
+              <div>
+                <strong>Jugadores inscritos</strong>
+                <p>
+                  Marca de una vez a los jugadores del campeonato. Después puedes
+                  corregir casos concretos antes de guardar.
+                </p>
+              </div>
+            </div>
+            <div className="seleccion-masiva-botones">
+              <button
+                type="button"
+                className="boton-masivo principal"
+                onClick={() => aplicarAsistenciaMasiva('todas')}
+              >
+                ✓ Marcar todas las actividades
+              </button>
+              {actividadesUnicas.map((actividad) => (
+                <button
+                  type="button"
+                  className="boton-masivo"
+                  key={actividad}
+                  onClick={() => aplicarAsistenciaMasiva('actividad', actividad)}
+                >
+                  {actividad}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="boton-masivo quitar"
+                onClick={() => aplicarAsistenciaMasiva('ninguna')}
+              >
+                Quitar todas
+              </button>
+            </div>
+            <small className="seleccion-masiva-aviso">
+              Estos botones solo cambian las casillas de los jugadores. Pulsa “Guardar cambios” para confirmar.
+            </small>
+          </section>,
+          destinoMasivo
         )}
     </>
   )
