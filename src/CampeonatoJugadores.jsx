@@ -565,7 +565,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
                   >
                     <option value="">Selecciona un jugador existente</option>
                     {[...inscripciones, ...disponibles]
-                      .sort((a, b) => a.id_jugador.localeCompare(b.id_jugador))
+                      .sort((a, b) => String(a.alias ?? '').localeCompare(String(b.alias ?? ''), 'es', { sensitivity: 'base' }) || a.id_jugador.localeCompare(b.id_jugador))
                       .map((jugador) => (
                         <option key={jugador.id_jugador} value={jugador.id_jugador}>
                           {jugador.id_jugador} · {jugador.alias} · {jugador.nombre_oficial}
@@ -643,7 +643,7 @@ export default function CampeonatoJugadores({ codigo, onVolver, onPanelPrincipal
             <h3>Inscribir jugador existente</h3>
             <select value={jugadorExistente} onChange={(e) => setJugadorExistente(e.target.value)} required>
               <option value="">Selecciona un jugador</option>
-              {disponibles.map((fila) => <option key={fila.id_jugador} value={fila.id_jugador}>{fila.alias} · {fila.nombre_oficial}</option>)}
+              {[...disponibles].sort((a, b) => String(a.alias ?? '').localeCompare(String(b.alias ?? ''), 'es', { sensitivity: 'base' }) || a.id_jugador.localeCompare(b.id_jugador)).map((fila) => <option key={fila.id_jugador} value={fila.id_jugador}>{fila.alias} · {fila.nombre_oficial}</option>)}
             </select>
             <select value={estadoExistente} onChange={(e) => setEstadoExistente(e.target.value)}>
               <option value="inscrito">Inscrito</option>
