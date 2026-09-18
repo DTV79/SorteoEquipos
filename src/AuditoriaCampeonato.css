@@ -1,6 +1,11 @@
 .panel-auditoria{max-width:1120px}
 .aviso-solo-lectura{margin:0 0 16px;padding:12px 14px;border:1px solid #27405f;border-radius:10px;background:#121f33;color:#bcd0e8;font-size:.9rem}
 .estado-auditoria,.sin-datos-auditoria{padding:22px;text-align:center;color:#9fb2c8}
+.pestanas-auditoria{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 12px;padding:5px;border:1px solid #2b3c51;border-radius:13px;background:#0b121b}
+.pestanas-auditoria button{display:flex;align-items:center;justify-content:center;gap:9px;padding:11px;border:0;border-radius:9px;background:transparent;color:#9fb2c8;font:inherit;font-weight:800;cursor:pointer}
+.pestanas-auditoria button.activa{background:#21344b;color:#fff;box-shadow:0 3px 12px #0005}
+.pestanas-auditoria button span{display:grid;min-width:23px;height:23px;place-items:center;padding:0 6px;border-radius:999px;background:#30465f;color:#dce9f5;font-size:.72rem}
+.pestanas-auditoria button span.con-aviso{background:#743f17;color:#ffd29c}
 .resumen-auditoria{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
 .resumen-auditoria article{display:flex;min-height:92px;flex-direction:column;justify-content:center;padding:16px;border:1px solid #2b3c51;border-radius:14px;background:#0e1722}
 .resumen-auditoria small{color:#9fb2c8}
@@ -13,6 +18,7 @@
 .titulo-bloque-auditoria h3{margin:2px 0 0}
 .titulo-bloque-auditoria>span{display:grid;min-width:32px;height:32px;place-items:center;border-radius:999px;background:#153d27;color:#70f0a3;font-weight:800}
 .incidencia-auditoria{padding:14px;border-left:4px solid #ff9f43;border-radius:9px;background:#271b0f}
+.incidencia-auditoria.severidad-alta{border-left-color:#ff6b6b}
 .incidencia-auditoria+ .incidencia-auditoria{margin-top:10px}
 .incidencia-auditoria>div{display:flex;justify-content:space-between;gap:12px}
 .incidencia-auditoria>div span,.incidencia-auditoria small{color:#c9a77e;font-size:.78rem}
@@ -20,7 +26,7 @@
 .repeticion-auditoria{overflow:hidden;border:1px solid #2b3c51;border-radius:12px;background:#0e1722}
 .repeticion-auditoria+ .repeticion-auditoria{margin-top:10px}
 .repeticion-auditoria summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px;cursor:pointer;list-style:none}
-.repeticion-auditoria summary::-webkit-details-marker{display:none}
+.repeticion-auditoria summary::-webkit-details-marker,.evento-auditoria summary::-webkit-details-marker{display:none}
 .repeticion-auditoria summary strong{display:block}
 .repeticion-auditoria summary em{color:#8194aa;font-size:.78rem;font-style:normal}
 .repeticion-auditoria summary small{display:block;margin-top:3px;color:#9fb2c8}
@@ -32,4 +38,37 @@
 .partidos-repeticion article div span{color:#b9c9da;font-size:.8rem}
 .partidos-repeticion article>b{color:#6ff3a5;text-align:right}
 .numero-encuentro{display:grid;width:27px;height:27px;place-items:center;border-radius:50%;background:#21344b;color:#cfe0f1;font-weight:800}
-@media(max-width:760px){.resumen-auditoria{grid-template-columns:repeat(2,minmax(0,1fr))}.partidos-repeticion article{grid-template-columns:28px 1fr}.partidos-repeticion article>b{grid-column:2;text-align:left}.repeticion-auditoria summary{align-items:flex-start;flex-direction:column}}
+.cabecera-historial{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.cabecera-historial h3{margin:2px 0 3px}
+.cabecera-historial small{color:#8194aa}
+.cabecera-historial input{width:min(330px,100%);padding:10px 12px;border:1px solid #344b65;border-radius:9px;background:#111d2b;color:#fff;font:inherit}
+.lista-historial{display:flex;flex-direction:column;gap:9px}
+.evento-auditoria{overflow:hidden;border:1px solid #2b3c51;border-radius:12px;background:#0e1722}
+.evento-auditoria summary{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;list-style:none}
+.icono-evento{display:grid;width:32px;height:32px;place-items:center;border-radius:50%;background:#1c3850;color:#74c9ff;font-weight:900}
+.datos-evento{display:flex;min-width:0;flex-direction:column;gap:3px}
+.datos-evento span,.evento-auditoria time{color:#91a5ba;font-size:.78rem}
+.evento-auditoria time{text-align:right}
+.detalle-evento{padding:0 14px 14px 60px;border-top:1px solid #263648}
+.detalle-evento>p{color:#9fb2c8}
+.cambio-evento{padding:12px 0;border-bottom:1px solid #203044}
+.cambio-evento:last-child{border-bottom:0}
+.cambio-evento>b{display:block;margin-bottom:7px;text-transform:capitalize}
+.cambio-evento>div{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);align-items:start;gap:8px}
+.cambio-evento span{display:flex;min-width:0;flex-direction:column;gap:4px}
+.cambio-evento small{color:#8194aa}
+.cambio-evento code{overflow:auto;max-height:180px;padding:8px;border-radius:7px;background:#111e2c;color:#d6e4f2;white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:.82rem}
+.cambio-evento i{padding-top:27px;color:#6ff3a5;text-align:center;font-style:normal}
+@media(max-width:760px){
+  .resumen-auditoria{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .partidos-repeticion article{grid-template-columns:28px 1fr}
+  .partidos-repeticion article>b{grid-column:2;text-align:left}
+  .repeticion-auditoria summary{align-items:flex-start;flex-direction:column}
+  .cabecera-historial{align-items:stretch;flex-direction:column}
+  .cabecera-historial input{width:100%}
+  .evento-auditoria summary{grid-template-columns:34px 1fr}
+  .evento-auditoria time{grid-column:2;text-align:left}
+  .detalle-evento{padding-left:14px}
+  .cambio-evento>div{grid-template-columns:1fr}
+  .cambio-evento i{padding:0;transform:rotate(90deg)}
+}
