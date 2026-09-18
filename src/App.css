@@ -10498,3 +10498,19 @@ body:has(.presentacion-equipos-tv) {
     font-size: clamp(1.8rem, 4.6dvh, 3.6rem);
   }
 }
+
+
+/* Ajuste TV 6: bajar SOLO los nombres, manteniendo fotos intactas. */
+.presentacion-equipos-tv .jugador-presentacion-equipos {
+  position: relative;
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos h3 {
+  position: relative;
+  z-index: 2;
+  transform: translateY(clamp(34px, 5.2dvh, 58px));
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+/* La imagen conserva exactamente el tamaño y posición del Ajuste TV 5. */
