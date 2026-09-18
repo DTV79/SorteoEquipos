@@ -342,6 +342,9 @@ function CoronaEquipo() {
 function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = false }) {
   const [sonidoActivo] = useState(() => Boolean(sonidoActivoInicial))
   const [reloj, setReloj] = useState(Date.now())
+  const [esperaInicialActiva, setEsperaInicialActiva] = useState(true)
+  const esperaInicialHastaRef = useRef(Date.now() + 8000)
+  const inicioAutomaticoAjustadoRef = useRef(null)
   const audioRef = useRef(null)
   const equiposOriginales = datos?.equipos ?? []
   const equipos = [
@@ -351,14 +354,36 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
   const duracion = limitarNumero(datos?.presentacion_equipos_duracion_ms, 3000, 60000, 8000)
 
   useEffect(() => {
-    if (!control?.presentacion_equipos_automatica) return undefined
-    const temporizador = window.setInterval(() => setReloj(Date.now()), 250)
+    const temporizador = window.setInterval(() => {
+      const ahora = Date.now()
+      setReloj(ahora)
+      if (ahora >= esperaInicialHastaRef.current) {
+        setEsperaInicialActiva(false)
+      }
+    }, 100)
     return () => window.clearInterval(temporizador)
-  }, [control?.presentacion_equipos_automatica])
+  }, [])
 
   const indiceBase = Number(control?.presentacion_equipos_indice ?? 0)
-  const inicioAutomatico = control?.presentacion_equipos_iniciada_en
+  const inicioAutomaticoOriginal = control?.presentacion_equipos_iniciada_en
     ? new Date(control.presentacion_equipos_iniciada_en).getTime()
+    : 0
+
+  /*
+  Los primeros 8 segundos de la presentación de cuerpos enteros son
+  negros. Si se activa Automático durante esa espera, su contador debe
+  empezar cuando termina el negro, no cuando se pulsó el botón.
+  */
+  if (
+    control?.presentacion_equipos_automatica &&
+    inicioAutomaticoOriginal &&
+    inicioAutomaticoAjustadoRef.current !== inicioAutomaticoOriginal
+  ) {
+    inicioAutomaticoAjustadoRef.current = inicioAutomaticoOriginal
+  }
+
+  const inicioAutomatico = inicioAutomaticoOriginal
+    ? Math.max(inicioAutomaticoOriginal, esperaInicialHastaRef.current)
     : 0
   const avanceAutomatico = control?.presentacion_equipos_automatica && inicioAutomatico
     ? Math.max(0, Math.floor((reloj - inicioAutomatico) / duracion))
@@ -373,6 +398,10 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
 
   if (equipos.length === 0) {
     return <main className="presentacion-equipos-tv estado-presentacion-equipos">No hay equipos para presentar.</main>
+  }
+
+  if (esperaInicialActiva && reloj < esperaInicialHastaRef.current) {
+    return <main className="presentacion-equipos-tv espera-inicial-presentacion-equipos" aria-label="Preparando presentación" />
   }
 
   const equipo = equipos[indiceEquipo]
