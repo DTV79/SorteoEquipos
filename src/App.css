@@ -10449,3 +10449,52 @@ body:has(.presentacion-equipos-tv) {
   overflow: hidden;
   z-index: 99999;
 }
+
+
+/* Ajuste TV 5: grupo y nombres protagonistas, pegados a las caricaturas. */
+.presentacion-equipos-tv .escenario-presentacion-equipos {
+  padding-top: clamp(3px, .45dvh, 7px);
+  padding-bottom: clamp(8px, 1.2dvh, 16px);
+}
+
+.presentacion-equipos-tv .grupo-presentacion-equipos {
+  margin: 0 0 clamp(3px, .45dvh, 6px);
+  font-size: clamp(1.35rem, 3.4dvh, 2.7rem);
+  line-height: .95;
+  font-weight: 950;
+  letter-spacing: .04em;
+  color: #34f5b5;
+  text-transform: none;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(52, 245, 181, .25);
+}
+
+.presentacion-equipos-tv .jugadores-presentacion-equipos {
+  width: min(1240px, 92vw);
+  gap: clamp(14px, 2vw, 34px);
+}
+
+.presentacion-equipos-tv .jugador-presentacion-equipos h3 {
+  margin: 0 0 clamp(2px, .3dvh, 4px);
+  font-size: clamp(2.2rem, 5.6dvh, 4.6rem);
+  line-height: .9;
+  font-weight: 950;
+  letter-spacing: .015em;
+  text-align: center;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, .45);
+}
+
+.presentacion-equipos-tv .imagen-presentacion-equipos,
+.presentacion-equipos-tv .imagen-presentacion-equipos.imagen-caricatura {
+  place-items: start center;
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .presentacion-equipos-tv .grupo-presentacion-equipos {
+    font-size: clamp(1.15rem, 2.8dvh, 2.1rem);
+  }
+
+  .presentacion-equipos-tv .jugador-presentacion-equipos h3 {
+    font-size: clamp(1.8rem, 4.6dvh, 3.6rem);
+  }
+}
