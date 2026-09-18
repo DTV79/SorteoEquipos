@@ -10432,3 +10432,20 @@ body:has(.presentacion-equipos-tv) {
     flex: none;
   }
 }
+
+
+/* Espera inicial de la presentación de equipos: negro absoluto durante 8 s. */
+.presentacion-equipos-tv.espera-inicial-presentacion-equipos {
+  display: block;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: #000;
+  overflow: hidden;
+  z-index: 99999;
+}
