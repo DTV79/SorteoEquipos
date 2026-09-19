@@ -51,6 +51,13 @@
 .evento-auditoria time{text-align:right}
 .detalle-evento{padding:0 14px 14px 60px;border-top:1px solid #263648}
 .detalle-evento>p{color:#9fb2c8}
+.resumen-cierre-auditoria{padding-top:14px}
+.resumen-cierre-auditoria>p{margin:0 0 11px;color:#b9c9da}
+.resumen-cierre-auditoria>div{display:grid;grid-template-columns:34px 46px 1fr;align-items:center;gap:8px;padding:11px 12px;border:1px solid #28415a;border-radius:10px;background:#111e2c}
+.resumen-cierre-auditoria>div+div{margin-top:8px}
+.resumen-cierre-auditoria>div>span{font-size:1.25rem;text-align:center}
+.resumen-cierre-auditoria>div>strong{color:#6ff3a5;font-size:1.35rem}
+.resumen-cierre-auditoria>div>p{margin:0;color:#d6e4f2}
 .cambio-evento{padding:12px 0;border-bottom:1px solid #203044}
 .cambio-evento:last-child{border-bottom:0}
 .cambio-evento>b{display:block;margin-bottom:7px;text-transform:capitalize}
