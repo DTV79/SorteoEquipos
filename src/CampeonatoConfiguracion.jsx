@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import './CampeonatoConfiguracion.css'
 
@@ -170,6 +170,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoPalas, setGenerandoPalas] = useState(false)
   const [errorPalas, setErrorPalas] = useState('')
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
+  const cambiosSinGuardarRef = useRef(false)
   const [accionSalidaPendiente, setAccionSalidaPendiente] = useState(null)
 
   useEffect(() => {
@@ -186,6 +187,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo cargar la configuración.' })
       } else {
         setConfig(normalizarConfiguracion(data.configuracion))
+        cambiosSinGuardarRef.current = false
         setHayCambiosSinGuardar(false)
       }
       setCargando(false)
@@ -197,16 +199,17 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   useEffect(() => {
     function avisarAntesDeCerrar(evento) {
-      if (!hayCambiosSinGuardar) return
+      if (!cambiosSinGuardarRef.current) return
       evento.preventDefault()
       evento.returnValue = ''
     }
 
     window.addEventListener('beforeunload', avisarAntesDeCerrar)
     return () => window.removeEventListener('beforeunload', avisarAntesDeCerrar)
-  }, [hayCambiosSinGuardar])
+  }, [])
 
   function marcarConfiguracionModificada() {
+    cambiosSinGuardarRef.current = true
     setHayCambiosSinGuardar(true)
     setPrevisualizacionPrimeraFase(null)
     setPrevisualizacionRegrupos(null)
@@ -332,6 +335,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     if (data.configuracion) {
       setConfig(normalizarConfiguracion(data.configuracion))
     }
+    cambiosSinGuardarRef.current = false
     setHayCambiosSinGuardar(false)
     setPrevisualizacionEliminatorias(null)
     setPrevisualizacionPalas(null)
@@ -346,7 +350,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   function solicitarSalida(accion) {
-    if (!hayCambiosSinGuardar) {
+    if (!cambiosSinGuardarRef.current) {
       accion()
       return
     }
@@ -356,6 +360,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   function salirSinGuardar() {
     const accion = accionSalidaPendiente
     setAccionSalidaPendiente(null)
+    cambiosSinGuardarRef.current = false
     setHayCambiosSinGuardar(false)
     accion?.()
   }
@@ -364,8 +369,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     const accion = accionSalidaPendiente
     const guardado = await guardarConfiguracion()
     if (!guardado) return
+    cambiosSinGuardarRef.current = false
+    setHayCambiosSinGuardar(false)
     setAccionSalidaPendiente(null)
-    accion?.()
+    window.setTimeout(() => accion?.(), 0)
   }
 
   async function previsualizarPrimeraFase() {
@@ -911,6 +918,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <h3 id="titulo-cambios-pendientes">Cambios pendientes</h3>
             <p>Has modificado la configuración, pero esos cambios todavía no se han guardado ni se aplican en la web pública.</p>
             <p>¿Quieres guardarlos antes de salir?</p>
+            {mensaje?.tipo === 'error' && <p className="error-modal-mantenimiento">{mensaje.texto}</p>}
             <div className="botones-modal-mantenimiento">
               <button type="button" className="boton boton-secundario" onClick={() => setAccionSalidaPendiente(null)} disabled={guardando}>Seguir editando</button>
               <button type="button" className="boton boton-advertencia" onClick={salirSinGuardar} disabled={guardando}>Salir sin guardar</button>
