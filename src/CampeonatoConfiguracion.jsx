@@ -807,21 +807,27 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               {errorRegrupos && <p className="error-generacion-primera-fase">{errorRegrupos}</p>}
               {previsualizacionRegrupos && (
                 <div className="resumen-generacion-primera-fase">
-                  <strong>{previsualizacionRegrupos.repetir_enfrentamientos ? 'Liguilla completa · se permiten repetidos' : 'Sin repetir enfrentamientos · con arrastre'}</strong>
+                  <strong>{previsualizacionRegrupos.ya_generados ? 'ReGrupos actuales · solo lectura' : (previsualizacionRegrupos.repetir_enfrentamientos ? 'Liguilla completa · se permiten repetidos' : 'Sin repetir enfrentamientos · con arrastre')}</strong>
+                  {previsualizacionRegrupos.mensaje && <span>{previsualizacionRegrupos.mensaje}</span>}
                   <span>Equipos: {previsualizacionRegrupos.equipos ?? 0}</span>
                   <span>ReGrupos: {previsualizacionRegrupos.numero_regrupos ?? 0}</span>
-                  <span>Partidos nuevos: {previsualizacionRegrupos.partidos_nuevos ?? 0}</span>
-                  <span>Partidos arrastrados: {previsualizacionRegrupos.partidos_arrastrados ?? 0}</span>
-                  {!previsualizacionRegrupos.repetir_enfrentamientos && <span>Puntos por victoria arrastrada: {config.puntos_partido_arrastrado}</span>}
+                  {previsualizacionRegrupos.ya_generados ? <>
+                    <span>Partidos existentes: {previsualizacionRegrupos.partidos_existentes ?? 0}</span>
+                    <span>Jugados: {previsualizacionRegrupos.partidos_jugados ?? 0} · Pendientes: {previsualizacionRegrupos.partidos_pendientes ?? 0}</span>
+                  </> : <>
+                    <span>Partidos nuevos: {previsualizacionRegrupos.partidos_nuevos ?? 0}</span>
+                    <span>Partidos arrastrados: {previsualizacionRegrupos.partidos_arrastrados ?? 0}</span>
+                    {!previsualizacionRegrupos.repetir_enfrentamientos && <span>Puntos por victoria arrastrada: {config.puntos_partido_arrastrado}</span>}
+                  </>}
                   {Array.isArray(previsualizacionRegrupos.regrupos) && previsualizacionRegrupos.regrupos.map((grupo) => (
                     <div className="detalle-regrupo" key={grupo.codigo}>
                       <b>{grupo.nombre || `ReGrupo ${grupo.codigo}`}</b>
                       <span>{Array.isArray(grupo.equipos) ? grupo.equipos.join(' · ') : ''}</span>
                     </div>
                   ))}
-                  <button type="button" className="boton boton-principal" onClick={generarRegrupos} disabled={generandoRegrupos}>
+                  {previsualizacionRegrupos.ya_generados ? <span className="aviso-configuracion-pendiente">Los ReGrupos ya están generados. Esta vista no modifica ni vuelve a crear partidos.</span> : <button type="button" className="boton boton-principal" onClick={generarRegrupos} disabled={generandoRegrupos || !previsualizacionRegrupos.puede_generar}>
                     {generandoRegrupos ? 'Generando…' : 'Confirmar y generar ReGrupos'}
-                  </button>
+                  </button>}
                 </div>
               )}
             </fieldset>
@@ -834,11 +840,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
-              <strong>{previsualizacionEliminatorias.ronda_inicial} · {previsualizacionEliminatorias.criterio_cruces}</strong>
+              <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
               <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
               {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
-              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido) => <div className="detalle-cruce-eliminatoria" key={partido.orden}><b>Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
-              <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>
+              {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
+              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+              {previsualizacionEliminatorias.ya_generadas ? <span className="aviso-configuracion-pendiente">Las eliminatorias ya están generadas. Esta vista no modifica ni vuelve a crear partidos.</span> : <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>}
             </div>}
           </fieldset>
 
