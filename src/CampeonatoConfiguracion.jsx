@@ -170,6 +170,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoPalas, setGenerandoPalas] = useState(false)
   const [errorPalas, setErrorPalas] = useState('')
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
+  const [accionSalidaPendiente, setAccionSalidaPendiente] = useState(null)
 
   useEffect(() => {
     let cancelado = false
@@ -193,6 +194,17 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     cargar()
     return () => { cancelado = true }
   }, [codigo])
+
+  useEffect(() => {
+    function avisarAntesDeCerrar(evento) {
+      if (!hayCambiosSinGuardar) return
+      evento.preventDefault()
+      evento.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', avisarAntesDeCerrar)
+    return () => window.removeEventListener('beforeunload', avisarAntesDeCerrar)
+  }, [hayCambiosSinGuardar])
 
   function marcarConfiguracionModificada() {
     setHayCambiosSinGuardar(true)
@@ -298,32 +310,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setMensaje({ tipo: 'correcto', texto: `Estado actualizado a «${data.estado_torneo || nuevoEstado}». La web pública ya leerá este estado.` })
   }
 
-  async function cambiarCriterioClasificacion(evento) {
-    const criterioAnterior = config.ordenar_clasificacion
-    const nuevoCriterio = evento.target.value
-    setConfig((actual) => ({ ...actual, ordenar_clasificacion: nuevoCriterio }))
-    setMensaje({ tipo: '', texto: `Guardando criterio ${nuevoCriterio} y recalculando la clasificación…` })
-
-    const { data, error } = await supabaseCampeonato.rpc(
-      'admin_guardar_criterio_clasificacion',
-      { p_codigo: codigo, p_criterio: nuevoCriterio }
-    )
-
-    if (error || data?.ok !== true) {
-      setConfig((actual) => ({ ...actual, ordenar_clasificacion: criterioAnterior }))
-      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo actualizar el criterio de clasificación.' })
-      return
-    }
-
-    const criterioConfirmado = data.criterio || nuevoCriterio
-    setConfig((actual) => ({ ...actual, ordenar_clasificacion: criterioConfirmado }))
-    setMensaje({ tipo: 'correcto', texto: `Criterio ${criterioConfirmado} guardado. La clasificación y la web pública ya utilizan esta opción.` })
-  }
-
-  async function guardar(evento) {
-    evento.preventDefault()
+  async function guardarConfiguracion() {
     setGuardando(true)
-    setMensaje({ tipo: '', texto: 'Guardando configuración…' })
+    setMensaje({ tipo: '', texto: 'Guardando configuración y recalculando la clasificación…' })
 
     const configuracionAGuardar = config.tipo_campeonato === 'Liguilla'
       ? { ...config, hay_regrupos: false, repetir_enfrentamientos_regrupos: false }
@@ -336,16 +325,47 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
     if (error || data?.ok !== true) {
       setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo guardar la configuración.' })
-    } else {
-      if (data.configuracion) {
-        setConfig(normalizarConfiguracion(data.configuracion))
-      }
-      setHayCambiosSinGuardar(false)
-      setPrevisualizacionEliminatorias(null)
-      setPrevisualizacionPalas(null)
-      setMensaje({ tipo: 'correcto', texto: 'Configuración guardada y comprobada en Supabase.' })
+      setGuardando(false)
+      return false
     }
+
+    if (data.configuracion) {
+      setConfig(normalizarConfiguracion(data.configuracion))
+    }
+    setHayCambiosSinGuardar(false)
+    setPrevisualizacionEliminatorias(null)
+    setPrevisualizacionPalas(null)
+    setMensaje({ tipo: 'correcto', texto: 'Configuración guardada, comprobada y clasificación recalculada en Supabase.' })
     setGuardando(false)
+    return true
+  }
+
+  async function guardar(evento) {
+    evento.preventDefault()
+    await guardarConfiguracion()
+  }
+
+  function solicitarSalida(accion) {
+    if (!hayCambiosSinGuardar) {
+      accion()
+      return
+    }
+    setAccionSalidaPendiente(() => accion)
+  }
+
+  function salirSinGuardar() {
+    const accion = accionSalidaPendiente
+    setAccionSalidaPendiente(null)
+    setHayCambiosSinGuardar(false)
+    accion?.()
+  }
+
+  async function guardarYSalir() {
+    const accion = accionSalidaPendiente
+    const guardado = await guardarConfiguracion()
+    if (!guardado) return
+    setAccionSalidaPendiente(null)
+    accion?.()
   }
 
   async function previsualizarPrimeraFase() {
@@ -512,9 +532,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <p className="descripcion-admin">{codigo} · Fuente maestra Supabase</p>
           </div>
           <div className="acciones-cabecera-configuracion">
-            <button type="button" className="boton boton-secundario" onClick={onVolver}>← Gestión</button>
-            <button type="button" className="boton boton-secundario" onClick={onResultados}>Partidos y resultados</button>
-            <button type="button" className="boton boton-secundario" onClick={onPanelPrincipal}>Panel principal</button>
+            <button type="button" className="boton boton-secundario" onClick={() => solicitarSalida(onVolver)}>← Gestión</button>
+            <button type="button" className="boton boton-secundario" onClick={() => solicitarSalida(onResultados)}>Partidos y resultados</button>
+            <button type="button" className="boton boton-secundario" onClick={() => solicitarSalida(onPanelPrincipal)}>Panel principal</button>
           </div>
         </header>
 
@@ -662,7 +682,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       onClick={() => setMostrarInfoClasificacion(true)}
                     >i</button>
                   </div>
-                  <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiarCriterioClasificacion} disabled={guardando}>
+                  <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiar}>
                     <option value="A">A · Puntos y rendimiento proporcional</option>
                     <option value="B">B · Puntos y mayor participación</option>
                     <option value="C">C · Eficacia real por partido</option>
@@ -882,6 +902,21 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               </div>
             </article>
           </section>
+        </div>
+      )}
+      {accionSalidaPendiente && (
+        <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !guardando && setAccionSalidaPendiente(null)}>
+          <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-cambios-pendientes" onMouseDown={(evento) => evento.stopPropagation()}>
+            <span className="icono-peligro">!</span>
+            <h3 id="titulo-cambios-pendientes">Cambios pendientes</h3>
+            <p>Has modificado la configuración, pero esos cambios todavía no se han guardado ni se aplican en la web pública.</p>
+            <p>¿Quieres guardarlos antes de salir?</p>
+            <div className="botones-modal-mantenimiento">
+              <button type="button" className="boton boton-secundario" onClick={() => setAccionSalidaPendiente(null)} disabled={guardando}>Seguir editando</button>
+              <button type="button" className="boton boton-advertencia" onClick={salirSinGuardar} disabled={guardando}>Salir sin guardar</button>
+              <button type="button" className="boton boton-principal" onClick={guardarYSalir} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar y salir'}</button>
+            </div>
+          </div>
         </div>
       )}
       {accionMantenimiento && (
