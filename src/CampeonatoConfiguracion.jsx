@@ -757,7 +757,17 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset className="mantenimiento-configuracion">
             <legend>Mantenimiento de la web</legend>
             <label className="interruptor-configuracion"><input type="checkbox" name="modo_mantenimiento" checked={config.modo_mantenimiento} onChange={cambiar} /><span>Ocultar la web al público</span></label>
-            {config.modo_mantenimiento && <div className="campos-texto-configuracion bloque-dependiente"><Campo etiqueta="Título"><input name="titulo_mantenimiento" value={config.titulo_mantenimiento || ''} onChange={cambiar} /></Campo><Campo etiqueta="Mensaje"><textarea name="mensaje_mantenimiento" value={config.mensaje_mantenimiento || ''} onChange={cambiar} rows="3" /></Campo></div>}
+            {config.modo_mantenimiento && (
+              <>
+                <div className="acceso-web-mantenimiento">
+                  <strong>Acceso privado durante el mantenimiento</strong>
+                  <span>Abre este enlace en cada navegador o dispositivo desde el que quieras seguir entrando en la web.</span>
+                  <a href="https://dtv79.github.io/Campeonato/?acceso=mantenimiento" target="_blank" rel="noreferrer">Abrir web con acceso de mantenimiento</a>
+                  <small>El permiso quedará guardado en ese navegador.</small>
+                </div>
+                <div className="campos-texto-configuracion bloque-dependiente"><Campo etiqueta="Título"><input name="titulo_mantenimiento" value={config.titulo_mantenimiento || ''} onChange={cambiar} /></Campo><Campo etiqueta="Mensaje"><textarea name="mensaje_mantenimiento" value={config.mensaje_mantenimiento || ''} onChange={cambiar} rows="3" /></Campo></div>
+              </>
+            )}
           </fieldset>
 
           <fieldset className="generacion-primera-fase">
