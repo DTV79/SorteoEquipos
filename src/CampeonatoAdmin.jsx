@@ -132,6 +132,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
     setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? []), ...descansosCopa])
     setJugadores(data.jugadores ?? [])
+    setMensajeGenerador((actual) => actual?.tipo === 'error' ? null : actual)
     setCargando(false)
   }, [])
 
@@ -491,6 +492,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
   async function generarPartidosGrupos() {
     setGenerandoGrupos(true)
+    setMensajeGenerador(null)
     const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
       'admin_generar_partidos_grupos',
       { p_codigo: codigo }
@@ -540,6 +542,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
   async function generarPartidosRegrupos() {
     setGenerandoGrupos(true)
+    setMensajeGenerador(null)
     const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
       'admin_generar_regrupos',
       { p_codigo: codigo }
