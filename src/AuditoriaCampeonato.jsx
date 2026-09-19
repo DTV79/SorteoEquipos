@@ -259,6 +259,8 @@ export default function AuditoriaCampeonato({ codigo, onVolver, onResultados, on
               <div className="lista-historial">
                 {eventosFiltrados.map((evento) => {
                   const cambios = cambiosEvento(evento)
+                  const esResumenCierre = evento.accion === 'CERRAR_CAMPEONATO'
+                  const resumenCierre = evento.datos_despues || {}
                   return (
                     <details className="evento-auditoria" key={evento.id}>
                       <summary>
@@ -270,7 +272,21 @@ export default function AuditoriaCampeonato({ codigo, onVolver, onResultados, on
                         <time dateTime={evento.creado_en}>{fechaHora(evento.creado_en)}</time>
                       </summary>
                       <div className="detalle-evento">
-                        {cambios.length === 0 ? (
+                        {esResumenCierre ? (
+                          <div className="resumen-cierre-auditoria">
+                            <p>Se guardaron correctamente:</p>
+                            <div>
+                              <span>🏆</span>
+                              <strong>{resumenCierre.ranking ?? 0}</strong>
+                              <p>jugadores en el Ranking Histórico</p>
+                            </div>
+                            <div>
+                              <span>📋</span>
+                              <strong>{resumenCierre.resultados ?? 0}</strong>
+                              <p>resultados finales de equipos</p>
+                            </div>
+                          </div>
+                        ) : cambios.length === 0 ? (
                           <p>No hay un desglose adicional disponible para esta acción.</p>
                         ) : cambios.map((cambio) => (
                           <div className="cambio-evento" key={cambio.campo}>
