@@ -298,6 +298,28 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setMensaje({ tipo: 'correcto', texto: `Estado actualizado a «${data.estado_torneo || nuevoEstado}». La web pública ya leerá este estado.` })
   }
 
+  async function cambiarCriterioClasificacion(evento) {
+    const criterioAnterior = config.ordenar_clasificacion
+    const nuevoCriterio = evento.target.value
+    setConfig((actual) => ({ ...actual, ordenar_clasificacion: nuevoCriterio }))
+    setMensaje({ tipo: '', texto: `Guardando criterio ${nuevoCriterio} y recalculando la clasificación…` })
+
+    const { data, error } = await supabaseCampeonato.rpc(
+      'admin_guardar_criterio_clasificacion',
+      { p_codigo: codigo, p_criterio: nuevoCriterio }
+    )
+
+    if (error || data?.ok !== true) {
+      setConfig((actual) => ({ ...actual, ordenar_clasificacion: criterioAnterior }))
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo actualizar el criterio de clasificación.' })
+      return
+    }
+
+    const criterioConfirmado = data.criterio || nuevoCriterio
+    setConfig((actual) => ({ ...actual, ordenar_clasificacion: criterioConfirmado }))
+    setMensaje({ tipo: 'correcto', texto: `Criterio ${criterioConfirmado} guardado. La clasificación y la web pública ya utilizan esta opción.` })
+  }
+
   async function guardar(evento) {
     evento.preventDefault()
     setGuardando(true)
@@ -640,7 +662,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       onClick={() => setMostrarInfoClasificacion(true)}
                     >i</button>
                   </div>
-                  <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiar}>
+                  <select name="ordenar_clasificacion" value={config.ordenar_clasificacion} onChange={cambiarCriterioClasificacion} disabled={guardando}>
                     <option value="A">A · Puntos y rendimiento proporcional</option>
                     <option value="B">B · Puntos y mayor participación</option>
                     <option value="C">C · Eficacia real por partido</option>
@@ -833,16 +855,31 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               <strong>A · Puntos y rendimiento proporcional</strong>
               <p>Prioriza los puntos totales y, en caso de empate, la eficacia por partido. Compensa mejor a los equipos que hayan descansado.</p>
               <ol><li>Puntos totales</li><li>Coeficiente de puntos (puntos ÷ partidos jugados)</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Partidos jugados</li><li>Sorteo</li></ol>
+              <div className="ejemplo-criterio-clasificacion">
+                <b>Ejemplo</b>
+                <p>Equipo Azul: 6 puntos en 3 partidos = 2,00 por partido.<br />Equipo Verde: 6 puntos en 4 partidos = 1,50 por partido.</p>
+                <span>Queda antes el Equipo Azul: tienen los mismos puntos, pero mejor promedio.</span>
+              </div>
             </article>
             <article>
               <strong>B · Puntos y mayor participación</strong>
               <p>Con los mismos puntos, coloca antes al equipo que haya disputado más partidos. Premia la constancia y la participación.</p>
               <ol><li>Puntos totales</li><li>Partidos jugados, mayor número primero</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Sorteo</li></ol>
+              <div className="ejemplo-criterio-clasificacion">
+                <b>Ejemplo</b>
+                <p>Equipo Azul: 6 puntos en 3 partidos.<br />Equipo Verde: 6 puntos en 4 partidos.</p>
+                <span>Queda antes el Equipo Verde: tienen los mismos puntos y ha jugado más partidos.</span>
+              </div>
             </article>
             <article>
               <strong>C · Eficacia real por partido</strong>
               <p>El criterio principal es el promedio de puntos por partido. Es el más independiente del número de jornadas disputadas.</p>
               <ol><li>Coeficiente de puntos (puntos ÷ partidos jugados)</li><li>Puntos totales</li><li>Diferencia de sets</li><li>Sets ganados</li><li>Diferencia de puntos</li><li>Puntos ganados</li><li>Partidos jugados</li><li>Sorteo</li></ol>
+              <div className="ejemplo-criterio-clasificacion">
+                <b>Ejemplo</b>
+                <p>Equipo Azul: 6 puntos en 3 partidos = 2,00 por partido.<br />Equipo Verde: 7 puntos en 4 partidos = 1,75 por partido.</p>
+                <span>Queda antes el Equipo Azul: en C manda primero la eficacia, aunque tenga menos puntos totales.</span>
+              </div>
             </article>
           </section>
         </div>
