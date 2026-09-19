@@ -45,3 +45,6 @@
 .info-criterio-texto { display: none; position: absolute; z-index: 50; top: calc(100% + .55rem); left: 50%; transform: translateX(-50%); width: min(320px, 78vw); padding: .8rem .9rem; border-radius: .7rem; background: #111827; color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.28); font-size: .82rem; font-weight: 400; line-height: 1.35; text-align: left; white-space: normal; }
 .info-criterio:hover .info-criterio-texto, .info-criterio:focus .info-criterio-texto, .info-criterio:focus-within .info-criterio-texto { display: block; }
 @media (max-width: 600px) { .info-criterio-texto { left: 0; transform: none; width: min(280px, 76vw); } }
+
+
+.acceso-web-mantenimiento{display:grid;gap:8px;margin-top:14px;padding:14px 16px;border:1px solid #92400e;border-radius:12px;background:#211507;color:#cbd5e1}.acceso-web-mantenimiento strong{color:#fde68a}.acceso-web-mantenimiento span{font-size:12px;line-height:1.5}.acceso-web-mantenimiento a{display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid #f59e0b;border-radius:10px;background:#422006;color:#fde68a;font-size:13px;font-weight:900;text-align:center;text-decoration:none}.acceso-web-mantenimiento a:hover{background:#5a2b07}.acceso-web-mantenimiento small{color:#94a3b8;font-size:11px}
