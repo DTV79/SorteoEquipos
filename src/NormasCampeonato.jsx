@@ -93,6 +93,7 @@ export default function NormasCampeonato({
   const [mensaje, setMensaje] = useState('')
   const [filtro, setFiltro] = useState('')
   const [seccionActiva, setSeccionActiva] = useState('todas')
+  const [elementoAEliminar, setElementoAEliminar] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -212,13 +213,16 @@ export default function NormasCampeonato({
     }))
   }
 
-  function eliminarElemento(id) {
-    if (!window.confirm('¿Quieres eliminar este elemento del reglamento?')) return
+  function eliminarElemento() {
+    if (!elementoAEliminar) return
 
+    const id = elementoAEliminar.id
     setContenido((actual) => ({
       ...actual,
       elementos: actual.elementos.filter((elemento) => elemento.id !== id),
     }))
+    setElementoAEliminar(null)
+    setMensaje('')
   }
 
   async function guardar() {
@@ -350,7 +354,7 @@ export default function NormasCampeonato({
                       <button
                         type="button"
                         className="boton-eliminar-norma"
-                        onClick={() => eliminarElemento(elemento.id)}
+                        onClick={() => setElementoAEliminar(elemento)}
                         aria-label={`Eliminar ${elemento.id}`}
                       >
                         Eliminar
@@ -456,6 +460,40 @@ export default function NormasCampeonato({
           </>
         ) : null}
       </section>
+
+      {elementoAEliminar && (
+        <div className="modal-fondo" role="presentation" onMouseDown={() => setElementoAEliminar(null)}>
+          <div
+            className="modal-confirmacion modal-anular-resultado"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-eliminar-norma"
+            onMouseDown={(evento) => evento.stopPropagation()}
+          >
+            <span className="icono-modal-anular">🗑</span>
+            <h3 id="titulo-eliminar-norma">¿Eliminar esta norma?</h3>
+            <p><strong>{elementoAEliminar.id}</strong> · {elementoAEliminar.seccion}</p>
+            <p>Se eliminará este elemento del reglamento.</p>
+            <p className="nota-modal-anular">El cambio no se publicará hasta que pulses «Guardar y publicar».</p>
+            <div className="modal-acciones">
+              <button
+                type="button"
+                className="boton boton-secundario"
+                onClick={() => setElementoAEliminar(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="boton boton-peligro"
+                onClick={eliminarElemento}
+              >
+                Sí, eliminar norma
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
