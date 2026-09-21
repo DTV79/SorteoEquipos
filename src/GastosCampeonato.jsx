@@ -20,6 +20,12 @@ function fechaHoy() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function formatearFechaVisible(valor) {
+  const coincidencia = String(valor || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!coincidencia) return valor || ''
+  return `${coincidencia[3]}-${coincidencia[2]}-${coincidencia[1]}`
+}
+
 function etiquetaTipoPersona(tipo) {
   return {
     jugador: 'Jugador',
@@ -1335,7 +1341,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                       </span>
                       <strong>{item.concepto}</strong>
                       <small>
-                        {[item.fecha, item.actividad, item.categoria]
+                        {[formatearFechaVisible(item.fecha), item.actividad, item.categoria]
                           .filter(Boolean)
                           .join(' · ')}
                       </small>
@@ -1583,7 +1589,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                         </span>
                         <strong>{item.concepto}</strong>
                         <small>
-                          {[item.fecha, item.actividad, item.categoria]
+                          {[formatearFechaVisible(item.fecha), item.actividad, item.categoria]
                             .filter(Boolean)
                             .join(' · ')}
                         </small>
