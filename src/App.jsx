@@ -398,7 +398,7 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
   const progresoFundidoFinal = control?.presentacion_equipos_automatica
     ? Math.max(0, Math.min(1, (tiempoAutomaticoTranscurrido - inicioFundidoFinal) / duracionFundidoFinal))
     : 0
-  const musicaInicialActiva = reloj >= esperaInicialHastaRef.current - 4000
+  const musicaInicialActiva = reloj >= esperaInicialHastaRef.current - 8000
   const musicaUrl = datos.presentacion_equipos_musica_path
     ? supabase.storage.from('musica-sorteos').getPublicUrl(datos.presentacion_equipos_musica_path).data.publicUrl
     : ''
