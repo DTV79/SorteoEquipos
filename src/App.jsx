@@ -340,10 +340,16 @@ function CoronaEquipo() {
 }
 
 function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = false }) {
+  const duracionEsperaInicial = limitarNumero(
+    datos?.presentacion_equipos_espera_inicial_ms,
+    0,
+    20000,
+    8000,
+  )
   const [sonidoActivo] = useState(() => Boolean(sonidoActivoInicial))
   const [reloj, setReloj] = useState(Date.now())
-  const [esperaInicialActiva, setEsperaInicialActiva] = useState(true)
-  const esperaInicialHastaRef = useRef(Date.now() + 8000)
+  const [esperaInicialActiva, setEsperaInicialActiva] = useState(duracionEsperaInicial > 0)
+  const esperaInicialHastaRef = useRef(Date.now() + duracionEsperaInicial)
   const inicioAutomaticoAjustadoRef = useRef(null)
   const audioRef = useRef(null)
   const equiposOriginales = datos?.equipos ?? []
@@ -370,9 +376,9 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
     : 0
 
   /*
-  Los primeros 8 segundos de la presentación de cuerpos enteros son
-  negros. Si se activa Automático durante esa espera, su contador debe
-  empezar cuando termina el negro, no cuando se pulsó el botón.
+  La presentación comienza con los segundos de pantalla negra configurados.
+  Si se activa Automático durante esa espera, su contador debe empezar cuando
+  termina el negro, no cuando se pulsó el botón.
   */
   if (
     control?.presentacion_equipos_automatica &&
@@ -398,7 +404,7 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
   const progresoFundidoFinal = control?.presentacion_equipos_automatica
     ? Math.max(0, Math.min(1, (tiempoAutomaticoTranscurrido - inicioFundidoFinal) / duracionFundidoFinal))
     : 0
-  const musicaInicialActiva = reloj >= esperaInicialHastaRef.current - 8000
+  const musicaInicialActiva = true
   const musicaUrl = datos.presentacion_equipos_musica_path
     ? supabase.storage.from('musica-sorteos').getPublicUrl(datos.presentacion_equipos_musica_path).data.publicUrl
     : ''
@@ -3007,6 +3013,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
           presentacion_equipos_musica_nombre,
           presentacion_equipos_musica_volumen,
           presentacion_equipos_duracion_ms,
+          presentacion_equipos_espera_inicial_ms,
           estado,
           creado_en
         `)
@@ -17827,6 +17834,13 @@ if (
                 <option value="5000">5 segundos</option><option value="8000">8 segundos</option><option value="10000">10 segundos</option><option value="15000">15 segundos</option><option value="20000">20 segundos</option>
               </select>
             </label>
+            <label><span>Pantalla negra inicial</span>
+              <select value={String(sorteoSeleccionado.presentacion_equipos_espera_inicial_ms ?? 8000)} onChange={(e) => guardarOpcionPresentacionEquipos({ presentacion_equipos_espera_inicial_ms: Number(e.target.value) }, '✓ Pantalla negra inicial guardada.')}>
+                {Array.from({ length: 21 }, (_, segundos) => (
+                  <option key={segundos} value={segundos * 1000}>{segundos} {segundos === 1 ? 'segundo' : 'segundos'}</option>
+                ))}
+              </select>
+            </label>
             <label><span>Volumen: {sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}%</span>
               <input type="range" min="0" max="100" value={sorteoSeleccionado.presentacion_equipos_musica_volumen ?? 65}
                 onChange={(e) => {
@@ -19097,6 +19111,23 @@ if (
                       <option value="10000">10 segundos</option>
                       <option value="15000">15 segundos</option>
                       <option value="20000">20 segundos</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Pantalla negra inicial</span>
+                    <select
+                      value={String(sorteoSeleccionado.presentacion_equipos_espera_inicial_ms ?? 8000)}
+                      onChange={(evento) => guardarOpcionPresentacionEquipos(
+                        { presentacion_equipos_espera_inicial_ms: Number(evento.target.value) },
+                        '✓ Pantalla negra inicial guardada.'
+                      )}
+                    >
+                      {Array.from({ length: 21 }, (_, segundos) => (
+                        <option key={segundos} value={segundos * 1000}>
+                          {segundos} {segundos === 1 ? 'segundo' : 'segundos'}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
