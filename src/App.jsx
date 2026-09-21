@@ -389,12 +389,35 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
     ? Math.max(0, Math.floor((reloj - inicioAutomatico) / duracion))
     : 0
   const indiceEquipo = Math.max(0, Math.min(equipos.length - 1, indiceBase + avanceAutomatico))
+  const duracionFundidoFinal = 2000
+  const equiposPendientes = Math.max(1, equipos.length - Math.max(0, indiceBase))
+  const tiempoAutomaticoTranscurrido = control?.presentacion_equipos_automatica && inicioAutomatico
+    ? Math.max(0, reloj - inicioAutomatico)
+    : 0
+  const inicioFundidoFinal = equiposPendientes * duracion
+  const progresoFundidoFinal = control?.presentacion_equipos_automatica
+    ? Math.max(0, Math.min(1, (tiempoAutomaticoTranscurrido - inicioFundidoFinal) / duracionFundidoFinal))
+    : 0
 
   useEffect(() => {
-    if (!sonidoActivo || !audioRef.current) return
-    audioRef.current.volume = limitarNumero(datos?.presentacion_equipos_musica_volumen, 0, 100, 65) / 100
+    if (!sonidoActivo || esperaInicialActiva || !audioRef.current) return
+
+    const volumenConfigurado = limitarNumero(
+      datos?.presentacion_equipos_musica_volumen,
+      0,
+      100,
+      65,
+    ) / 100
+
+    audioRef.current.volume = volumenConfigurado * (1 - progresoFundidoFinal)
+
+    if (progresoFundidoFinal >= 1) {
+      audioRef.current.pause()
+      return
+    }
+
     audioRef.current.play().catch(() => {})
-  }, [sonidoActivo, datos])
+  }, [sonidoActivo, datos, esperaInicialActiva, progresoFundidoFinal])
 
   if (equipos.length === 0) {
     return <main className="presentacion-equipos-tv estado-presentacion-equipos">No hay equipos para presentar.</main>
@@ -437,6 +460,17 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
         </div>
       </section>
 
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: '#000',
+          opacity: progresoFundidoFinal,
+          pointerEvents: progresoFundidoFinal > 0 ? 'auto' : 'none',
+        }}
+      />
     </main>
   )
 }
