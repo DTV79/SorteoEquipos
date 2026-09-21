@@ -464,7 +464,7 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
                 <div className={`imagen-presentacion-equipos ${miembro.caricatura_path ? 'imagen-caricatura' : ''}`}>
                   {imagen ? <img src={supabase.storage.from('jugadores').getPublicUrl(imagen).data.publicUrl} alt={miembro.nombre} /> : <span>{String(miembro.nombre || '?').slice(0, 1)}</span>}
                 </div>
-                {datos.mostrar_bombos_publico !== false && <small>{miembro.bombo || 'Jugador'}</small>}
+                {datos.mostrar_bombos_publico === true && <small>{miembro.bombo || 'Jugador'}</small>}
               </article>
             )
           })}
@@ -11851,7 +11851,7 @@ if (
                             )}
                           </div>
 
-                          {presentacionPublica.mostrar_bombos_publico !== false && (
+                          {presentacionPublica.mostrar_bombos_publico === true && (
                             <small>
                               {miembro.bombo
                                 ? String(miembro.bombo).toUpperCase()
@@ -12129,7 +12129,7 @@ if (
                                             {miembro.nombre}
                                           </strong>
 
-                                          {presentacionPublica.mostrar_bombos_publico !== false && (
+                                          {presentacionPublica.mostrar_bombos_publico === true && (
                                             <small>
                                               {miembro.bombo ?? 'Jugador'}
                                             </small>
@@ -16983,7 +16983,7 @@ if (
         <label className="opcion-visibilidad-bombos">
           <input
             type="checkbox"
-            checked={sorteoSeleccionado.mostrar_bombos_publico !== false}
+            checked={sorteoSeleccionado.mostrar_bombos_publico === true}
             onChange={(evento) => guardarOpcionPresentacionEquipos(
               { mostrar_bombos_publico: evento.target.checked },
               evento.target.checked
@@ -19134,7 +19134,7 @@ if (
                   <label className="check-config-presentacion-equipos">
                     <input
                       type="checkbox"
-                      checked={sorteoSeleccionado.mostrar_bombos_publico !== false}
+                      checked={sorteoSeleccionado.mostrar_bombos_publico === true}
                       onChange={(evento) => guardarOpcionPresentacionEquipos(
                         { mostrar_bombos_publico: evento.target.checked },
                         evento.target.checked
