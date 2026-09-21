@@ -398,9 +398,13 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
   const progresoFundidoFinal = control?.presentacion_equipos_automatica
     ? Math.max(0, Math.min(1, (tiempoAutomaticoTranscurrido - inicioFundidoFinal) / duracionFundidoFinal))
     : 0
+  const musicaInicialActiva = reloj >= esperaInicialHastaRef.current - 4000
+  const musicaUrl = datos.presentacion_equipos_musica_path
+    ? supabase.storage.from('musica-sorteos').getPublicUrl(datos.presentacion_equipos_musica_path).data.publicUrl
+    : ''
 
   useEffect(() => {
-    if (!sonidoActivo || esperaInicialActiva || !audioRef.current) return
+    if (!sonidoActivo || !musicaInicialActiva || !audioRef.current) return
 
     const volumenConfigurado = limitarNumero(
       datos?.presentacion_equipos_musica_volumen,
@@ -417,21 +421,22 @@ function PresentacionEquiposPublica({ datos, control, sonidoActivoInicial = fals
     }
 
     audioRef.current.play().catch(() => {})
-  }, [sonidoActivo, datos, esperaInicialActiva, progresoFundidoFinal])
+  }, [sonidoActivo, datos, musicaInicialActiva, progresoFundidoFinal])
 
   if (equipos.length === 0) {
     return <main className="presentacion-equipos-tv estado-presentacion-equipos">No hay equipos para presentar.</main>
   }
 
   if (esperaInicialActiva && reloj < esperaInicialHastaRef.current) {
-    return <main className="presentacion-equipos-tv espera-inicial-presentacion-equipos" aria-label="Preparando presentación" />
+    return (
+      <main className="presentacion-equipos-tv espera-inicial-presentacion-equipos" aria-label="Preparando presentación">
+        {musicaUrl && musicaInicialActiva && <audio ref={audioRef} src={musicaUrl} loop preload="auto" />}
+      </main>
+    )
   }
 
   const equipo = equipos[indiceEquipo]
   const miembros = Array.isArray(equipo?.miembros) ? equipo.miembros : []
-  const musicaUrl = datos.presentacion_equipos_musica_path
-    ? supabase.storage.from('musica-sorteos').getPublicUrl(datos.presentacion_equipos_musica_path).data.publicUrl
-    : ''
 
   return (
     <main className="presentacion-equipos-tv">
