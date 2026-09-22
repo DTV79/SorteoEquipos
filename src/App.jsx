@@ -2168,8 +2168,29 @@ const [equipoCompletoPublico, setEquipoCompletoPublico] =
 
 const [sonidoPublicoActivo, setSonidoPublicoActivo] =
   useState(false)
+
+/*
+La duración viaja también en la URL para que el primer fotograma de la
+ventana pública ya sea negro, sin esperar a consultar Supabase.
+*/
+const [duracionNegroInicialUrl] = useState(() => {
+  const parametros =
+    new URLSearchParams(window.location.search)
+
+  return limitarNumero(
+    parametros.get('negro'),
+    0,
+    120000,
+    0
+  )
+})
+
 const [negroInicialEsperaPublica, setNegroInicialEsperaPublica] =
-  useState(false)
+  useState(
+    () =>
+      modoPublico &&
+      duracionNegroInicialUrl > 0
+  )
 const [transicionInicioSorteoPublica, setTransicionInicioSorteoPublica] =
   useState(false)
 
@@ -11175,6 +11196,18 @@ function abrirPantallaPublica() {
     'ejecucion',
     ejecucionId
   )
+  url.searchParams.set(
+    'negro',
+    String(
+      limitarNumero(
+        musicaPresentacion.esperaNegroInicialMs ??
+          sorteoSeleccionado.musica_espera_negro_inicial_ms,
+        0,
+        120000,
+        0
+      )
+    )
+  )
 
   const anchoVentana = Math.max(800, window.screen.availWidth || window.innerWidth)
   const altoVentana = Math.max(600, window.screen.availHeight || window.innerHeight)
@@ -11528,11 +11561,17 @@ if (
   return (
     <main className="pantalla-publica-tv">
       <div
-        aria-hidden="true"
+        aria-hidden={
+          !negroInicialEsperaPublica ||
+          sonidoPublicoActivo
+        }
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: 30000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           background: '#000',
           opacity:
             negroInicialEsperaPublica ||
@@ -11546,7 +11585,22 @@ if (
               : 'none',
           transition: 'opacity 1200ms ease-in-out',
         }}
-      />
+      >
+        {negroInicialEsperaPublica &&
+          !sonidoPublicoActivo && (
+            <button
+              type="button"
+              className="boton-preparar-audio-negro"
+              onClick={alternarSonidoPublico}
+            >
+              <span aria-hidden="true">🔊</span>
+              <strong>Preparar música y sonido</strong>
+              <small>
+                Pulsa una vez para iniciar la espera
+              </small>
+            </button>
+          )}
+      </div>
 
       <header className="cabecera-publica-tv">
         <div>
