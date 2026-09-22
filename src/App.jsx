@@ -11561,10 +11561,7 @@ if (
   return (
     <main className="pantalla-publica-tv">
       <div
-        aria-hidden={
-          !negroInicialEsperaPublica ||
-          sonidoPublicoActivo
-        }
+        aria-hidden={!negroInicialEsperaPublica}
         style={{
           position: 'fixed',
           inset: 0,
@@ -11586,20 +11583,35 @@ if (
           transition: 'opacity 1200ms ease-in-out',
         }}
       >
-        {negroInicialEsperaPublica &&
-          !sonidoPublicoActivo && (
+        {negroInicialEsperaPublica && (
+          <div className="acciones-negro-inicial">
+            {!sonidoPublicoActivo && (
+              <button
+                type="button"
+                className="boton-preparar-audio-negro"
+                onClick={alternarSonidoPublico}
+              >
+                <span aria-hidden="true">🔊</span>
+                <strong>Preparar música y sonido</strong>
+                <small>
+                  Pulsa una vez para iniciar la espera
+                </small>
+              </button>
+            )}
+
             <button
               type="button"
-              className="boton-preparar-audio-negro"
-              onClick={alternarSonidoPublico}
+              className="boton-preparar-audio-negro boton-pantalla-completa-negro"
+              onClick={activarPantallaCompletaPublica}
             >
-              <span aria-hidden="true">🔊</span>
-              <strong>Preparar música y sonido</strong>
+              <span aria-hidden="true">⛶</span>
+              <strong>Pantalla completa</strong>
               <small>
-                Pulsa una vez para iniciar la espera
+                Ocultar las barras del navegador
               </small>
             </button>
-          )}
+          </div>
+        )}
       </div>
 
       <header className="cabecera-publica-tv">
