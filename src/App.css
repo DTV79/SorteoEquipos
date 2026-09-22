@@ -2634,6 +2634,50 @@ h1 {
   color: #bbf7d0;
 }
 
+.boton-preparar-audio-negro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 18px 24px;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 15px;
+  background: rgba(20, 14, 3, 0.88);
+  color: #f9fafb;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 45px rgba(245, 158, 11, 0.08);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    background 180ms ease;
+}
+
+.boton-preparar-audio-negro:hover {
+  border-color: #f59e0b;
+  background: rgba(33, 24, 7, 0.96);
+  transform: translateY(-2px);
+}
+
+.boton-preparar-audio-negro > span {
+  margin-bottom: 2px;
+  font-size: 25px;
+}
+
+.boton-preparar-audio-negro strong,
+.boton-preparar-audio-negro small {
+  display: block;
+}
+
+.boton-preparar-audio-negro strong {
+  font-size: 14px;
+}
+
+.boton-preparar-audio-negro small {
+  color: #d6b86e;
+  font-size: 11px;
+}
+
 .aviso-activar-sonido-tv {
   position: relative;
   z-index: 3;
