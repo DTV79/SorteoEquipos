@@ -851,6 +851,14 @@ function obtenerConfigMusicaPresentacion(origen = null) {
         65
       ),
 
+    esperaNegroInicialMs:
+      limitarNumero(
+        datos.musica_espera_negro_inicial_ms,
+        0,
+        120000,
+        60000
+      ),
+
     sorteoPath:
       datos.musica_sorteo_path ??
       null,
@@ -1646,6 +1654,14 @@ async function guardarVolumenesMusicaPresentacion() {
         65
       ),
 
+    musica_espera_negro_inicial_ms:
+      limitarNumero(
+        musicaPresentacion.esperaNegroInicialMs,
+        0,
+        120000,
+        60000
+      ),
+
     musica_sorteo_volumen:
       limitarNumero(
         musicaPresentacion.sorteoVolumen,
@@ -1726,6 +1742,8 @@ async function guardarVolumenesMusicaPresentacion() {
         ...actual,
         esperaVolumen:
           cambios.musica_espera_volumen,
+        esperaNegroInicialMs:
+          cambios.musica_espera_negro_inicial_ms,
         sorteoVolumen:
           cambios.musica_sorteo_volumen,
         jugadorVolumen:
@@ -2150,6 +2168,10 @@ const [equipoCompletoPublico, setEquipoCompletoPublico] =
 
 const [sonidoPublicoActivo, setSonidoPublicoActivo] =
   useState(false)
+const [negroInicialEsperaPublica, setNegroInicialEsperaPublica] =
+  useState(false)
+const [transicionInicioSorteoPublica, setTransicionInicioSorteoPublica] =
+  useState(false)
 
 const [
   musicaPublica,
@@ -2220,6 +2242,9 @@ const blobUrlSorteoPublicoRef = useRef(null)
 const pistaMusicaActivaPublicoRef = useRef(null)
 const temporizadorFadeMusicaPublicoRef = useRef(null)
 const temporizadorDuckingMusicaPublicoRef = useRef(null)
+const temporizadorNegroInicialPublicoRef = useRef(null)
+const temporizadorTransicionSorteoPublicoRef = useRef(null)
+const estadoMusicaAnteriorPublicoRef = useRef('')
 
 const audioEfectosPublicosRef = useRef({
   jugador: null,
@@ -2446,8 +2471,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
 
   /*
   Al cambiar el estado remoto de GENERADA a EN_CURSO,
-  la TV hace automáticamente el fundido entre la música
-  de espera y la música principal.
+  la TV coordina el fundido musical con una cortina negra suave.
   */
   useEffect(() => {
     if (
@@ -2456,6 +2480,41 @@ const temporizadorRepeticionAdminRef = useRef(null)
     ) {
       return
     }
+
+    const estadoActual = String(
+      presentacionPublica?.estado ?? ''
+    ).toLowerCase()
+
+    const estadoAnterior =
+      estadoMusicaAnteriorPublicoRef.current
+
+    if (
+      estadoAnterior === 'generada' &&
+      estadoActual === 'en_curso'
+    ) {
+      setNegroInicialEsperaPublica(false)
+      setTransicionInicioSorteoPublica(true)
+
+      if (temporizadorNegroInicialPublicoRef.current) {
+        window.clearTimeout(temporizadorNegroInicialPublicoRef.current)
+        temporizadorNegroInicialPublicoRef.current = null
+      }
+
+      if (temporizadorTransicionSorteoPublicoRef.current) {
+        window.clearTimeout(temporizadorTransicionSorteoPublicoRef.current)
+      }
+
+      temporizadorTransicionSorteoPublicoRef.current = window.setTimeout(
+        () => {
+          setTransicionInicioSorteoPublica(false)
+          temporizadorTransicionSorteoPublicoRef.current = null
+        },
+        1500
+      )
+    }
+
+    estadoMusicaAnteriorPublicoRef.current =
+      estadoActual
 
     sincronizarMusicaPublica()
   }, [
@@ -2993,6 +3052,7 @@ const temporizadorRepeticionAdminRef = useRef(null)
           musica_espera_path,
           musica_espera_nombre,
           musica_espera_volumen,
+          musica_espera_negro_inicial_ms,
           musica_sorteo_path,
           musica_sorteo_nombre,
           musica_sorteo_volumen,
@@ -10132,8 +10192,8 @@ async function cambiarPistaMusicaPublica(
     return
   }
 
-  const duracionMs = 1200
-  const pasos = 24
+  const duracionMs = 3000
+  const pasos = 60
   const intervaloMs =
     duracionMs / pasos
 
@@ -10234,10 +10294,51 @@ async function sincronizarMusicaPublica(
 }
 
 
+function iniciarNegroInicialEsperaPublica() {
+  if (temporizadorNegroInicialPublicoRef.current) {
+    window.clearTimeout(temporizadorNegroInicialPublicoRef.current)
+    temporizadorNegroInicialPublicoRef.current = null
+  }
+
+  const estado = String(
+    presentacionPublica?.estado ?? ''
+  ).toLowerCase()
+
+  const duracionMs = limitarNumero(
+    musicaPublicaRef.current?.musica_espera_negro_inicial_ms,
+    0,
+    120000,
+    60000
+  )
+
+  if (estado !== 'generada' || duracionMs <= 0) {
+    setNegroInicialEsperaPublica(false)
+    return
+  }
+
+  setNegroInicialEsperaPublica(true)
+
+  temporizadorNegroInicialPublicoRef.current = window.setTimeout(
+    () => {
+      setNegroInicialEsperaPublica(false)
+      temporizadorNegroInicialPublicoRef.current = null
+    },
+    duracionMs
+  )
+}
+
+
 async function alternarSonidoPublico() {
   if (sonidoPublicoActivoRef.current) {
     sonidoPublicoActivoRef.current = false
     setSonidoPublicoActivo(false)
+    setNegroInicialEsperaPublica(false)
+
+    if (temporizadorNegroInicialPublicoRef.current) {
+      window.clearTimeout(temporizadorNegroInicialPublicoRef.current)
+      temporizadorNegroInicialPublicoRef.current = null
+    }
+
     detenerMusicaPublica()
     return
   }
@@ -10291,6 +10392,8 @@ async function alternarSonidoPublico() {
       inmediato: true,
       reiniciar: true,
     })
+
+    iniciarNegroInicialEsperaPublica()
 
     /*
     Al preparar el audio no reproducimos ningún efecto.
@@ -11424,6 +11527,26 @@ if (
 
   return (
     <main className="pantalla-publica-tv">
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 30000,
+          background: '#000',
+          opacity:
+            negroInicialEsperaPublica ||
+            transicionInicioSorteoPublica
+              ? 1
+              : 0,
+          pointerEvents:
+            negroInicialEsperaPublica ||
+            transicionInicioSorteoPublica
+              ? 'auto'
+              : 'none',
+          transition: 'opacity 1200ms ease-in-out',
+        }}
+      />
 
       <header className="cabecera-publica-tv">
         <div>
@@ -17762,6 +17885,31 @@ if (
                       </button>
                     )}
                   </div>
+
+                  {pista.tipo === 'espera' && (
+                    <label className="tiempo-negro-musica-espera">
+                      <span>Fondo negro inicial en la TV</span>
+                      <select
+                        value={String(musicaPresentacion.esperaNegroInicialMs ?? 60000)}
+                        onChange={(e) => setMusicaPresentacion(
+                          (actual) => ({
+                            ...actual,
+                            esperaNegroInicialMs: Number(e.target.value),
+                          })
+                        )}
+                      >
+                        <option value="0">Sin espera en negro</option>
+                        <option value="10000">10 segundos</option>
+                        <option value="20000">20 segundos</option>
+                        <option value="30000">30 segundos</option>
+                        <option value="45000">45 segundos</option>
+                        <option value="60000">1 minuto</option>
+                        <option value="90000">1 minuto y 30 segundos</option>
+                        <option value="120000">2 minutos</option>
+                      </select>
+                      <small>La música comenzará a sonar mientras la pantalla permanece negra.</small>
+                    </label>
+                  )}
 
                   <div className="volumen-pista-musica">
                     <div>
