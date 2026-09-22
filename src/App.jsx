@@ -884,7 +884,7 @@ function obtenerConfigMusicaPresentacion(origen = null) {
       null,
 
     jugadorActivo:
-      datos.efecto_jugador_activo !== false,
+      datos.efecto_jugador_activo === true,
 
     jugadorVolumen:
       limitarNumero(
@@ -903,7 +903,7 @@ function obtenerConfigMusicaPresentacion(origen = null) {
       null,
 
     equipoActivo:
-      datos.efecto_equipo_activo !== false,
+      datos.efecto_equipo_activo === true,
 
     equipoVolumen:
       limitarNumero(
@@ -922,7 +922,7 @@ function obtenerConfigMusicaPresentacion(origen = null) {
       null,
 
     resumenActivo:
-      datos.efecto_resumen_activo !== false,
+      datos.efecto_resumen_activo === true,
 
     resumenVolumen:
       limitarNumero(
@@ -1956,17 +1956,17 @@ const [
 
   jugadorPath: null,
   jugadorNombre: null,
-  jugadorActivo: true,
+  jugadorActivo: false,
   jugadorVolumen: 88,
 
   equipoPath: null,
   equipoNombre: null,
-  equipoActivo: true,
+  equipoActivo: false,
   equipoVolumen: 96,
 
   resumenPath: null,
   resumenNombre: null,
-  resumenActivo: true,
+  resumenActivo: false,
   resumenVolumen: 92,
 })
 
@@ -9451,7 +9451,7 @@ function efectoSonidoPublicoActivo(tipo) {
       (nombre) =>
         configActual?.[
           campos[nombre]
-        ] !== false
+        ] === true
     )
   }
 
@@ -9463,11 +9463,11 @@ function efectoSonidoPublicoActivo(tipo) {
   }
 
   /*
-  Compatibilidad con sorteos antiguos: si el campo aún no
-  existiera en la respuesta, consideramos el efecto activo.
+  Un efecto solo suena cuando está activado explícitamente.
+  Si un sorteo antiguo no tiene este campo, permanece silenciado.
   */
   return (
-    configActual?.[campo] !== false
+    configActual?.[campo] === true
   )
 }
 
@@ -10000,13 +10000,13 @@ async function refrescarActivacionEfectosPublicos() {
 
     const interruptores = {
       efecto_jugador_activo:
-        config.efecto_jugador_activo !== false,
+        config.efecto_jugador_activo === true,
 
       efecto_equipo_activo:
-        config.efecto_equipo_activo !== false,
+        config.efecto_equipo_activo === true,
 
       efecto_resumen_activo:
-        config.efecto_resumen_activo !== false,
+        config.efecto_resumen_activo === true,
     }
 
     /*
@@ -17887,28 +17887,39 @@ if (
                   </div>
 
                   {pista.tipo === 'espera' && (
-                    <label className="tiempo-negro-musica-espera">
-                      <span>Fondo negro inicial en la TV</span>
-                      <select
-                        value={String(musicaPresentacion.esperaNegroInicialMs ?? 60000)}
-                        onChange={(e) => setMusicaPresentacion(
-                          (actual) => ({
-                            ...actual,
-                            esperaNegroInicialMs: Number(e.target.value),
-                          })
-                        )}
-                      >
-                        <option value="0">Sin espera en negro</option>
-                        <option value="10000">10 segundos</option>
-                        <option value="20000">20 segundos</option>
-                        <option value="30000">30 segundos</option>
-                        <option value="45000">45 segundos</option>
-                        <option value="60000">1 minuto</option>
-                        <option value="90000">1 minuto y 30 segundos</option>
-                        <option value="120000">2 minutos</option>
-                      </select>
-                      <small>La música comenzará a sonar mientras la pantalla permanece negra.</small>
-                    </label>
+                    <div className="ajuste-negro-musica-espera">
+                      <div className="cabecera-ajuste-negro">
+                        <span aria-hidden="true">◼</span>
+                        <div>
+                          <strong>Pantalla negra inicial</strong>
+                          <small>
+                            La música sonará de fondo durante este tiempo.
+                          </small>
+                        </div>
+                      </div>
+
+                      <label>
+                        <span>Duración</span>
+                        <select
+                          value={String(musicaPresentacion.esperaNegroInicialMs ?? 60000)}
+                          onChange={(e) => setMusicaPresentacion(
+                            (actual) => ({
+                              ...actual,
+                              esperaNegroInicialMs: Number(e.target.value),
+                            })
+                          )}
+                        >
+                          <option value="0">Sin pantalla negra</option>
+                          <option value="10000">10 segundos</option>
+                          <option value="20000">20 segundos</option>
+                          <option value="30000">30 segundos</option>
+                          <option value="45000">45 segundos</option>
+                          <option value="60000">1 minuto</option>
+                          <option value="90000">1 minuto y 30 segundos</option>
+                          <option value="120000">2 minutos</option>
+                        </select>
+                      </label>
+                    </div>
                   )}
 
                   <div className="volumen-pista-musica">
