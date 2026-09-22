@@ -2634,7 +2634,16 @@ h1 {
   color: #bbf7d0;
 }
 
+.acciones-negro-inicial {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+}
+
 .boton-preparar-audio-negro {
+  min-width: 218px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2657,6 +2666,21 @@ h1 {
   border-color: #f59e0b;
   background: rgba(33, 24, 7, 0.96);
   transform: translateY(-2px);
+}
+
+.boton-pantalla-completa-negro {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(7, 16, 30, 0.9);
+  box-shadow: 0 0 45px rgba(59, 130, 246, 0.08);
+}
+
+.boton-pantalla-completa-negro:hover {
+  border-color: #60a5fa;
+  background: rgba(10, 25, 47, 0.97);
+}
+
+.boton-pantalla-completa-negro small {
+  color: #bfdbfe;
 }
 
 .boton-preparar-audio-negro > span {
