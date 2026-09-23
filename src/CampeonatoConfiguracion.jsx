@@ -171,6 +171,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [previsualizandoPalas, setPrevisualizandoPalas] = useState(false)
   const [generandoPalas, setGenerandoPalas] = useState(false)
   const [errorPalas, setErrorPalas] = useState('')
+  const [eliminandoFase, setEliminandoFase] = useState('')
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
   const cambiosSinGuardarRef = useRef(false)
   const [accionSalidaPendiente, setAccionSalidaPendiente] = useState(null)
@@ -445,7 +446,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     const { data, error } = await supabaseCampeonato.rpc(funcionPrevisualizacion, { p_codigo: codigo })
     setPrevisualizandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
-    setPrevisualizacionEliminatorias(data)
+    let vista = data
+    if (data?.ya_generadas) {
+      const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
+      if (borrado?.ok === true) vista = { ...data, borrado }
+    }
+    setPrevisualizacionEliminatorias(vista)
   }
 
   async function generarEliminatorias() {
@@ -476,7 +482,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_palas_playa', { p_codigo: codigo })
     setPrevisualizandoPalas(false)
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo preparar Palas de Playa.'); return }
-    setPrevisualizacionPalas(data)
+    let vista = data
+    if (data?.ya_generada) {
+      const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'PP' })
+      if (borrado?.ok === true) vista = { ...data, borrado }
+    }
+    setPrevisualizacionPalas(vista)
   }
 
   async function generarPalas() {
@@ -488,6 +499,72 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo generar Palas de Playa.'); return }
     setPrevisualizacionPalas(null)
     setMensaje({ tipo: 'correcto', texto: `Palas de Playa generada: ${data.partidos_creados ?? 0} partidos iniciales.` })
+  }
+
+  async function eliminarFaseSinResultados(fase) {
+    const esEliminatorias = fase === 'MM'
+    const etiqueta = esEliminatorias ? 'las Eliminatorias' : 'Palas de Playa'
+    const setError = esEliminatorias ? setErrorEliminatorias : setErrorPalas
+
+    setEliminandoFase(fase)
+    setError('')
+
+    const { data: previa, error: errorPrevia } = await supabaseCampeonato.rpc(
+      'admin_previsualizar_borrado_fase',
+      { p_codigo: codigo, p_fase: fase }
+    )
+
+    if (errorPrevia || previa?.ok !== true) {
+      setError(errorPrevia?.message || previa?.error || `No se pudo comprobar ${etiqueta}.`)
+      setEliminandoFase('')
+      return
+    }
+
+    if (Number(previa.partidos_jugados || 0) > 0) {
+      setError(`No se puede eliminar ${etiqueta}: hay ${previa.partidos_jugados} partido(s) disputado(s).`)
+      setEliminandoFase('')
+      return
+    }
+
+    const avisoDependencia = esEliminatorias
+      ? ' También se eliminará Palas de Playa, porque depende de las Eliminatorias.'
+      : ''
+    const confirmado = window.confirm(
+      `Se eliminarán ${previa.partidos || 0} partido(s) de ${etiqueta}.${avisoDependencia}\n\nNo hay resultados guardados. ¿Quieres continuar?`
+    )
+
+    if (!confirmado) {
+      setEliminandoFase('')
+      return
+    }
+
+    const { data, error } = await supabaseCampeonato.rpc(
+      'admin_borrar_fase_campeonato',
+      {
+        p_codigo: codigo,
+        p_fase: fase,
+        p_confirmacion: previa.confirmacion,
+      }
+    )
+
+    setEliminandoFase('')
+
+    if (error || data?.ok !== true) {
+      setError(error?.message || data?.error || `No se pudo eliminar ${etiqueta}.`)
+      return
+    }
+
+    if (esEliminatorias) {
+      setPrevisualizacionEliminatorias(null)
+      setPrevisualizacionPalas(null)
+    } else {
+      setPrevisualizacionPalas(null)
+    }
+
+    setMensaje({
+      tipo: 'correcto',
+      texto: `${esEliminatorias ? 'Eliminatorias y Palas de Playa eliminadas' : 'Palas de Playa eliminada'}: ${data.partidos_borrados ?? 0} partido(s). Ya puedes cambiar la configuración y volver a generar.`,
+    })
   }
 
   async function abrirMantenimiento(tipo) {
@@ -863,7 +940,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
               {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
               {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
-              {previsualizacionEliminatorias.ya_generadas ? <span className="aviso-configuracion-pendiente">Las eliminatorias ya están generadas. Esta vista no modifica ni vuelve a crear partidos.</span> : <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>}
+              {previsualizacionEliminatorias.ya_generadas ? <>
+                <span className="aviso-configuracion-pendiente">Las eliminatorias ya están generadas. Esta vista no modifica ni vuelve a crear partidos.</span>
+                <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase) || Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0}>
+                  {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
+                </button>
+                <small>También elimina Palas de Playa. Solo está disponible si no hay ningún partido disputado.</small>
+              </> : <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>}
             </div>}
           </fieldset>
 
@@ -881,7 +964,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 {previsualizacionPalas.ronda_inicial && <span>Ronda inicial: {previsualizacionPalas.ronda_inicial}</span>}
                 {Array.isArray(previsualizacionPalas.partidos) && previsualizacionPalas.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={`${partido.ronda || 'PP'}-${partido.orden || indice}`}><b>{partido.ronda || 'Palas'} · Partido {partido.orden || indice + 1}{partido.pista ? ` · Pista ${partido.pista}` : ''}</b><span>{previsualizacionPalas.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionPalas.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
                 {previsualizacionPalas.descansa && <div className="detalle-regrupo"><b>Descanso</b><span>{previsualizacionPalas.nombres_equipos?.[previsualizacionPalas.descansa] || previsualizacionPalas.descansa} · descansa por ser el peor clasificado disponible</span></div>}
-                {previsualizacionPalas.ya_generada ? <span className="aviso-configuracion-pendiente">Palas de Playa ya está generada. No se volverá a crear.</span> : <button type="button" className="boton boton-principal" onClick={generarPalas} disabled={generandoPalas || !previsualizacionPalas.puede_generar}>{generandoPalas ? 'Generando…' : 'Confirmar y generar Palas de Playa'}</button>}
+                {previsualizacionPalas.ya_generada ? <>
+                  <span className="aviso-configuracion-pendiente">Palas de Playa ya está generada. No se volverá a crear.</span>
+                  <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('PP')} disabled={Boolean(eliminandoFase) || Number(previsualizacionPalas.borrado?.partidos_jugados ?? 0) > 0}>
+                    {eliminandoFase === 'PP' ? 'Eliminando…' : 'Eliminar Palas de Playa'}
+                  </button>
+                  <small>Solo está disponible si no hay ningún partido disputado.</small>
+                </> : <button type="button" className="boton boton-principal" onClick={generarPalas} disabled={generandoPalas || !previsualizacionPalas.puede_generar}>{generandoPalas ? 'Generando…' : 'Confirmar y generar Palas de Playa'}</button>}
               </div>}
             </fieldset>
           )}
