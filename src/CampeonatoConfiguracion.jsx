@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import './CampeonatoConfiguracion.css'
 
+const FORMATO_ELIMINATORIAS_ESPECIAL = 'Campeones de ReGrupo directos a semifinales'
+
 const SISTEMAS_PUNTUACION_INICIALES = {
   Normal: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 0 },
   Equitativo: { ganador_3_0: 3, ganador_2_1: 3, perdedor_1_2: 0, perdedor_0_3: 0, descanso: 2 },
@@ -430,20 +432,36 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   async function previsualizarEliminatorias() {
-    if (hayCambiosSinGuardar) return
+    if (hayCambiosSinGuardar) {
+      setErrorEliminatorias('Guarda primero los cambios de configuración.')
+      return
+    }
     setPrevisualizandoEliminatorias(true)
     setErrorEliminatorias('')
     setPrevisualizacionEliminatorias(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias', { p_codigo: codigo })
+    const funcionPrevisualizacion = config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+      ? 'admin_previsualizar_cuadro_especial'
+      : 'admin_previsualizar_eliminatorias'
+    const { data, error } = await supabaseCampeonato.rpc(funcionPrevisualizacion, { p_codigo: codigo })
     setPrevisualizandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
     setPrevisualizacionEliminatorias(data)
   }
 
   async function generarEliminatorias() {
-    if (!previsualizacionEliminatorias?.puede_generar || hayCambiosSinGuardar) return
+    if (hayCambiosSinGuardar) {
+      setErrorEliminatorias('Guarda primero los cambios de configuración.')
+      return
+    }
+    if (!previsualizacionEliminatorias?.puede_generar) {
+      setErrorEliminatorias('Previsualiza de nuevo las eliminatorias antes de generarlas.')
+      return
+    }
     setGenerandoEliminatorias(true); setErrorEliminatorias('')
-    const { data, error } = await supabaseCampeonato.rpc('admin_generar_cuadro_normal', { p_codigo: codigo })
+    const funcionGeneracion = config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+      ? 'admin_generar_cuadro_especial'
+      : 'admin_generar_cuadro_normal'
+    const { data, error } = await supabaseCampeonato.rpc(funcionGeneracion, { p_codigo: codigo })
     setGenerandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
     setPrevisualizacionEliminatorias(null)
@@ -825,7 +843,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       <span>{Array.isArray(grupo.equipos) ? grupo.equipos.join(' · ') : ''}</span>
                     </div>
                   ))}
-                  {previsualizacionRegrupos.ya_generados ? <span className="aviso-configuracion-pendiente">Los ReGrupos ya están generados. Esta vista no modifica ni vuelve a crear partidos.</span> : <button type="button" className="boton boton-principal" onClick={generarRegrupos} disabled={generandoRegrupos || !previsualizacionRegrupos.puede_generar}>
+                  {previsualizacionRegrupos.ya_generados ? <span className="aviso-configuracion-pendiente">Los ReGrupos ya están generados. Esta vista no modifica ni vuelve a crear partidos.</span> : <button type="button" className="boton boton-principal" onClick={generarRegrupos} disabled={generandoRegrupos}>
                     {generandoRegrupos ? 'Generando…' : 'Confirmar y generar ReGrupos'}
                   </button>}
                 </div>
