@@ -2193,6 +2193,34 @@ const [negroInicialEsperaPublica, setNegroInicialEsperaPublica] =
   )
 const [transicionInicioSorteoPublica, setTransicionInicioSorteoPublica] =
   useState(false)
+const [pantallaCompletaPublica, setPantallaCompletaPublica] =
+  useState(() => Boolean(document.fullscreenElement))
+
+useEffect(() => {
+  if (!modoPublico) {
+    return undefined
+  }
+
+  const actualizarPantallaCompleta = () => {
+    setPantallaCompletaPublica(
+      Boolean(document.fullscreenElement)
+    )
+  }
+
+  document.addEventListener(
+    'fullscreenchange',
+    actualizarPantallaCompleta
+  )
+
+  actualizarPantallaCompleta()
+
+  return () => {
+    document.removeEventListener(
+      'fullscreenchange',
+      actualizarPantallaCompleta
+    )
+  }
+}, [modoPublico])
 
 const [
   musicaPublica,
@@ -11583,35 +11611,36 @@ if (
           transition: 'opacity 1200ms ease-in-out',
         }}
       >
-        {negroInicialEsperaPublica && (
-          <div className="acciones-negro-inicial">
-            {!sonidoPublicoActivo && (
-              <button
-                type="button"
-                className="boton-preparar-audio-negro"
-                onClick={alternarSonidoPublico}
-              >
-                <span aria-hidden="true">🔊</span>
-                <strong>Preparar música y sonido</strong>
-                <small>
-                  Pulsa una vez para iniciar la espera
-                </small>
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="boton-preparar-audio-negro boton-pantalla-completa-negro"
-              onClick={activarPantallaCompletaPublica}
-            >
-              <span aria-hidden="true">⛶</span>
-              <strong>Pantalla completa</strong>
-              <small>
-                Ocultar las barras del navegador
-              </small>
-            </button>
-          </div>
-        )}
+        {negroInicialEsperaPublica &&
+          !pantallaCompletaPublica && (
+            <div className="acciones-negro-inicial">
+              {!sonidoPublicoActivo ? (
+                <button
+                  type="button"
+                  className="boton-preparar-audio-negro"
+                  onClick={alternarSonidoPublico}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <strong>Preparar música y sonido</strong>
+                  <small>
+                    Pulsa una vez para iniciar la espera
+                  </small>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="boton-preparar-audio-negro boton-pantalla-completa-negro"
+                  onClick={activarPantallaCompletaPublica}
+                >
+                  <span aria-hidden="true">⛶</span>
+                  <strong>Pantalla completa</strong>
+                  <small>
+                    Ocultar las barras del navegador
+                  </small>
+                </button>
+              )}
+            </div>
+          )}
       </div>
 
       <header className="cabecera-publica-tv">
