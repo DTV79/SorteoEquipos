@@ -599,9 +599,18 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     const movimientosGasto = datos.movimientos.filter(
       (movimiento) => movimiento.tipo === 'gasto'
     )
-    const actividadesPdf = economiaDistribuida.actividades || []
     const personasPdf = economiaDistribuida.personas || []
     const porPersonaPdf = economiaDistribuida.porPersona || new Map()
+    // En el PDF para participantes solo mostramos actividades con asistentes.
+    // Campeonato se mantiene porque la asistencia de los jugadores es automática.
+    const actividadesPdf = (economiaDistribuida.actividades || []).filter(
+      (actividad) =>
+        actividad.codigo === 'CAMPEONATO' ||
+        personasPdf.some(
+          (persona) =>
+            asistenciaEconomia(persona, actividad.id_actividad)?.asiste === true
+        )
+    )
 
     const cabecerasActividad = actividadesPdf
       .map(
@@ -614,19 +623,30 @@ export default function GastosCampeonato({ codigo, onVolver }) {
       .map((persona) => {
         const deuda = porPersonaPdf.get(numero(persona.id_persona))
         if (!deuda) return ''
+        let totalPdf = 0
+        let pagadoPdf = 0
         const importesActividad = actividadesPdf
           .map((actividad) => {
             const dato = deuda.actividades.get(numero(actividad.id_actividad))
-            return `<td class="num">${escaparHtml(euros(dato?.total || 0))}</td>`
+            const participa =
+              actividad.codigo === 'CAMPEONATO'
+                ? persona.tipo === 'jugador'
+                : asistenciaEconomia(persona, actividad.id_actividad)?.asiste === true
+            const totalActividad = participa ? numero(dato?.total) : 0
+            const pagadoActividad = participa ? numero(dato?.pagado) : 0
+            totalPdf += totalActividad
+            pagadoPdf += Math.min(pagadoActividad, totalActividad)
+            return `<td class="num">${escaparHtml(euros(totalActividad))}</td>`
           })
           .join('')
+        const pendientePdf = Math.max(0, totalPdf - pagadoPdf)
 
         return `<tr>
           <td><span class="nombre">${escaparHtml(persona.nombre)}</span><span class="tipo-persona">${escaparHtml(etiquetaTipoPersona(persona.tipo))}</span></td>
           ${importesActividad}
-          <td class="num"><strong>${escaparHtml(euros(deuda.total))}</strong></td>
-          <td class="num pagado">${escaparHtml(euros(deuda.pagado))}</td>
-          <td class="num pendiente">${escaparHtml(euros(deuda.pendiente))}</td>
+          <td class="num"><strong>${escaparHtml(euros(totalPdf))}</strong></td>
+          <td class="num pagado">${escaparHtml(euros(pagadoPdf))}</td>
+          <td class="num pendiente">${escaparHtml(euros(pendientePdf))}</td>
         </tr>`
       })
       .join('')
