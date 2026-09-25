@@ -168,7 +168,7 @@ function calcularEconomiaDistribuida(datos) {
 
     let elegibles = []
     if (movimiento.modo_reparto === 'jugadores') {
-      elegibles = personas.filter((p) => p.tipo === 'jugador')
+      elegibles = personas.filter(\n        (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false\n      )
     } else if (
       movimiento.modo_reparto === 'actividad' &&
       movimiento.id_actividad
@@ -238,7 +238,7 @@ function calcularEconomiaDistribuida(datos) {
     item.pendiente = Math.max(item.total - item.pagado, 0)
   })
 
-  const jugadores = personas.filter((p) => p.tipo === 'jugador').length
+  const jugadores = personas.filter(\n    (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false\n  ).length
   const cobrosPrevistos = [...porPersona.values()].reduce(
     (total, item) => total + numero(item.total),
     0
@@ -411,10 +411,32 @@ export default function GastosCampeonato({ codigo, onVolver }) {
       return
     }
 
+    const { data: jugadoresVigentes, error: errorJugadoresVigentes } =
+      await supabaseCampeonato.rpc('admin_economia_jugadores_vigentes', {
+        p_codigo: codigo,
+      })
+
+    if (errorJugadoresVigentes) {
+      setError(
+        errorJugadoresVigentes.message ||
+          'No se pudo comprobar la plantilla vigente del campeonato.'
+      )
+      setCargando(false)
+      return
+    }
+
+    const idsJugadoresVigentes = new Set(jugadoresVigentes ?? [])
+    const personasSincronizadas = (data.personas ?? []).map((persona) => ({
+      ...persona,
+      jugador_campeonato_activo:
+        persona.tipo !== 'jugador' ||
+        idsJugadoresVigentes.has(persona.id_jugador),
+    }))
+
     setDatos({
       campeonato: data.campeonato ?? null,
       actividades: data.actividades ?? [],
-      personas: data.personas ?? [],
+      personas: personasSincronizadas,
       movimientos: data.movimientos ?? [],
     })
 
@@ -1987,7 +2009,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
                     </header>
 
                     <div className="actividades-persona">
-                      {actividadesActivas.map((actividad) => {
+                      {actividadesActivas\n                      .filter(\n                        (actividad) =>\n                          actividad.codigo !== 'CAMPEONATO' ||\n                          persona.tipo !== 'jugador' ||\n                          persona.jugador_campeonato_activo !== false\n                      )\n                      .map((actividad) => {
                         const asistencia = obtenerAsistencia(
                           persona,
                           actividad.id_actividad
