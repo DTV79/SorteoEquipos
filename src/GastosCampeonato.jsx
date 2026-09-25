@@ -168,7 +168,9 @@ function calcularEconomiaDistribuida(datos) {
 
     let elegibles = []
     if (movimiento.modo_reparto === 'jugadores') {
-      elegibles = personas.filter(\n        (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false\n      )
+      elegibles = personas.filter(
+        (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false
+      )
     } else if (
       movimiento.modo_reparto === 'actividad' &&
       movimiento.id_actividad
@@ -238,7 +240,9 @@ function calcularEconomiaDistribuida(datos) {
     item.pendiente = Math.max(item.total - item.pagado, 0)
   })
 
-  const jugadores = personas.filter(\n    (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false\n  ).length
+  const jugadores = personas.filter(
+    (p) => p.tipo === 'jugador' && p.jugador_campeonato_activo !== false
+  ).length
   const cobrosPrevistos = [...porPersona.values()].reduce(
     (total, item) => total + numero(item.total),
     0
@@ -2009,7 +2013,14 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
                     </header>
 
                     <div className="actividades-persona">
-                      {actividadesActivas\n                      .filter(\n                        (actividad) =>\n                          actividad.codigo !== 'CAMPEONATO' ||\n                          persona.tipo !== 'jugador' ||\n                          persona.jugador_campeonato_activo !== false\n                      )\n                      .map((actividad) => {
+                      {actividadesActivas
+                      .filter(
+                        (actividad) =>
+                          actividad.codigo !== 'CAMPEONATO' ||
+                          persona.tipo !== 'jugador' ||
+                          persona.jugador_campeonato_activo !== false
+                      )
+                      .map((actividad) => {
                         const asistencia = obtenerAsistencia(
                           persona,
                           actividad.id_actividad
