@@ -888,6 +888,25 @@ export default function GastosCampeonato({ codigo, onVolver }) {
       ['observaciones', 'Observaciones', (m) => escaparHtml(m.observaciones || '—'), 'obs'],
     ]
     const columnas = columnasDisponibles.filter(([clave]) => columnasInformeGestion[clave])
+    const pesosColumnas = {
+      fecha: 7,
+      tipo: 5,
+      concepto: 14,
+      cantidad: 5,
+      categoria: 9,
+      actividad: 9,
+      importe: 6,
+      pagador: 10,
+      formaPago: 7,
+      reparto: 12,
+      justificante: 10,
+      observaciones: 22,
+    }
+    const pesoTotal = columnas.reduce((total, [clave]) => total + (pesosColumnas[clave] || 10), 0)
+    const colgroupDetalle = columnas.map(([clave]) => {
+      const porcentaje = ((pesosColumnas[clave] || 10) / pesoTotal) * 100
+      return `<col style="width:${porcentaje.toFixed(2)}%">`
+    }).join('')
     const cabecerasDetalle = columnas.map(([, titulo]) => `<th>${escaparHtml(titulo)}</th>`).join('')
     const filas = movimientos.map((m) =>
       `<tr>${columnas.map(([, , valor, clase]) => `<td class="${clase}">${valor(m)}</td>`).join('')}</tr>`
@@ -951,7 +970,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
 <div class="metrica"><small>Saldo registrado</small><strong>${escaparHtml(euros(totalIngresos - resumen.gastos))}</strong></div>
 </div>
 <h2>Detalle completo de movimientos</h2>
-<table class="detalle"><thead><tr>${cabecerasDetalle}</tr></thead><tbody>${filas || `<tr><td colspan="${numeroColumnas}">No hay movimientos registrados.</td></tr>`}</tbody></table>
+<table class="detalle"><colgroup>${colgroupDetalle}</colgroup><thead><tr>${cabecerasDetalle}</tr></thead><tbody>${filas || `<tr><td colspan="${numeroColumnas}">No hay movimientos registrados.</td></tr>`}</tbody></table>
 <div class="resumenes">
 <section><h2>Gastos por categoría</h2><table><thead><tr><th>Categoría</th><th class="num">Importe</th></tr></thead><tbody>${filasCategorias || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
 <section><h2>Gastos por actividad</h2><table><thead><tr><th>Actividad</th><th class="num">Importe</th></tr></thead><tbody>${filasActividades || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
