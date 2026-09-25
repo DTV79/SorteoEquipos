@@ -104,7 +104,11 @@ function asistenciaEconomia(persona, idActividad) {
 }
 
 function calcularEconomiaDistribuida(datos) {
-  const personas = (datos.personas || []).filter((p) => p.activo)
+  const personas = (datos.personas || []).filter(
+    (p) =>
+      p.activo &&
+      (p.tipo !== 'jugador' || p.jugador_campeonato_activo !== false)
+  )
   const actividades = [...(datos.actividades || [])]
     .filter((a) => a.activo)
     .sort(
@@ -471,7 +475,13 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   )
 
   const personasActivas = useMemo(
-    () => datos.personas.filter((persona) => persona.activo),
+    () =>
+      datos.personas.filter(
+        (persona) =>
+          persona.activo &&
+          (persona.tipo !== 'jugador' ||
+            persona.jugador_campeonato_activo !== false)
+      ),
     [datos.personas]
   )
 
