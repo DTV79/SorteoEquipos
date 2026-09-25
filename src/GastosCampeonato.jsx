@@ -796,6 +796,142 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     ventana.document.close()
   }
 
+  function generarInformeInternoGastos() {
+    const ventana = window.open('', '_blank', 'width=1100,height=900')
+    if (!ventana) {
+      setMensaje({
+        tipo: 'error',
+        texto: 'El navegador bloqueó la ventana del informe. Permite ventanas emergentes para esta página.',
+      })
+      return
+    }
+    ventana.opener = null
+
+    const actividades = datos.actividades || []
+    const personas = datos.personas || []
+    const movimientos = [...(datos.movimientos || [])].sort(
+      (a, b) =>
+        String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
+        numero(a.id_movimiento) - numero(b.id_movimiento)
+    )
+    const gastos = movimientos.filter((m) => m.tipo === 'gasto')
+    const ingresos = movimientos.filter((m) => m.tipo === 'ingreso')
+
+    const actividadNombre = (id) =>
+      actividades.find((a) => numero(a.id_actividad) === numero(id))?.nombre ||
+      (id ? 'Actividad' : 'General del campeonato')
+
+    const pagadorNombre = (movimiento) => {
+      const valor = movimiento.pagado_por
+      if (valor == null || valor === '') return '—'
+      const persona = personas.find(
+        (p) =>
+          numero(p.id_persona) === numero(valor) ||
+          String(p.nombre || '').trim().toLowerCase() ===
+            String(valor).trim().toLowerCase()
+      )
+      return persona?.nombre || String(valor)
+    }
+
+    const repartoDetalle = (movimiento) => {
+      const base = repartoTexto(movimiento) || '—'
+      if (movimiento.modo_reparto !== 'manual') return base
+      const ids = new Set((movimiento.reparto_personas || []).map(numero))
+      const nombres = personas
+        .filter((p) => ids.has(numero(p.id_persona)))
+        .map((p) => p.nombre)
+      return nombres.length ? `${base}: ${nombres.join(', ')}` : base
+    }
+
+    const filas = movimientos.map((m) => {
+      const cantidad =
+        m.cantidad != null && numero(m.cantidad) > 0
+          ? numero(m.cantidad).toLocaleString('es-ES')
+          : '—'
+      return `<tr>
+        <td>${escaparHtml(formatearFechaVisible(m.fecha))}</td>
+        <td><span class="tipo ${m.tipo === 'ingreso' ? 'ingreso' : 'gasto'}">${escaparHtml(m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto')}</span></td>
+        <td><strong>${escaparHtml(m.concepto || '—')}</strong></td>
+        <td class="centro">${escaparHtml(cantidad)}</td>
+        <td>${escaparHtml(m.categoria || '—')}</td>
+        <td>${escaparHtml(actividadNombre(m.id_actividad))}</td>
+        <td class="num">${escaparHtml(euros(m.importe))}</td>
+        <td>${escaparHtml(pagadorNombre(m))}</td>
+        <td>${escaparHtml(m.forma_pago || '—')}</td>
+        <td>${escaparHtml(repartoDetalle(m))}</td>
+        <td>${escaparHtml(m.justificante || '—')}</td>
+        <td class="obs">${escaparHtml(m.observaciones || '—')}</td>
+      </tr>`
+    }).join('')
+
+    const porCategoria = new Map()
+    gastos.forEach((m) => {
+      const clave = m.categoria || 'Sin categoría'
+      porCategoria.set(clave, numero(porCategoria.get(clave)) + numero(m.importe))
+    })
+    const filasCategorias = [...porCategoria.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([nombre, importe]) =>
+        `<tr><td>${escaparHtml(nombre)}</td><td class="num">${escaparHtml(euros(importe))}</td></tr>`
+      ).join('')
+
+    const porActividad = new Map()
+    gastos.forEach((m) => {
+      const clave = actividadNombre(m.id_actividad)
+      porActividad.set(clave, numero(porActividad.get(clave)) + numero(m.importe))
+    })
+    const filasActividades = [...porActividad.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([nombre, importe]) =>
+        `<tr><td>${escaparHtml(nombre)}</td><td class="num">${escaparHtml(euros(importe))}</td></tr>`
+      ).join('')
+
+    const totalIngresos = ingresos.reduce((t, m) => t + numero(m.importe), 0)
+    const nombreCampeonato = datos.campeonato?.nombre || codigo
+    const fechaInforme = new Date().toLocaleDateString('es-ES')
+
+    ventana.document.write(`<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe interno de gastos - ${escaparHtml(nombreCampeonato)}</title>
+<style>
+@page{size:A4 landscape;margin:8mm}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#172033;font-size:8px;background:#fff}
+.cabecera{display:flex;justify-content:space-between;align-items:flex-end;padding:10px 12px;margin-bottom:8px;border-radius:8px;color:#fff;background:linear-gradient(120deg,#10214d,#173c8f 58%,#0f766e)}
+h1{font-size:18px;margin:0 0 3px} h2{font-size:12px;color:#10214d;margin:10px 0 5px;border-left:4px solid #22c55e;padding-left:7px}
+.cabecera p{margin:0;color:#e8eefc}.sello{text-align:right;font-weight:700}.sello small{display:block;font-weight:400;margin-top:3px}
+.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}.metrica{padding:7px 9px;border-radius:6px;background:#edf4ff}.metrica:nth-child(2){background:#fff1df}.metrica:nth-child(3){background:#e8f8ef}.metrica:nth-child(4){background:#f3efff}.metrica small{display:block;color:#526173;font-weight:700}.metrica strong{font-size:12px;color:#10214d}
+table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #d8e1ed;padding:4px;vertical-align:top;overflow-wrap:anywhere}th{background:#173c8f;color:#fff;text-align:left}tbody tr:nth-child(even) td{background:#f3f7fd}.num{text-align:right;white-space:nowrap}.centro{text-align:center}.tipo{font-weight:700}.tipo.gasto{color:#b91c1c}.tipo.ingreso{color:#15803d}.obs{white-space:pre-wrap}
+.detalle col:nth-child(1){width:7%}.detalle col:nth-child(2){width:6%}.detalle col:nth-child(3){width:13%}.detalle col:nth-child(4){width:5%}.detalle col:nth-child(5){width:9%}.detalle col:nth-child(6){width:9%}.detalle col:nth-child(7){width:7%}.detalle col:nth-child(8){width:9%}.detalle col:nth-child(9){width:7%}.detalle col:nth-child(10){width:11%}.detalle col:nth-child(11){width:8%}.detalle col:nth-child(12){width:9%}
+.resumenes{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin-top:8px}.resumenes table{font-size:9px}.resumenes td:last-child{font-weight:700}
+.notas{margin-top:8px;padding:8px;border:1px solid #cbd7e8;border-radius:6px;background:#f8fafc;white-space:pre-wrap;min-height:35px}.notas strong{display:block;color:#10214d;margin-bottom:4px}
+.pie{margin-top:7px;padding-top:4px;border-top:1px solid #dbe3ee;text-align:right;color:#7a8494;font-size:7px}
+tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<div class="cabecera"><div><h1>Informe interno de gastos</h1><p><strong>${escaparHtml(nombreCampeonato)}</strong> · ${escaparHtml(codigo)}</p></div><div class="sello">DOCUMENTO DE GESTIÓN<small>Generado el ${escaparHtml(fechaInforme)}</small></div></div>
+<div class="metricas">
+<div class="metrica"><small>Movimientos</small><strong>${movimientos.length}</strong></div>
+<div class="metrica"><small>Total gastos</small><strong>${escaparHtml(euros(resumen.gastos))}</strong></div>
+<div class="metrica"><small>Otros ingresos</small><strong>${escaparHtml(euros(totalIngresos))}</strong></div>
+<div class="metrica"><small>Saldo registrado</small><strong>${escaparHtml(euros(totalIngresos - resumen.gastos))}</strong></div>
+</div>
+<h2>Detalle completo de movimientos</h2>
+<table class="detalle"><colgroup>${'<col>'.repeat(12)}</colgroup><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Cant.</th><th>Categoría</th><th>Actividad</th><th>Importe</th><th>Pagado / adelantado por</th><th>Forma pago</th><th>Reparto</th><th>Justificante / referencia</th><th>Observaciones</th></tr></thead><tbody>${filas || '<tr><td colspan="12">No hay movimientos registrados.</td></tr>'}</tbody></table>
+<div class="resumenes">
+<section><h2>Gastos por categoría</h2><table><thead><tr><th>Categoría</th><th class="num">Importe</th></tr></thead><tbody>${filasCategorias || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
+<section><h2>Gastos por actividad</h2><table><thead><tr><th>Actividad</th><th class="num">Importe</th></tr></thead><tbody>${filasActividades || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
+</div>
+<div class="notas"><strong>Observaciones generales del campeonato</strong>${escaparHtml(observacionesResumen || 'Sin observaciones generales.')}</div>
+<div class="pie">Sprint Pádel · Informe interno exclusivo de administración / gestión</div>
+<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script>
+</body></html>`)
+    ventana.document.close()
+  }
+
   async function guardarDetalleAsistencia(
     persona,
     actividad,
@@ -1252,7 +1388,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                 <span>Informe para compartir</span>
                 <strong>PDF</strong>
                 <small>
-                  Gastos por concepto, deuda de cada persona, menús y observaciones.
+                  Gastos por concepto y deuda de cada persona. Preparado para enviar a los participantes.
                 </small>
                 <button
                   type="button"
@@ -1260,6 +1396,20 @@ export default function GastosCampeonato({ codigo, onVolver }) {
                   onClick={generarPdfResumen}
                 >
                   Generar PDF
+                </button>
+              </article>
+              <article className="resumen-exportar">
+                <span>Informe interno</span>
+                <strong>PDF gestión</strong>
+                <small>
+                  Detalle completo de movimientos, pagadores, reparto, justificantes y observaciones.
+                </small>
+                <button
+                  type="button"
+                  className="boton boton-secundario"
+                  onClick={generarInformeInternoGastos}
+                >
+                  Informe interno de gastos
                 </button>
               </article>
             </section>
