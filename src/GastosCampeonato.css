@@ -766,3 +766,27 @@
   .resumen-observaciones{grid-column:1/-1}
   .resumen-exportar{grid-column:1/-1}
 }
+
+
+/* Botones de los informes del resumen: contraste fijo en escritorio y móvil */
+.gastos-campeonato .resumen-exportar .boton.boton-principal,
+.gastos-campeonato .resumen-exportar .boton.boton-secundario {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border: 1px solid #1e3a8a;
+  background: #1e3a8a;
+  color: #ffffff;
+  font-weight: 800;
+  opacity: 1;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.gastos-campeonato .resumen-exportar .boton.boton-principal:hover,
+.gastos-campeonato .resumen-exportar .boton.boton-secundario:hover {
+  border-color: #172554;
+  background: #172554;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
