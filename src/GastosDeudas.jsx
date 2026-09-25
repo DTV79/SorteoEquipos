@@ -48,12 +48,28 @@ export default function GastosDeudas({ codigo }) {
   const [guardandoPago, setGuardandoPago] = useState('')
 
   const cargar = useCallback(async () => {
-    const { data } = await supabaseCampeonato.rpc('admin_obtener_economia', {
-      p_codigo: codigo,
-    })
-    if (data?.ok) {
-      setDatos(data)
-      return data
+    const [{ data }, { data: jugadoresVigentes, error: errorJugadores }] =
+      await Promise.all([
+        supabaseCampeonato.rpc('admin_obtener_economia', {
+          p_codigo: codigo,
+        }),
+        supabaseCampeonato.rpc('admin_economia_jugadores_vigentes', {
+          p_codigo: codigo,
+        }),
+      ])
+
+    if (data?.ok && !errorJugadores) {
+      const idsVigentes = new Set(jugadoresVigentes ?? [])
+      const limpio = {
+        ...data,
+        personas: (data.personas || []).filter(
+          (persona) =>
+            persona.tipo !== 'jugador' ||
+            idsVigentes.has(persona.id_jugador)
+        ),
+      }
+      setDatos(limpio)
+      return limpio
     }
     return null
   }, [codigo])
