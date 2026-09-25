@@ -345,6 +345,36 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   })
   const [observacionesResumen, setObservacionesResumen] = useState('')
   const [guardandoObservaciones, setGuardandoObservaciones] = useState(false)
+  const [columnasInformeGestion, setColumnasInformeGestion] = useState(() => {
+    const base = {
+      fecha: true,
+      tipo: true,
+      concepto: true,
+      cantidad: true,
+      categoria: true,
+      actividad: true,
+      importe: true,
+      pagador: true,
+      formaPago: false,
+      reparto: true,
+      justificante: false,
+      observaciones: true,
+    }
+    try {
+      const guardado = JSON.parse(localStorage.getItem('economia-columnas-informe-gestion') || '{}')
+      return { ...base, ...guardado }
+    } catch {
+      return base
+    }
+  })
+
+  const cambiarColumnaInformeGestion = (clave) => {
+    setColumnasInformeGestion((actual) => {
+      const siguiente = { ...actual, [clave]: !actual[clave] }
+      localStorage.setItem('economia-columnas-informe-gestion', JSON.stringify(siguiente))
+      return siguiente
+    })
+  }
 
   const cargar = useCallback(async () => {
     if (!codigo) return
@@ -843,26 +873,27 @@ export default function GastosCampeonato({ codigo, onVolver }) {
       return nombres.length ? `${base}: ${nombres.join(', ')}` : base
     }
 
-    const filas = movimientos.map((m) => {
-      const cantidad =
-        m.cantidad != null && numero(m.cantidad) > 0
-          ? numero(m.cantidad).toLocaleString('es-ES')
-          : '—'
-      return `<tr>
-        <td>${escaparHtml(formatearFechaVisible(m.fecha))}</td>
-        <td><span class="tipo ${m.tipo === 'ingreso' ? 'ingreso' : 'gasto'}">${escaparHtml(m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto')}</span></td>
-        <td><strong>${escaparHtml(m.concepto || '—')}</strong></td>
-        <td class="centro">${escaparHtml(cantidad)}</td>
-        <td>${escaparHtml(m.categoria || '—')}</td>
-        <td>${escaparHtml(actividadNombre(m.id_actividad))}</td>
-        <td class="num">${escaparHtml(euros(m.importe))}</td>
-        <td>${escaparHtml(pagadorNombre(m))}</td>
-        <td>${escaparHtml(m.forma_pago || '—')}</td>
-        <td>${escaparHtml(repartoDetalle(m))}</td>
-        <td>${escaparHtml(m.justificante || '—')}</td>
-        <td class="obs">${escaparHtml(m.observaciones || '—')}</td>
-      </tr>`
-    }).join('')
+    const columnasDisponibles = [
+      ['fecha', 'Fecha', (m) => escaparHtml(formatearFechaVisible(m.fecha)), ''],
+      ['tipo', 'Tipo', (m) => `<span class="tipo ${m.tipo === 'ingreso' ? 'ingreso' : 'gasto'}">${escaparHtml(m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto')}</span>`, ''],
+      ['concepto', 'Concepto', (m) => `<strong>${escaparHtml(m.concepto || '—')}</strong>`, ''],
+      ['cantidad', 'Cant.', (m) => escaparHtml(m.cantidad != null && numero(m.cantidad) > 0 ? numero(m.cantidad).toLocaleString('es-ES') : '—'), 'centro'],
+      ['categoria', 'Categoría', (m) => escaparHtml(m.categoria || '—'), ''],
+      ['actividad', 'Actividad', (m) => escaparHtml(actividadNombre(m.id_actividad)), ''],
+      ['importe', 'Importe', (m) => escaparHtml(euros(m.importe)), 'num'],
+      ['pagador', 'Pagado / adelantado por', (m) => escaparHtml(pagadorNombre(m)), ''],
+      ['formaPago', 'Forma de pago', (m) => escaparHtml(m.forma_pago || '—'), ''],
+      ['reparto', 'Reparto', (m) => escaparHtml(repartoDetalle(m)), ''],
+      ['justificante', 'Justificante / referencia', (m) => escaparHtml(m.justificante || '—'), ''],
+      ['observaciones', 'Observaciones', (m) => escaparHtml(m.observaciones || '—'), 'obs'],
+    ]
+    const columnas = columnasDisponibles.filter(([clave]) => columnasInformeGestion[clave])
+    const cabecerasDetalle = columnas.map(([, titulo]) => `<th>${escaparHtml(titulo)}</th>`).join('')
+    const filas = movimientos.map((m) =>
+      `<tr>${columnas.map(([, , valor, clase]) => `<td class="${clase}">${valor(m)}</td>`).join('')}</tr>`
+    ).join('')
+    const numeroColumnas = Math.max(columnas.length, 1)
+
 
     const porCategoria = new Map()
     gastos.forEach((m) => {
@@ -920,7 +951,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
 <div class="metrica"><small>Saldo registrado</small><strong>${escaparHtml(euros(totalIngresos - resumen.gastos))}</strong></div>
 </div>
 <h2>Detalle completo de movimientos</h2>
-<table class="detalle"><colgroup>${'<col>'.repeat(12)}</colgroup><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Cant.</th><th>Categoría</th><th>Actividad</th><th>Importe</th><th>Pagado / adelantado por</th><th>Forma pago</th><th>Reparto</th><th>Justificante / referencia</th><th>Observaciones</th></tr></thead><tbody>${filas || '<tr><td colspan="12">No hay movimientos registrados.</td></tr>'}</tbody></table>
+<table class="detalle"><thead><tr>${cabecerasDetalle}</tr></thead><tbody>${filas || `<tr><td colspan="${numeroColumnas}">No hay movimientos registrados.</td></tr>`}</tbody></table>
 <div class="resumenes">
 <section><h2>Gastos por categoría</h2><table><thead><tr><th>Categoría</th><th class="num">Importe</th></tr></thead><tbody>${filasCategorias || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
 <section><h2>Gastos por actividad</h2><table><thead><tr><th>Actividad</th><th class="num">Importe</th></tr></thead><tbody>${filasActividades || '<tr><td>Sin gastos</td><td class="num">0,00 €</td></tr>'}</tbody></table></section>
@@ -1402,14 +1433,40 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
                 <span>Informe interno</span>
                 <strong>PDF gestión</strong>
                 <small>
-                  Detalle completo de movimientos, pagadores, reparto, justificantes y observaciones.
+                  Elige qué información quieres incluir. La selección se conserva para la próxima vez.
                 </small>
+                <div className="selector-columnas-informe">
+                  {[
+                    ['fecha', 'Fecha'],
+                    ['tipo', 'Tipo'],
+                    ['concepto', 'Concepto'],
+                    ['cantidad', 'Cantidad'],
+                    ['categoria', 'Categoría'],
+                    ['actividad', 'Actividad'],
+                    ['importe', 'Importe'],
+                    ['pagador', 'Pagado por'],
+                    ['formaPago', 'Forma de pago'],
+                    ['reparto', 'Reparto'],
+                    ['justificante', 'Justificante / referencia'],
+                    ['observaciones', 'Observaciones'],
+                  ].map(([clave, etiqueta]) => (
+                    <label key={clave}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(columnasInformeGestion[clave])}
+                        onChange={() => cambiarColumnaInformeGestion(clave)}
+                      />
+                      <span>{etiqueta}</span>
+                    </label>
+                  ))}
+                </div>
                 <button
                   type="button"
                   className="boton boton-secundario"
                   onClick={generarInformeInternoGastos}
+                  disabled={!Object.values(columnasInformeGestion).some(Boolean)}
                 >
-                  Informe interno de gastos
+                  Generar PDF gestión
                 </button>
               </article>
             </section>
