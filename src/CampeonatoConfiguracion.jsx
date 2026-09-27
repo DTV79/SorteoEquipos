@@ -348,6 +348,24 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   async function guardarConfiguracion() {
     setGuardando(true)
+    if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual' && nivelesManualesChampions.length > 0) {
+      const pendientes = nivelesManualesChampions.filter(j => !j.nivel)
+      if (pendientes.length > 0) {
+        setMensaje({ tipo: 'error', texto: `Falta asignar nivel manual a: ${pendientes.map(j => j.jugador).join(', ')}.` })
+        setGuardando(false)
+        return false
+      }
+      const { data: nivelesData, error: nivelesError } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+        p_codigo: codigo,
+        p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: String(j.nivel) })),
+      })
+      if (nivelesError || nivelesData?.ok !== true) {
+        setMensaje({ tipo: 'error', texto: nivelesError?.message || nivelesData?.error || 'No se pudieron guardar los niveles manuales.' })
+        setGuardando(false)
+        return false
+      }
+      setNivelesManualesChampions(nivelesData.jugadores || [])
+    }
     setMensaje({ tipo: '', texto: 'Guardando configuración y recalculando la clasificación…' })
 
     const configuracionAGuardar = ['Liguilla', 'Champions'].includes(config.tipo_campeonato)
@@ -435,6 +453,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   async function previsualizarPrimeraFase() {
+    if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual' && nivelesManualesChampions.length > 0) {
+      const guardados = await guardarNivelesManualesChampions()
+      if (!guardados) return
+    }
     if (hayCambiosSinGuardar) {
       const guardado = await guardarConfiguracion()
       if (!guardado) return
