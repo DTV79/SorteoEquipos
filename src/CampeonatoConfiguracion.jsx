@@ -414,7 +414,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizandoPrimeraFase(true)
     setErrorPrimeraFase('')
     setPrevisualizacionPrimeraFase(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_primera_fase', { p_codigo: codigo })
+    const funcionPrevia = config.tipo_campeonato === 'Champions'
+      ? 'admin_previsualizar_champions'
+      : 'admin_previsualizar_primera_fase'
+    const { data, error } = await supabaseCampeonato.rpc(funcionPrevia, { p_codigo: codigo })
     setPrevisualizandoPrimeraFase(false)
     if (error || data?.ok !== true) {
       setErrorPrimeraFase(error?.message || data?.error || 'No se pudo preparar la primera fase.')
@@ -955,7 +958,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}>
               {previsualizandoPrimeraFase ? 'Comprobando…' : 'Previsualizar primera fase'}
             </button>
-            {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla o Grupos.</small>}
+            {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla, Grupos o Champions.</small>}
             {errorPrimeraFase && <p className="error-generacion-primera-fase">{errorPrimeraFase}</p>}
             {previsualizacionPrimeraFase && (
               <div className="resumen-generacion-primera-fase">
@@ -966,10 +969,24 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 {previsualizacionPrimeraFase.num_grupos != null && <span>Grupos: {previsualizacionPrimeraFase.num_grupos}</span>}
                 {(previsualizacionPrimeraFase.partidos ?? previsualizacionPrimeraFase.partidos_previstos) != null && <span>Partidos previstos: {previsualizacionPrimeraFase.partidos ?? previsualizacionPrimeraFase.partidos_previstos}</span>}
                 {(previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas) != null && <span>Jornadas: {previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas}</span>}
+                {previsualizacionPrimeraFase.tipo === 'Champions' && <>
+                  <span>Partidos por equipo: <b>{previsualizacionPrimeraFase.partidos_por_equipo}</b> · Total fase Champions: <b>{previsualizacionPrimeraFase.partidos_totales}</b></span>
+                  <span>Turnos mínimos teóricos con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.turnos_minimos_teoricos}</b></span>
+                  <span>Cuadro objetivo: <b>{previsualizacionPrimeraFase.cuadro_objetivo} equipos</b></span>
+                  <span>Acceso directo: <b>{previsualizacionPrimeraFase.directos}</b> · Zona playoff: <b>{previsualizacionPrimeraFase.playoff_participantes}</b></span>
+                  {previsualizacionPrimeraFase.exentos_playoff > 0 && <span>Clasificados a Cuartos sin jugar playoff por posición: <b>{previsualizacionPrimeraFase.exentos_playoff}</b></span>}
+                  <span>Partidos de playoff previstos: <b>{previsualizacionPrimeraFase.partidos_playoff}</b></span>
+                  <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
+                  <span>Fuera de la lucha por el título tras Champions: <b>{previsualizacionPrimeraFase.fuera_titulo}</b>{previsualizacionPrimeraFase.palas ? ' · entrarán en Palas de Playa' : ''}</span>
+                  <span>Generación: {previsualizacionPrimeraFase.modo_generacion} · Nivel: {previsualizacionPrimeraFase.criterio_nivel}</span>
+                  {previsualizacionPrimeraFase.requiere_preliminar_extra && <span className="aviso-configuracion-pendiente">Este ajuste requiere una ronda preliminar adicional antes del playoff.</span>}
+                </>}
                 {Array.isArray(previsualizacionPrimeraFase.grupos) && previsualizacionPrimeraFase.grupos.map((grupo) => <div className="detalle-regrupo" key={grupo.grupo}><b>Grupo {grupo.grupo}</b><span>{grupo.equipos} equipos · {grupo.jornadas} jornadas · {grupo.partidos} partidos{grupo.hay_descansos ? ' · habrá descansos' : ''}</span></div>)}
                 {Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.map((partido, indice) => partido.descansa ? <div className="detalle-cruce-eliminatoria" key={`d-${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada}</b><span>Descansa: {partido.nombre_descansa || partido.descansa}</span></div> : <div className="detalle-cruce-eliminatoria" key={`${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada} · Pista {partido.pista}</b><span>{partido.nombre_1 || partido.equipo_1} — {partido.nombre_2 || partido.equipo_2}</span></div>)}
                 {previsualizacionPrimeraFase.hay_descanso === true && <span>Habrá descanso por número impar de equipos.</span>}
-                {previsualizacionPrimeraFase.ya_generada ? <span className="aviso-configuracion-pendiente">Primera fase ya generada: {previsualizacionPrimeraFase.partidos_existentes} partidos existentes. No se volverá a generar.</span> : <button type="button" className="boton boton-principal" onClick={generarPrimeraFase} disabled={generandoPrimeraFase || previsualizacionPrimeraFase.puede_generar === false}>
+                {previsualizacionPrimeraFase.ya_generada ? <span className="aviso-configuracion-pendiente">Primera fase ya generada: {previsualizacionPrimeraFase.partidos_existentes} partidos existentes. No se volverá a generar.</span> : previsualizacionPrimeraFase.tipo === 'Champions' ? (
+                  <span className="aviso-configuracion-pendiente">Propuesta Champions calculada. El botón de generación se habilitará en el siguiente paso, cuando incorporemos el equilibrado de rivales por ISP.</span>
+                ) : <button type="button" className="boton boton-principal" onClick={generarPrimeraFase} disabled={generandoPrimeraFase || previsualizacionPrimeraFase.puede_generar === false}>
                   {generandoPrimeraFase ? 'Generando…' : 'Confirmar y generar primera fase'}
                 </button>}
               </div>
