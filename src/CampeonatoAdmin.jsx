@@ -565,7 +565,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(true); setMensajeGenerador(null)
     const { data, error } = await supabaseCampeonato.rpc('admin_generar_partidos_champions', { p_codigo: codigo })
     if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron generar los partidos Champions.' })
-    else { setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos ?? 0} partidos Champions generados en ${data.jornadas ?? 0} turnos.` }); setFaseActiva('CH'); await cargarPartidos(codigo) }
+    else { setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos ?? 0} partidos Champions generados en ${data.jornadas ?? 0} jornadas.` }); setFaseActiva('CH'); await cargarPartidos(codigo) }
     setGenerandoGrupos(false)
   }
 
@@ -831,7 +831,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'CH' && (
           <>
             <section className="generador-partidos-grupos">
-              <div><strong>Fase Champions</strong><span>Genera los enfrentamientos y la planificación de turnos y pistas definidos en Configuración.</span></div>
+              <div><strong>Fase Champions</strong><span>Genera los enfrentamientos y la planificación de jornadas y pistas definidos en Configuración.</span></div>
               <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.some((p) => p.codigo_fase === 'CH')} onClick={generarPartidosChampions}>{generandoGrupos ? 'Generando…' : partidos.some((p) => p.codigo_fase === 'CH') ? 'Partidos Champions generados' : 'Generar partidos Champions'}</button>
             </section>
             <section className="generador-partidos-grupos">
@@ -865,8 +865,8 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
           <div className="filtros-partidos-campeonato">
             {['GR', 'RG', 'CH'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
-              <option value="todas">{faseActiva === 'CH' ? 'Todos los turnos' : 'Todas las jornadas'}</option>
-              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>{faseActiva === 'CH' ? 'Turno' : 'Jornada'} {jornada}</option>)}
+              <option value="todas">{faseActiva === 'CH' ? 'Todos los jornadas' : 'Todas las jornadas'}</option>
+              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>{faseActiva === 'CH' ? 'Jornada' : 'Jornada'} {jornada}</option>)}
             </select>}
             {['MM', 'PP'].includes(faseActiva) && <select value={filtroRonda} onChange={(evento) => setFiltroRonda(evento.target.value)} aria-label="Filtrar por ronda">
               <option value="todas">Todos los cruces</option>
@@ -925,15 +925,15 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             if (partido.es_descanso) {
               return (
                 <Fragment key={partido.id_partido}>
-                  {abreJornada && <h3 className="separador-jornada">{`${partido.codigo_fase === 'CH' ? 'Turno' : 'Jornada'} ${partido.jornada}`}</h3>}
+                  {abreJornada && <h3 className="separador-jornada">{`${partido.codigo_fase === 'CH' ? 'Jornada' : 'Jornada'} ${partido.jornada}`}</h3>}
                   <article className="tarjeta-partido-campeonato tarjeta-descanso-campeonato">
                     <div className="partido-cabecera-campeonato">
-                      <span>{partido.codigo_fase === 'CH' ? 'Champions' : 'Liguilla'} · {partido.codigo_fase === 'CH' ? 'Turno' : 'Jornada'} {partido.jornada}</span>
+                      <span>{partido.codigo_fase === 'CH' ? 'Champions' : 'Liguilla'} · {partido.codigo_fase === 'CH' ? 'Jornada' : 'Jornada'} {partido.jornada}</span>
                       <b className="badge-partido descanso">Descanso</b>
                     </div>
                     <div className="equipos-campeonato descanso">
                       <strong>💤 {partido.equipo_1}</strong>
-                      <span>{partido.codigo_fase === 'CH' ? 'No juega en este turno' : `${partido.puntos_descanso} puntos`}</span>
+                      <span>{partido.codigo_fase === 'CH' ? 'Descansa en esta jornada' : `${partido.puntos_descanso} puntos`}</span>
                     </div>
                   </article>
                 </Fragment>
@@ -942,7 +942,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
             return (
               <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
-              {abreJornada && <h3 className="separador-jornada">{['MM', 'PP'].includes(faseActiva) ? nombreRonda : `${faseActiva === 'CH' ? 'Turno' : 'Jornada'} ${partido.jornada}`}</h3>}
+              {abreJornada && <h3 className="separador-jornada">{['MM', 'PP'].includes(faseActiva) ? nombreRonda : `${faseActiva === 'CH' ? 'Jornada' : 'Jornada'} ${partido.jornada}`}</h3>}
               <form
                 className="tarjeta-partido-campeonato"
                 onSubmit={(evento) =>
