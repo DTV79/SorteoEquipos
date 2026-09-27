@@ -453,15 +453,40 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   async function previsualizarPrimeraFase() {
-    if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual' && nivelesManualesChampions.length > 0) {
-      const guardados = await guardarNivelesManualesChampions()
-      if (!guardados) return
-    }
-    if (hayCambiosSinGuardar) {
-      const guardado = await guardarConfiguracion()
-      if (!guardado) return
-      cambiosSinGuardarRef.current = false
-      setHayCambiosSinGuardar(false)
+    setPrevisualizandoPrimeraFase(true)
+    setErrorPrimeraFase('')
+    try {
+      if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual') {
+        if (nivelesManualesChampions.length === 0) {
+          setErrorPrimeraFase('Carga y asigna primero los niveles manuales de los jugadores.')
+          return
+        }
+        const pendientes = nivelesManualesChampions.filter(j => !j.nivel)
+        if (pendientes.length > 0) {
+          setErrorPrimeraFase(`Falta asignar nivel manual a: ${pendientes.map(j => j.jugador).join(', ')}.`)
+          return
+        }
+        const { data: nd, error: ne } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+          p_codigo: codigo,
+          p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: Number(j.nivel) })),
+        })
+        if (ne || nd?.ok !== true) {
+          setErrorPrimeraFase(ne?.message || nd?.error || 'No se pudieron guardar los niveles manuales.')
+          return
+        }
+        setNivelesManualesChampions(nd.jugadores || [])
+      }
+      if (hayCambiosSinGuardar) {
+        const guardado = await guardarConfiguracion()
+        if (!guardado) {
+          setErrorPrimeraFase('No se pudo guardar la configuración antes de previsualizar.')
+          return
+        }
+        cambiosSinGuardarRef.current = false
+        setHayCambiosSinGuardar(false)
+      }
+    } finally {
+      setPrevisualizandoPrimeraFase(false)
     }
     setPrevisualizandoPrimeraFase(true)
     setErrorPrimeraFase('')
