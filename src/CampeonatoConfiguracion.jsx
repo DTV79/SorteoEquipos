@@ -1063,12 +1063,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 {previsualizacionPrimeraFase.tipo === 'Champions' && <>
                   <span>Partidos por equipo: <b>{previsualizacionPrimeraFase.partidos_por_equipo}</b> · Total fase Champions: <b>{previsualizacionPrimeraFase.partidos_totales}</b></span>
                   <span>Turnos mínimos teóricos con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.turnos_minimos_teoricos}</b></span>
-                  <span>Cuadro objetivo: <b>{previsualizacionPrimeraFase.cuadro_objetivo} equipos</b></span>
-                  <span>Modo de acceso al título: <b>{previsualizacionPrimeraFase.modo_titulo_aplicado || config.champions_equipos_titulo_modo}</b></span>
-                  <span>Acceso directo a Cuartos: <b>1.º–{previsualizacionPrimeraFase.directos}.º</b></span>
-                  {previsualizacionPrimeraFase.exentos_playoff > 0 && <span>Exentos de playoff: <b>{previsualizacionPrimeraFase.directos + 1}.º–{previsualizacionPrimeraFase.directos + previsualizacionPrimeraFase.exentos_playoff}.º</b></span>}
-                  {previsualizacionPrimeraFase.partidos_playoff > 0 && <span>Playoff previo: <b>{previsualizacionPrimeraFase.partidos_playoff} partido(s)</b> · participan los equipos necesarios entre los puestos <b>{previsualizacionPrimeraFase.inicio_playoff}.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b> hasta completar el cuadro de {previsualizacionPrimeraFase.cuadro_objetivo}</span>}
                   <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
+                  <span>Primera ronda por el título: <b>{previsualizacionPrimeraFase.ronda_inicial_titulo}</b></span>
+                  {previsualizacionPrimeraFase.partidos_playoff === 0 && <span>Clasificados desde Champions: <b>1.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b> · entran directamente en {previsualizacionPrimeraFase.ronda_inicial_titulo}</span>}
+                  {previsualizacionPrimeraFase.partidos_playoff > 0 && <>
+                    <span>Exentos de la ronda previa: <b>1.º–{previsualizacionPrimeraFase.exentos_playoff}.º</b></span>
+                    <span>Ronda previa: <b>{previsualizacionPrimeraFase.partidos_playoff} partido(s)</b> · puestos <b>{previsualizacionPrimeraFase.inicio_playoff}.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b></span>
+                  </>}
                   <span>Fuera de la lucha por el título tras Champions: <b>{previsualizacionPrimeraFase.fuera_titulo}</b>{previsualizacionPrimeraFase.palas ? ' · entrarán en Palas de Playa' : ''}</span>
                   <span>Generación aplicada: <b>{previsualizacionPrimeraFase.modo_generacion_aplicado || previsualizacionPrimeraFase.modo_generacion}</b> · Criterio aplicado: <b>{previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel}</b></span>
                   {previsualizacionPrimeraFase.requiere_preliminar_extra && <span className="aviso-configuracion-pendiente">Este ajuste necesita más de una ronda previa para reducir los equipos hasta el cuadro eliminatorio.</span>}
