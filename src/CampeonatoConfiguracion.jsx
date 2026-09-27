@@ -415,7 +415,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setErrorPrimeraFase('')
     setPrevisualizacionPrimeraFase(null)
     const funcionPrevia = config.tipo_campeonato === 'Champions'
-      ? 'admin_previsualizar_champions'
+      ? 'admin_previsualizar_emparejamientos_champions'
       : 'admin_previsualizar_primera_fase'
     const { data, error } = await supabaseCampeonato.rpc(funcionPrevia, { p_codigo: codigo })
     setPrevisualizandoPrimeraFase(false)
@@ -973,13 +973,26 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   <span>Partidos por equipo: <b>{previsualizacionPrimeraFase.partidos_por_equipo}</b> · Total fase Champions: <b>{previsualizacionPrimeraFase.partidos_totales}</b></span>
                   <span>Turnos mínimos teóricos con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.turnos_minimos_teoricos}</b></span>
                   <span>Cuadro objetivo: <b>{previsualizacionPrimeraFase.cuadro_objetivo} equipos</b></span>
-                  <span>Acceso directo: <b>{previsualizacionPrimeraFase.directos}</b> · Zona playoff: <b>{previsualizacionPrimeraFase.playoff_participantes}</b></span>
-                  {previsualizacionPrimeraFase.exentos_playoff > 0 && <span>Clasificados a Cuartos sin jugar playoff por posición: <b>{previsualizacionPrimeraFase.exentos_playoff}</b></span>}
-                  <span>Partidos de playoff previstos: <b>{previsualizacionPrimeraFase.partidos_playoff}</b></span>
+                  <span>Acceso directo a Cuartos: <b>1.º–{previsualizacionPrimeraFase.directos}.º</b></span>
+                  {previsualizacionPrimeraFase.exentos_playoff > 0 && <span>Exentos de playoff: <b>{previsualizacionPrimeraFase.directos + 1}.º–{previsualizacionPrimeraFase.directos + previsualizacionPrimeraFase.exentos_playoff}.º</b></span>}
+                  {previsualizacionPrimeraFase.partidos_playoff > 0 && <span>Playoff: <b>{previsualizacionPrimeraFase.partidos_playoff} partido(s)</b> · mejor contra peor de la zona que debe jugar</span>}
                   <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
                   <span>Fuera de la lucha por el título tras Champions: <b>{previsualizacionPrimeraFase.fuera_titulo}</b>{previsualizacionPrimeraFase.palas ? ' · entrarán en Palas de Playa' : ''}</span>
                   <span>Generación: {previsualizacionPrimeraFase.modo_generacion} · Nivel: {previsualizacionPrimeraFase.criterio_nivel}</span>
                   {previsualizacionPrimeraFase.requiere_preliminar_extra && <span className="aviso-configuracion-pendiente">Este ajuste requiere una ronda preliminar adicional antes del playoff.</span>}
+                  {Array.isArray(previsualizacionPrimeraFase.equipos_nivel) && previsualizacionPrimeraFase.equipos_nivel.length > 0 && (
+                    <div className="resumen-formato-especial">
+                      <strong>⚖️ Nivel y dificultad prevista</strong>
+                      {previsualizacionPrimeraFase.equipos_nivel.map((e, i) => <span key={e.id_equipo}>{i + 1}. {e.equipo} · Nivel {e.nivel} · Rivales {e.dificultad_calendario}</span>)}
+                      {previsualizacionPrimeraFase.equilibrio && <small>Dificultad: {previsualizacionPrimeraFase.equilibrio.dificultad_min}–{previsualizacionPrimeraFase.equilibrio.dificultad_max} · diferencia {previsualizacionPrimeraFase.equilibrio.diferencia} ISP</small>}
+                    </div>
+                  )}
+                  {Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.length > 0 && (
+                    <div className="resumen-formato-especial">
+                      <strong>🎾 Propuesta de enfrentamientos</strong>
+                      {previsualizacionPrimeraFase.emparejamientos.map(p => <span key={p.numero}>{p.numero}. {p.local} — {p.visitante}</span>)}
+                    </div>
+                  )}
                 </>}
                 {Array.isArray(previsualizacionPrimeraFase.grupos) && previsualizacionPrimeraFase.grupos.map((grupo) => <div className="detalle-regrupo" key={grupo.grupo}><b>Grupo {grupo.grupo}</b><span>{grupo.equipos} equipos · {grupo.jornadas} jornadas · {grupo.partidos} partidos{grupo.hay_descansos ? ' · habrá descansos' : ''}</span></div>)}
                 {Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.map((partido, indice) => partido.descansa ? <div className="detalle-cruce-eliminatoria" key={`d-${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada}</b><span>Descansa: {partido.nombre_descansa || partido.descansa}</span></div> : <div className="detalle-cruce-eliminatoria" key={`${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada} · Pista {partido.pista}</b><span>{partido.nombre_1 || partido.equipo_1} — {partido.nombre_2 || partido.equipo_2}</span></div>)}
