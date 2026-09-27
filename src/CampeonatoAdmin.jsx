@@ -15,6 +15,7 @@ function tituloFase(partido) {
   const fase = {
     GR: 'Grupos',
     RG: 'Regrupos',
+    CH: 'Champions',
     MM: 'Mata-Mata',
     PP: 'Palas de playa',
   }[partido.codigo_fase] ?? partido.codigo_fase
@@ -60,6 +61,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [partidoAAnular, setPartidoAAnular] = useState(null)
   const [previaGrupos, setPreviaGrupos] = useState(null)
   const [previaRegrupos, setPreviaRegrupos] = useState(null)
+  const [previaChampionsTitulo, setPreviaChampionsTitulo] = useState(null)
   const [generandoGrupos, setGenerandoGrupos] = useState(false)
   const [mensajeGenerador, setMensajeGenerador] = useState(null)
 
@@ -207,7 +209,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
   const rondasDisponibles = useMemo(() => {
     const existentes = new Set(partidosFaseActiva.map((partido) => partido.codigo_ronda).filter(Boolean))
-    return ['CUA', 'SEM', 'FIN'].filter((ronda) => existentes.has(ronda))
+    return ['PREV', 'DF', 'OF', 'CF', 'SF', 'F', 'OCT', 'CUA', 'SEM', 'FIN'].filter((ronda) => existentes.has(ronda))
   }, [partidosFaseActiva])
 
   async function guardarResultado(evento, partido) {
@@ -558,6 +560,30 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(false)
   }
 
+  async function prepararEliminatoriasChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo preparar la eliminatoria Champions.' })
+    else setPreviaChampionsTitulo(data)
+    setGenerandoGrupos(false)
+  }
+
+  async function generarEliminatoriasChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_eliminatorias_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo generar la eliminatoria Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: data.mensaje }); setPreviaChampionsTitulo(null); setFaseActiva('MM'); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
+  async function generarSiguienteRondaChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_siguiente_ronda_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo generar la siguiente ronda Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: data.mensaje }); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
   if (seccion === 'campeonatos' || !codigo) {
     return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
   }
@@ -733,7 +759,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
         {(hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
           <div className="selector-fase-campeonato" role="group" aria-label="Fase de los partidos">
-            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
+            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>{String(estructuraPrimeraFase).toLowerCase().includes('champions') ? 'Fase Champions' : 'Primera fase · Grupos'}</button>
             <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
             {partidos.some((partido) => partido.codigo_fase === 'MM') && <button type="button" className={faseActiva === 'MM' ? 'activo' : ''} onClick={() => { setFaseActiva('MM'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Eliminatorias</button>}
             {hayPalas && partidos.some((partido) => partido.codigo_fase === 'PP') && <button type="button" className={faseActiva === 'PP' ? 'activo' : ''} onClick={() => { setFaseActiva('PP'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Palas de Playa</button>}
@@ -789,11 +815,32 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </section>
         )}
 
+        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'GR' && (
+          <section className="generador-partidos-grupos">
+            <div><strong>Eliminatorias Champions</strong><span>Comprueba la clasificación final y genera la ronda por el título. Los cruces siguientes aplican reseeding.</span></div>
+            <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>
+          </section>
+        )}
+        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'MM' && (
+          <section className="generador-partidos-grupos">
+            <div><strong>Siguiente ronda Champions</strong><span>Cuando termine la ronda actual, recalcula los supervivientes y enfrenta al mejor clasificado con el peor.</span></div>
+            <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarSiguienteRondaChampions}>{generandoGrupos ? 'Calculando…' : 'Generar siguiente ronda'}</button>
+          </section>
+        )}
+        {previaChampionsTitulo && (
+          <section className="generador-partidos-grupos">
+            <div><strong>{previaChampionsTitulo.champions_terminada ? previaChampionsTitulo.ronda_a_generar : 'Champions todavía en juego'}</strong>
+            <span>{previaChampionsTitulo.mensaje_eliminatorias}</span>
+            {previaChampionsTitulo.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}</div>
+            {previaChampionsTitulo.puede_generar_eliminatorias && <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>Confirmar y generar</button>}
+          </section>
+        )}
+
         {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
 
         <div className="barra-campeonato">
           <div>
-            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
+            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: String(estructuraPrimeraFase).toLowerCase().includes('champions') ? 'de Champions' : 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
@@ -804,7 +851,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             </select>}
             {['MM', 'PP'].includes(faseActiva) && <select value={filtroRonda} onChange={(evento) => setFiltroRonda(evento.target.value)} aria-label="Filtrar por ronda">
               <option value="todas">Todos los cruces</option>
-              {rondasDisponibles.map((ronda) => <option key={ronda} value={ronda}>{({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[ronda]}</option>)}
+              {rondasDisponibles.map((ronda) => <option key={ronda} value={ronda}>{({ PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final', CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[ronda]}</option>)}
             </select>}
             <input
               type="search"
@@ -836,7 +883,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             const claveRonda = ['MM', 'PP'].includes(faseActiva) ? partido.codigo_ronda : partido.jornada
             const claveRondaAnterior = ['MM', 'PP'].includes(faseActiva) ? partidosVisibles[indice - 1]?.codigo_ronda : partidosVisibles[indice - 1]?.jornada
             const abreJornada = indice === 0 || claveRondaAnterior !== claveRonda
-            const nombreRonda = ({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
+            const nombreRonda = ({ PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final', CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
 
             if (partido.es_descanso_palas) {
               return (
