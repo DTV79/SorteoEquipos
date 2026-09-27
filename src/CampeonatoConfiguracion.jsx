@@ -995,7 +995,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
                         <div key={turno}>
                           <b>Turno {turno}</b>
-                          {previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <span key={`${p.numero}-${p.pista}`}>Pista {p.pista}: {p.local} — {p.visitante}</span>)}
+                          <div className="lista-pistas-turno">{previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <div className="linea-pista-turno" key={`${p.numero}-${p.pista}`}><b>Pista {p.pista}</b><span>{p.local} — {p.visitante}</span></div>)}</div>
                         </div>
                       ))}
                     </div>
