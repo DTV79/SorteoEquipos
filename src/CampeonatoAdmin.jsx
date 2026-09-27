@@ -151,6 +151,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         const maximo = Number(configuracion.puntos_maximos_por_set)
         if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
         setEstructuraPrimeraFase(configuracion.estructura_primera_fase || 'Grupos')
+        if (String(configuracion.estructura_primera_fase || '').toLowerCase().includes('champions')) setFaseActiva('CH')
         setModoGenerarJornadas(configuracion.modo_generar_jornadas || '')
         setHayRegrupos(Boolean(configuracion.hay_regrupos))
         setHayPalas(Boolean(configuracion.hay_copa_palas_playa))
@@ -560,6 +561,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(false)
   }
 
+  async function generarPartidosChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_partidos_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron generar los partidos Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos ?? 0} partidos Champions generados en ${data.jornadas ?? 0} turnos.` }); setFaseActiva('CH'); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
   async function prepararEliminatoriasChampions() {
     setGenerandoGrupos(true); setMensajeGenerador(null)
     const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
@@ -757,16 +766,20 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </div>
         </header>
 
-        {(hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
+        {(String(estructuraPrimeraFase).toLowerCase().includes('champions') || hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
           <div className="selector-fase-campeonato" role="group" aria-label="Fase de los partidos">
-            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>{String(estructuraPrimeraFase).toLowerCase().includes('champions') ? 'Fase Champions' : 'Primera fase · Grupos'}</button>
-            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
+            {String(estructuraPrimeraFase).toLowerCase().includes('champions') ? (
+              <button type="button" className={faseActiva === 'CH' ? 'activo' : ''} onClick={() => { setFaseActiva('CH'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Fase Champions</button>
+            ) : (
+              <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
+            )}
+            {hayRegrupos && <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>}
             {partidos.some((partido) => partido.codigo_fase === 'MM') && <button type="button" className={faseActiva === 'MM' ? 'activo' : ''} onClick={() => { setFaseActiva('MM'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Eliminatorias</button>}
             {hayPalas && partidos.some((partido) => partido.codigo_fase === 'PP') && <button type="button" className={faseActiva === 'PP' ? 'activo' : ''} onClick={() => { setFaseActiva('PP'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Palas de Playa</button>}
           </div>
         )}
 
-        {!String(estructuraPrimeraFase).toLowerCase().includes('grupo') && faseActiva === 'GR' && (
+        {!String(estructuraPrimeraFase).toLowerCase().includes('grupo') && !String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'GR' && (
           <section className="generador-partidos-grupos">
             <div>
               <strong>Liguilla · siguiente jornada</strong>
@@ -815,11 +828,17 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </section>
         )}
 
-        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'GR' && (
-          <section className="generador-partidos-grupos">
-            <div><strong>Eliminatorias Champions</strong><span>Comprueba la clasificación final y genera la ronda por el título. Los cruces siguientes aplican reseeding.</span></div>
-            <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>
-          </section>
+        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'CH' && (
+          <>
+            <section className="generador-partidos-grupos">
+              <div><strong>Fase Champions</strong><span>Genera los enfrentamientos y la planificación de turnos y pistas definidos en Configuración.</span></div>
+              <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.some((p) => p.codigo_fase === 'CH')} onClick={generarPartidosChampions}>{generandoGrupos ? 'Generando…' : partidos.some((p) => p.codigo_fase === 'CH') ? 'Partidos Champions generados' : 'Generar partidos Champions'}</button>
+            </section>
+            <section className="generador-partidos-grupos">
+              <div><strong>Eliminatorias Champions</strong><span>{partidos.filter((p) => p.codigo_fase === 'CH').length === 0 ? 'Primero debes generar y disputar la fase Champions.' : partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado') ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span></div>
+              <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.filter((p) => p.codigo_fase === 'CH').length === 0 || partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado')} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>
+            </section>
+          </>
         )}
         {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'MM' && (
           <section className="generador-partidos-grupos">
@@ -840,12 +859,12 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
         <div className="barra-campeonato">
           <div>
-            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: String(estructuraPrimeraFase).toLowerCase().includes('champions') ? 'de Champions' : 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
+            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: 'de grupos', CH: 'de Champions', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
           <div className="filtros-partidos-campeonato">
-            {['GR', 'RG'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
+            {['GR', 'RG', 'CH'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
               <option value="todas">Todas las jornadas</option>
               {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>Jornada {jornada}</option>)}
             </select>}
