@@ -708,8 +708,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 </select>
               </Campo>
               {esGrupos && <Campo etiqueta="Equipos previstos por grupo" ayuda="De momento todos los grupos deben tener el mismo número."><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
-              <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
-              <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esChampions ? <span className="etiqueta-con-info">Pistas disponibles <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre pistas disponibles">i<span className="info-criterio-texto">Número máximo de partidos que pueden jugarse simultáneamente. En Champions el planificador intentará <strong>ocupar todas las pistas posibles</strong> en cada jornada; nunca dejará una libre solo para provocar descansos.</span></span></span> : "Pistas disponibles"}><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esChampions ? <span className="etiqueta-con-info">Equipos que pasan a eliminatorias <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que pasan a eliminatorias">i<span className="info-criterio-texto">Número de plazas del cuadro eliminatorio. En Champions se combina con la configuración de equipos que mantienen opción al título para determinar accesos directos y, cuando corresponda, playoff previo.</span></span></span> : (esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias')}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
             </div>
             {esChampions && (
               <div className="bloque-dependiente">
@@ -720,44 +720,35 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   <small>El generador equilibrará la dificultad con ISP y permitirá cualquier número de pistas.</small>
                 </div>
                 <div className="rejilla-configuracion">
-                  <Campo etiqueta="Partidos por equipo">
+                  <Campo etiqueta={<span className="etiqueta-con-info">Partidos por equipo <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre partidos por equipo">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula una cantidad adecuada de partidos según los equipos inscritos.<br /><br /><strong>Manual:</strong> tú decides cuántos partidos jugará cada equipo.</span></span></span>}>
                     <select name="champions_partidos_por_equipo_modo" value={config.champions_partidos_por_equipo_modo} onChange={cambiar}>
                       <option>Automático</option><option>Manual</option>
                     </select>
                   </Campo>
-                  <Campo etiqueta="N.º de partidos" ayuda="Solo se usa en modo Manual. El sistema comprobará que sea matemáticamente posible.">
+                  <Campo etiqueta={<span className="etiqueta-con-info">N.º de partidos <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre n.º de partidos">i<span className="info-criterio-texto">Indica cuántos partidos disputará cada equipo cuando <strong>Partidos por equipo</strong> está en Manual. El sistema comprobará que la cantidad sea matemáticamente posible.</span></span></span>} ayuda="Solo se usa en modo Manual. El sistema comprobará que sea matemáticamente posible.">
                     <input type="number" min="1" name="champions_partidos_por_equipo" value={config.champions_partidos_por_equipo} onChange={cambiar} disabled={config.champions_partidos_por_equipo_modo !== 'Manual'} />
                   </Campo>
-                  <Campo etiqueta="Generación de rivales">
+                  <Campo etiqueta={<span className="etiqueta-con-info">Generación de rivales <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre generación de rivales">i<span className="info-criterio-texto"><strong>Equilibrado + azar:</strong> busca que todos tengan una dificultad de calendario parecida según el nivel elegido, introduciendo azar entre soluciones similares.<br /><br /><strong>Equilibrado:</strong> prioriza al máximo igualar la dificultad de los rivales de todos los equipos.<br /><br /><strong>Sorteo puro:</strong> los rivales se eligen al azar, sin intentar equilibrarlos por nivel.</span></span></span>}>
                     <select name="champions_modo_generacion" value={config.champions_modo_generacion} onChange={cambiar}>
                       <option>Equilibrado + azar</option><option>Equilibrado</option><option>Sorteo puro</option>
                     </select>
                   </Campo>
-                  <Campo etiqueta="Criterio de nivel">
+                  <Campo etiqueta={<span className="etiqueta-con-info">Criterio de nivel <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre criterio de nivel">i<span className="info-criterio-texto"><strong>ISP:</strong> utiliza el Índice Sprint Pádel de los jugadores para estimar el nivel del equipo.<br /><br /><strong>Ranking histórico:</strong> utiliza la clasificación histórica disponible.<br /><br /><strong>Manual:</strong> permite trabajar con el nivel asignado manualmente, sin depender del ISP o del ranking histórico.</span></span></span>}>
                     <select name="champions_criterio_nivel" value={config.champions_criterio_nivel} onChange={cambiar}>
                       <option>ISP</option><option>Ranking histórico</option><option>Manual</option>
                     </select>
                   </Campo>
-                  <Campo etiqueta="Descanso mínimo entre partidos">
-                    <select name="champions_descanso_minimo_turnos" value={config.champions_descanso_minimo_turnos} onChange={cambiar}>
-                      <option value={0}>0 turnos</option><option value={1}>1 turno</option><option value={2}>2 turnos</option>
-                    </select>
-                  </Campo>
-                  <Campo etiqueta="Equipos que mantienen opción al título">
+                  <Campo etiqueta={<span className="etiqueta-con-info">Equipos que mantienen opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que mantienen opción al título">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula el acceso a eliminatorias según el número de equipos y el cuadro disponible.<br /><br /><strong>Todos:</strong> todos los equipos conservan una vía para luchar por el título después de la Liga Champions.<br /><br /><strong>Personalizado:</strong> tú indicas cuántos equipos continúan con opción al título.</span></span></span>}>
                     <select name="champions_equipos_titulo_modo" value={config.champions_equipos_titulo_modo} onChange={cambiar}>
                       <option>Automático</option><option>Todos</option><option>Personalizado</option>
                     </select>
                   </Campo>
                   {config.champions_equipos_titulo_modo === 'Personalizado' && (
-                    <Campo etiqueta="N.º de equipos con opción al título">
+                    <Campo etiqueta={<span className="etiqueta-con-info">N.º de equipos con opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre n.º de equipos con opción al título">i<span className="info-criterio-texto">Solo se usa en modo <strong>Personalizado</strong>. Indica cuántos equipos de la clasificación Champions conservarán acceso al camino por el título.</span></span></span>}>
                       <input type="number" min="2" name="champions_equipos_titulo_personalizado" value={config.champions_equipos_titulo_personalizado} onChange={cambiar} />
                     </Campo>
                   )}
                 </div>
-                <label className="interruptor-configuracion">
-                  <input type="checkbox" name="champions_permitir_reducir_descanso" checked={config.champions_permitir_reducir_descanso} onChange={cambiar} />
-                  <span>Permitir reducir el descanso mínimo si es necesario para completar el calendario</span>
-                </label>
                 <small className="ayuda-regrupos">El reseeding está siempre activo: en cada ronda el mejor clasificado superviviente se enfrenta al peor.</small>
               </div>
             )}
