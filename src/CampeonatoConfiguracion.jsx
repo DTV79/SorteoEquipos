@@ -179,6 +179,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [previsualizacionPrimeraFase, setPrevisualizacionPrimeraFase] = useState(null)
   const [previsualizandoPrimeraFase, setPrevisualizandoPrimeraFase] = useState(false)
   const [generandoPrimeraFase, setGenerandoPrimeraFase] = useState(false)
+  const [nivelesManualesChampions, setNivelesManualesChampions] = useState([])
+  const [guardandoNivelesChampions, setGuardandoNivelesChampions] = useState(false)
   const [errorPrimeraFase, setErrorPrimeraFase] = useState('')
   const [previsualizacionRegrupos, setPrevisualizacionRegrupos] = useState(null)
   const [previsualizandoRegrupos, setPrevisualizandoRegrupos] = useState(false)
@@ -408,6 +410,28 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setHayCambiosSinGuardar(false)
     setAccionSalidaPendiente(null)
     window.setTimeout(() => accion?.(), 0)
+  }
+
+  async function cargarNivelesManualesChampions() {
+    const { data, error } = await supabaseCampeonato.rpc('admin_obtener_niveles_manuales_champions', { p_codigo: codigo })
+    if (!error && data?.ok === true) setNivelesManualesChampions(data.jugadores || [])
+  }
+
+  async function guardarNivelesManualesChampions() {
+    setGuardandoNivelesChampions(true)
+    const { data, error } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+      p_codigo: codigo,
+      p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: j.nivel || '' })),
+    })
+    setGuardandoNivelesChampions(false)
+    if (error || data?.ok !== true) {
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron guardar los niveles manuales.' })
+      return false
+    }
+    setNivelesManualesChampions(data.jugadores || [])
+    setPrevisualizacionPrimeraFase(null)
+    setMensaje({ tipo: 'correcto', texto: 'Niveles manuales Champions guardados.' })
+    return true
   }
 
   async function previsualizarPrimeraFase() {
@@ -748,6 +772,22 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       <option>ISP</option><option>Ranking histórico</option><option>Manual</option>
                     </select>
                   </Campo>
+                  {config.champions_criterio_nivel === 'Manual' && (
+                    <div className="resumen-formato-especial">
+                      <strong>🎚️ Nivel manual de jugadores</strong>
+                      <small>Asigna un nivel del 1 al 5. Se guarda en la ficha del jugador y se reutiliza en futuros campeonatos. El nivel de la pareja será la media de sus dos jugadores.</small>
+                      {nivelesManualesChampions.length === 0 && <button type="button" className="boton boton-secundario" onClick={cargarNivelesManualesChampions}>Cargar jugadores</button>}
+                      {nivelesManualesChampions.map((j, i) => (
+                        <label className="campo-configuracion" key={j.id_jugador}>
+                          <span>{j.jugador}</span>
+                          <select value={j.nivel || ''} onChange={e => setNivelesManualesChampions(actual => actual.map((x, n) => n === i ? { ...x, nivel: e.target.value } : x))}>
+                            <option value="">Sin asignar</option><option value="1">1 · Bajo</option><option value="2">2 · Medio-bajo</option><option value="3">3 · Medio</option><option value="4">4 · Medio-alto</option><option value="5">5 · Alto</option>
+                          </select>
+                        </label>
+                      ))}
+                      {nivelesManualesChampions.length > 0 && <button type="button" className="boton boton-secundario" onClick={guardarNivelesManualesChampions} disabled={guardandoNivelesChampions}>{guardandoNivelesChampions ? 'Guardando…' : 'Guardar niveles manuales'}</button>}
+                    </div>
+                  )}
                   <Campo etiqueta={<span className="etiqueta-con-info">Equipos que mantienen opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que mantienen opción al título">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula el acceso a eliminatorias según el número de equipos y el cuadro disponible.<br /><br /><strong>Todos:</strong> todos los equipos conservan una vía para luchar por el título después de la Liga Champions.<br /><br /><strong>Personalizado:</strong> tú indicas cuántos equipos continúan con opción al título.</span></span></span>}>
                     <select name="champions_equipos_titulo_modo" value={config.champions_equipos_titulo_modo} onChange={cambiar}>
                       <option>Automático</option><option>Todos</option><option>Personalizado</option>
