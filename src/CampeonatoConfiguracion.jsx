@@ -415,7 +415,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setErrorPrimeraFase('')
     setPrevisualizacionPrimeraFase(null)
     const funcionPrevia = config.tipo_campeonato === 'Champions'
-      ? 'admin_previsualizar_emparejamientos_champions'
+      ? 'admin_previsualizar_planificacion_champions'
       : 'admin_previsualizar_primera_fase'
     const { data, error } = await supabaseCampeonato.rpc(funcionPrevia, { p_codigo: codigo })
     setPrevisualizandoPrimeraFase(false)
@@ -985,6 +985,19 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       <strong>⚖️ Nivel y dificultad prevista</strong>
                       {previsualizacionPrimeraFase.equipos_nivel.map((e, i) => <span key={e.id_equipo}>{i + 1}. {e.equipo} · Nivel equipo {e.nivel} · Dificultad calendario {e.dificultad_calendario}</span>)}
                       {previsualizacionPrimeraFase.equilibrio && <small>Equilibrio de calendarios: {previsualizacionPrimeraFase.equilibrio.dificultad_min}–{previsualizacionPrimeraFase.equilibrio.dificultad_max} ISP · diferencia máxima {previsualizacionPrimeraFase.equilibrio.diferencia} ISP</small>}
+                    </div>
+                  )}
+                  {Array.isArray(previsualizacionPrimeraFase.planificacion) && previsualizacionPrimeraFase.planificacion.length > 0 && (
+                    <div className="resumen-formato-especial">
+                      <strong>📅 Turnos y pistas</strong>
+                      <span>Planificación: <b>{previsualizacionPrimeraFase.turnos_planificados} turnos</b> · Ocupación {previsualizacionPrimeraFase.ocupacion_teorica}%</span>
+                      <span>Descanso objetivo: <b>{previsualizacionPrimeraFase.descanso_objetivo} turno(s)</b> · Incumplimientos: <b>{previsualizacionPrimeraFase.incumplimientos_descanso}</b></span>
+                      {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
+                        <div key={turno}>
+                          <b>Turno {turno}</b>
+                          {previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <span key={`${p.numero}-${p.pista}`}>Pista {p.pista}: {p.local} — {p.visitante}</span>)}
+                        </div>
+                      ))}
                     </div>
                   )}
                   {Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.length > 0 && (
