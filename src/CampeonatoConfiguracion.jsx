@@ -991,11 +991,19 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                     <div className="resumen-formato-especial">
                       <strong>📅 Turnos y pistas</strong>
                       <span>Planificación: <b>{previsualizacionPrimeraFase.turnos_planificados} turnos</b> · Ocupación {previsualizacionPrimeraFase.ocupacion_teorica}%</span>
-                      <span>Descanso objetivo: <b>{previsualizacionPrimeraFase.descanso_objetivo} turno(s)</b> · Incumplimientos: <b>{previsualizacionPrimeraFase.incumplimientos_descanso}</b></span>
+                      <span>Objetivo: <b>máxima ocupación de pistas</b> · {previsualizacionPrimeraFase.turnos_planificados} turnos</span>
                       {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
                         <div key={turno}>
                           <b>Turno {turno}</b>
-                          <div className="lista-pistas-turno">{previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <div className="linea-pista-turno" key={`${p.numero}-${p.pista}`}><span><b>Pista {p.pista}:</b> {p.local} — {p.visitante}</span></div>)}</div>
+                          <div className="lista-pistas-turno">
+                            {previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <div className="linea-pista-turno" key={`${p.numero}-${p.pista}`}><span><b>Pista {p.pista}:</b> {p.local} — {p.visitante}</span></div>)}
+                            {(() => {
+                              const juegan = new Set(previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).flatMap(p => [p.local_id, p.visitante_id]))
+                              const nombres = new Map(previsualizacionPrimeraFase.planificacion.flatMap(p => [[p.local_id,p.local],[p.visitante_id,p.visitante]]))
+                              const descansan = (previsualizacionPrimeraFase.equipos_planificacion || []).filter(id => !juegan.has(id)).map(id => nombres.get(id)).filter(Boolean)
+                              return descansan.length > 0 ? <div className="linea-pista-turno"><span><b>Descansa:</b> {descansan.join(' · ')}</span></div> : null
+                            })()}
+                          </div>
                         </div>
                       ))}
                     </div>
