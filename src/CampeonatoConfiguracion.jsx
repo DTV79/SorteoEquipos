@@ -45,7 +45,7 @@ const VALORES_INICIALES = {
   champions_partidos_por_equipo: 4,
   champions_modo_generacion: 'Equilibrado + azar',
   champions_criterio_nivel: 'ISP',
-  champions_descanso_minimo_turnos: 1,
+  champions_descanso_minimo_jornadas: 1,
   champions_permitir_reducir_descanso: true,
   champions_equipos_titulo_modo: 'Automático',
   champions_equipos_titulo_personalizado: '',
@@ -93,7 +93,7 @@ const CAMPOS_NUMERICOS = new Set([
   'puntos_objetivo_set',
   'puntos_maximos_por_set',
   'champions_partidos_por_equipo',
-  'champions_descanso_minimo_turnos',
+  'champions_descanso_minimo_jornadas',
   'champions_equipos_titulo_personalizado',
 ])
 
@@ -1062,7 +1062,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 {(previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas) != null && <span>Jornadas: {previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas}</span>}
                 {previsualizacionPrimeraFase.tipo === 'Champions' && <>
                   <span>Partidos por equipo: <b>{previsualizacionPrimeraFase.partidos_por_equipo}</b> · Total fase Champions: <b>{previsualizacionPrimeraFase.partidos_totales}</b></span>
-                  <span>Turnos mínimos teóricos con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.turnos_minimos_teoricos}</b></span>
+                  <span>Jornadas mínimas teóricas con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.jornadas_minimos_teoricos}</b></span>
                   <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
                   <span>Primera ronda por el título: <b>{previsualizacionPrimeraFase.ronda_inicial_titulo}</b></span>
                   {previsualizacionPrimeraFase.partidos_playoff === 0 && <span>Clasificados desde Champions: <b>1.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b> · entran directamente en {previsualizacionPrimeraFase.ronda_inicial_titulo}</span>}
@@ -1083,9 +1083,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   )}
                   {Array.isArray(previsualizacionPrimeraFase.planificacion) && previsualizacionPrimeraFase.planificacion.length > 0 && (
                     <div className="resumen-formato-especial">
-                      <strong>📅 Turnos y pistas</strong>
-                      <span>Planificación: <b>{previsualizacionPrimeraFase.turnos_planificados} turnos</b> · Ocupación {previsualizacionPrimeraFase.ocupacion_teorica}%</span>
-                      <span>Objetivo: <b>máxima ocupación de pistas</b> · {previsualizacionPrimeraFase.turnos_planificados} turnos</span>
+                      <strong>📅 Jornadas y pistas</strong>
+                      <span>Planificación: <b>{previsualizacionPrimeraFase.jornadas_planificados} jornadas</b> · Ocupación {previsualizacionPrimeraFase.ocupacion_teorica}%</span>
+                      <span>Objetivo: <b>máxima ocupación de pistas</b> · {previsualizacionPrimeraFase.jornadas_planificados} jornadas</span>
                       {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
                         <div key={turno}>
                           <b>Turno {turno}</b>
