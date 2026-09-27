@@ -434,6 +434,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   async function generarPrimeraFase() {
     if (!previsualizacionPrimeraFase) return
+    if (previsualizacionPrimeraFase.requiere_confirmacion_manual) {
+      const aceptar = window.confirm(`${previsualizacionPrimeraFase.aviso_manual || 'La configuración manual requiere condiciones especiales.'}\n\n¿Quieres generar igualmente la primera fase?`)
+      if (!aceptar) return
+    }
     setGenerandoPrimeraFase(true)
     setErrorPrimeraFase('')
     const { data, error } = await supabaseCampeonato.rpc('admin_generar_primera_fase', { p_codigo: codigo })
@@ -961,6 +965,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               <div className="resumen-generacion-primera-fase">
                 <strong>Previsualización · {previsualizacionPrimeraFase.tipo || previsualizacionPrimeraFase.tipo_campeonato || config.tipo_campeonato}</strong>
                 {previsualizacionPrimeraFase.mensaje && <span>{previsualizacionPrimeraFase.mensaje}</span>}
+                {previsualizacionPrimeraFase.aviso_manual && <div className="aviso-configuracion-champions"><strong>⚠️ Advertencia:</strong> {previsualizacionPrimeraFase.aviso_manual}<br /><small>Puedes continuar si aceptas que el calendario se genere con estas condiciones.</small></div>}
                 <span>Equipos: {previsualizacionPrimeraFase.equipos ?? previsualizacionPrimeraFase.total_equipos ?? 0}</span>
                 <span>Pistas disponibles: {previsualizacionPrimeraFase.pistas ?? config.num_pistas_disponibles}</span>
                 {previsualizacionPrimeraFase.num_grupos != null && <span>Grupos: {previsualizacionPrimeraFase.num_grupos}</span>}
