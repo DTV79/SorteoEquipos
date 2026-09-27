@@ -980,13 +980,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                   {previsualizacionPrimeraFase.partidos_playoff > 0 && <span>Playoff: <b>{previsualizacionPrimeraFase.directos + previsualizacionPrimeraFase.exentos_playoff + 1}.º vs {previsualizacionPrimeraFase.equipos_titulo}.º</b>{previsualizacionPrimeraFase.partidos_playoff === 1 ? ' · El ganador pasa a Cuartos' : ` · ${previsualizacionPrimeraFase.partidos_playoff} cruces; los ganadores pasan a Cuartos`}</span>}
                   <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
                   <span>Fuera de la lucha por el título tras Champions: <b>{previsualizacionPrimeraFase.fuera_titulo}</b>{previsualizacionPrimeraFase.palas ? ' · entrarán en Palas de Playa' : ''}</span>
-                  <span>Generación: {previsualizacionPrimeraFase.modo_generacion} · Nivel: {previsualizacionPrimeraFase.criterio_nivel}</span>
+                  <span>Generación aplicada: <b>{previsualizacionPrimeraFase.modo_generacion_aplicado || previsualizacionPrimeraFase.modo_generacion}</b> · Criterio aplicado: <b>{previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel}</b></span>
                   {previsualizacionPrimeraFase.requiere_preliminar_extra && <span className="aviso-configuracion-pendiente">Este ajuste requiere una ronda preliminar adicional antes del playoff.</span>}
                   {Array.isArray(previsualizacionPrimeraFase.equipos_nivel) && previsualizacionPrimeraFase.equipos_nivel.length > 0 && (
                     <div className="resumen-formato-especial">
                       <strong>⚖️ Nivel y dificultad prevista</strong>
                       {previsualizacionPrimeraFase.equipos_nivel.map((e, i) => <span key={e.id_equipo}>{i + 1}. {e.equipo} · Nivel equipo {e.nivel} · Dificultad calendario {e.dificultad_calendario}</span>)}
-                      {previsualizacionPrimeraFase.equilibrio && <small>Equilibrio de calendarios: {previsualizacionPrimeraFase.equilibrio.dificultad_min}–{previsualizacionPrimeraFase.equilibrio.dificultad_max} ISP · diferencia máxima {previsualizacionPrimeraFase.equilibrio.diferencia} ISP</small>}
+                      {previsualizacionPrimeraFase.equilibrio && <small>{(previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel) === 'ISP' ? 'Equilibrio de calendarios (ISP)' : `Equilibrio de calendarios (${previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel})`}: {previsualizacionPrimeraFase.equilibrio.dificultad_min}–{previsualizacionPrimeraFase.equilibrio.dificultad_max}{previsualizacionPrimeraFase.equilibrio.diferencia != null ? ` · diferencia máxima ${previsualizacionPrimeraFase.equilibrio.diferencia}` : ' · sorteo sin objetivo de equilibrio'}</small>}
                     </div>
                   )}
                   {Array.isArray(previsualizacionPrimeraFase.planificacion) && previsualizacionPrimeraFase.planificacion.length > 0 && (
