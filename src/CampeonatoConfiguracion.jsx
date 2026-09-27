@@ -41,6 +41,15 @@ const VALORES_INICIALES = {
   sistemas_puntuacion: SISTEMAS_PUNTUACION_INICIALES,
   ordenar_clasificacion: 'A',
   modo_generar_jornadas: '',
+  champions_partidos_por_equipo_modo: 'Automático',
+  champions_partidos_por_equipo: 4,
+  champions_modo_generacion: 'Equilibrado + azar',
+  champions_criterio_nivel: 'ISP',
+  champions_descanso_minimo_turnos: 1,
+  champions_permitir_reducir_descanso: true,
+  champions_equipos_titulo_modo: 'Automático',
+  champions_equipos_titulo_personalizado: '',
+  champions_reseeding: true,
   url_inscripcion: '',
   mostrar_ranking_historico: true,
   mostrar_estadisticas: true,
@@ -68,6 +77,8 @@ const CAMPOS_BOOLEANOS = new Set([
   'mostrar_campeones',
   'mostrar_aviso_proxima_edicion',
   'modo_mantenimiento',
+  'champions_permitir_reducir_descanso',
+  'champions_reseeding',
 ])
 
 const CAMPOS_NUMERICOS = new Set([
@@ -81,6 +92,9 @@ const CAMPOS_NUMERICOS = new Set([
   'posicion_inicio_palas_playa',
   'puntos_objetivo_set',
   'puntos_maximos_por_set',
+  'champions_partidos_por_equipo',
+  'champions_descanso_minimo_turnos',
+  'champions_equipos_titulo_personalizado',
 ])
 
 function aBooleano(valor) {
@@ -122,6 +136,13 @@ function normalizarConfiguracion(datos) {
     if (config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
       config.formato_acceso_eliminatorias = 'Cruces normales'
     }
+  } else if (config.tipo_campeonato === 'Champions') {
+    config.estructura_primera_fase = 'Champions · Liga única'
+    config.num_grupos_iniciales = 1
+    config.hay_regrupos = false
+    config.repetir_enfrentamientos_regrupos = false
+    config.formato_acceso_eliminatorias = 'Cruces normales'
+    config.criterio_generar_cruces = 'Por Clasificación'
   } else if (config.tipo_campeonato === 'Grupos') {
     if (!['2 Grupos', '4 Grupos'].includes(config.estructura_primera_fase)) {
       config.estructura_primera_fase = '2 Grupos'
@@ -239,6 +260,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           if (actual.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
             siguiente.formato_acceso_eliminatorias = 'Cruces normales'
           }
+        } else if (value === 'Champions') {
+          siguiente.estructura_primera_fase = 'Champions · Liga única'
+          siguiente.num_grupos_iniciales = 1
+          siguiente.hay_regrupos = false
+          siguiente.repetir_enfrentamientos_regrupos = false
+          siguiente.formato_acceso_eliminatorias = 'Cruces normales'
+          siguiente.criterio_generar_cruces = 'Por Clasificación'
         } else if (value === 'Grupos') {
           siguiente.estructura_primera_fase = ['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)
             ? actual.estructura_primera_fase
@@ -320,12 +348,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setGuardando(true)
     setMensaje({ tipo: '', texto: 'Guardando configuración y recalculando la clasificación…' })
 
-    const configuracionAGuardar = config.tipo_campeonato === 'Liguilla'
+    const configuracionAGuardar = ['Liguilla', 'Champions'].includes(config.tipo_campeonato)
       ? { ...config, hay_regrupos: false, repetir_enfrentamientos_regrupos: false }
       : config
 
+    const funcionGuardar = config.tipo_campeonato === 'Champions'
+      ? 'admin_guardar_configuracion_champions'
+      : 'admin_guardar_configuracion'
+
     const { data, error } = await supabaseCampeonato.rpc(
-      'admin_guardar_configuracion',
+      funcionGuardar,
       { p_codigo: codigo, p_configuracion: configuracionAGuardar }
     )
 
@@ -623,6 +655,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   const esGrupos = config.tipo_campeonato === 'Grupos'
+  const esChampions = config.tipo_campeonato === 'Champions'
 
   return (
     <main className="app app-admin app-configuracion-campeonato">
@@ -662,18 +695,69 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Estructura del torneo</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Tipo de campeonato" ayuda="Elige — mientras el formato todavía no esté decidido."><select name="tipo_campeonato" value={config.tipo_campeonato || ''} onChange={cambiar}><option value="">—</option><option value="Liguilla">Liguilla</option><option value="Grupos">Grupos</option></select></Campo>
+              <Campo etiqueta="Tipo de campeonato" ayuda="Elige — mientras el formato todavía no esté decidido."><select name="tipo_campeonato" value={config.tipo_campeonato || ''} onChange={cambiar}><option value="">—</option><option value="Liguilla">Liguilla</option><option value="Grupos">Grupos</option><option value="Champions">🏆 Champions</option></select></Campo>
               <Campo etiqueta="Primera fase" ayuda={config.tipo_campeonato ? 'Las opciones dependen del tipo de campeonato.' : 'Primero elige el tipo de campeonato.'}>
-                <select name="estructura_primera_fase" value={config.tipo_campeonato ? config.estructura_primera_fase : ''} onChange={cambiar} disabled={!esGrupos}>
+                <select name="estructura_primera_fase" value={config.tipo_campeonato ? config.estructura_primera_fase : ''} onChange={cambiar} disabled={!esGrupos && !esChampions}>
                   {!config.tipo_campeonato && <option value="">—</option>}
                   {config.tipo_campeonato === 'Liguilla' && <option>Liguilla Única</option>}
                   {esGrupos && <><option>2 Grupos</option><option>4 Grupos</option></>}
+                  {esChampions && <option>Champions · Liga única</option>}
                 </select>
               </Campo>
               {esGrupos && <Campo etiqueta="Equipos previstos por grupo" ayuda="De momento todos los grupos deben tener el mismo número."><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
               <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
               <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
             </div>
+            {esChampions && (
+              <div className="bloque-dependiente">
+                <div className="resumen-formato-especial">
+                  <strong>🏆 Modo Champions · Liga única</strong>
+                  <span>Todos los equipos comparten clasificación, pero cada uno disputa solo una parte de los rivales.</span>
+                  <span>La posición Champions se conservará como semilla durante playoff, cuartos y semifinales.</span>
+                  <small>El generador equilibrará la dificultad con ISP y permitirá cualquier número de pistas.</small>
+                </div>
+                <div className="rejilla-configuracion">
+                  <Campo etiqueta="Partidos por equipo">
+                    <select name="champions_partidos_por_equipo_modo" value={config.champions_partidos_por_equipo_modo} onChange={cambiar}>
+                      <option>Automático</option><option>Manual</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta="N.º de partidos" ayuda="Solo se usa en modo Manual. El sistema comprobará que sea matemáticamente posible.">
+                    <input type="number" min="1" name="champions_partidos_por_equipo" value={config.champions_partidos_por_equipo} onChange={cambiar} disabled={config.champions_partidos_por_equipo_modo !== 'Manual'} />
+                  </Campo>
+                  <Campo etiqueta="Generación de rivales">
+                    <select name="champions_modo_generacion" value={config.champions_modo_generacion} onChange={cambiar}>
+                      <option>Equilibrado + azar</option><option>Equilibrado</option><option>Sorteo puro</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta="Criterio de nivel">
+                    <select name="champions_criterio_nivel" value={config.champions_criterio_nivel} onChange={cambiar}>
+                      <option>ISP</option><option>Ranking histórico</option><option>Manual</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta="Descanso mínimo entre partidos">
+                    <select name="champions_descanso_minimo_turnos" value={config.champions_descanso_minimo_turnos} onChange={cambiar}>
+                      <option value={0}>0 turnos</option><option value={1}>1 turno</option><option value={2}>2 turnos</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta="Equipos que mantienen opción al título">
+                    <select name="champions_equipos_titulo_modo" value={config.champions_equipos_titulo_modo} onChange={cambiar}>
+                      <option>Automático</option><option>Todos</option><option>Personalizado</option>
+                    </select>
+                  </Campo>
+                  {config.champions_equipos_titulo_modo === 'Personalizado' && (
+                    <Campo etiqueta="N.º de equipos con opción al título">
+                      <input type="number" min="2" name="champions_equipos_titulo_personalizado" value={config.champions_equipos_titulo_personalizado} onChange={cambiar} />
+                    </Campo>
+                  )}
+                </div>
+                <label className="interruptor-configuracion">
+                  <input type="checkbox" name="champions_permitir_reducir_descanso" checked={config.champions_permitir_reducir_descanso} onChange={cambiar} />
+                  <span>Permitir reducir el descanso mínimo si es necesario para completar el calendario</span>
+                </label>
+                <small className="ayuda-regrupos">El reseeding está siempre activo: en cada ronda el mejor clasificado superviviente se enfrenta al peor.</small>
+              </div>
+            )}
             {esGrupos && (
               <div className="resumen-formato-especial">
                 <strong>Vista previa del formato actual</strong>
