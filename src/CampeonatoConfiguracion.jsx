@@ -848,7 +848,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                     </Campo>
                   )}
                 </div>
-                <small className="ayuda-regrupos">El reseeding está siempre activo: en cada ronda el mejor clasificado superviviente se enfrenta al peor.</small>
+                <small className="ayuda-regrupos">La clasificación Champions se mantiene como referencia durante las eliminatorias: en cada ronda, el mejor clasificado que siga en competición se enfrentará al peor clasificado superviviente. Ejemplo: si llegan a semifinales 1.º, 3.º, 6.º y 7.º → 1.º vs 7.º y 3.º vs 6.º.</small>
               </div>
             )}
             {esGrupos && (
