@@ -181,6 +181,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoPrimeraFase, setGenerandoPrimeraFase] = useState(false)
   const [nivelesManualesChampions, setNivelesManualesChampions] = useState([])
   const [guardandoNivelesChampions, setGuardandoNivelesChampions] = useState(false)
+  const [nivelesChampionsGuardados, setNivelesChampionsGuardados] = useState(false)
   const [errorPrimeraFase, setErrorPrimeraFase] = useState('')
   const [previsualizacionRegrupos, setPrevisualizacionRegrupos] = useState(null)
   const [previsualizandoRegrupos, setPrevisualizandoRegrupos] = useState(false)
@@ -432,7 +433,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   async function cargarNivelesManualesChampions() {
     const { data, error } = await supabaseCampeonato.rpc('admin_obtener_niveles_manuales_champions', { p_codigo: codigo })
-    if (!error && data?.ok === true) setNivelesManualesChampions(data.jugadores || [])
+    if (!error && data?.ok === true) setNivelesManualesChampions((data.jugadores || []).map(j => ({ ...j, nivel: ({ 'Básico': '1', 'Principiante': '2', 'Medio': '3', 'Medio-alto': '4', 'Avanzado': '5' })[j.nivel] || j.nivel })))
   }
 
   async function guardarNivelesManualesChampions() {
@@ -446,9 +447,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron guardar los niveles manuales.' })
       return false
     }
-    setNivelesManualesChampions(data.jugadores || [])
+    setNivelesManualesChampions((data.jugadores || []).map(j => ({ ...j, nivel: ({ 'Básico': '1', 'Principiante': '2', 'Medio': '3', 'Medio-alto': '4', 'Avanzado': '5' })[j.nivel] || j.nivel })))
+    setNivelesChampionsGuardados(true)
     setPrevisualizacionPrimeraFase(null)
-    setMensaje({ tipo: 'correcto', texto: 'Niveles manuales Champions guardados.' })
+    setMensaje({ tipo: 'correcto', texto: '✓ Niveles manuales Champions guardados.' })
     return true
   }
 
@@ -827,12 +829,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       {nivelesManualesChampions.map((j, i) => (
                         <label className="campo-configuracion" key={j.id_jugador}>
                           <span>{j.jugador}</span>
-                          <select value={j.nivel || ''} onChange={e => setNivelesManualesChampions(actual => actual.map((x, n) => n === i ? { ...x, nivel: e.target.value } : x))}>
+                          <select value={j.nivel || ''} onChange={e => { setNivelesChampionsGuardados(false); setNivelesManualesChampions(actual => actual.map((x, n) => n === i ? { ...x, nivel: e.target.value } : x)) }}>
                             <option value="">Sin asignar</option><option value="1">1 · Bajo</option><option value="2">2 · Medio-bajo</option><option value="3">3 · Medio</option><option value="4">4 · Medio-alto</option><option value="5">5 · Alto</option>
                           </select>
                         </label>
                       ))}
-                      {nivelesManualesChampions.length > 0 && <button type="button" className="boton boton-secundario" onClick={guardarNivelesManualesChampions} disabled={guardandoNivelesChampions}>{guardandoNivelesChampions ? 'Guardando…' : 'Guardar niveles manuales'}</button>}
+                      {nivelesManualesChampions.length > 0 && <button type="button" className="boton boton-secundario" onClick={guardarNivelesManualesChampions} disabled={guardandoNivelesChampions}>{guardandoNivelesChampions ? 'Guardando…' : nivelesChampionsGuardados ? '✓ Niveles guardados' : 'Guardar niveles manuales'}</button>}
                     </div>
                   )}
                   <Campo etiqueta={<span className="etiqueta-con-info">Equipos que mantienen opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que mantienen opción al título">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula el acceso a eliminatorias según el número de equipos y el cuadro disponible.<br /><br /><strong>Todos:</strong> todos los equipos conservan una vía para luchar por el título después de la Liga Champions.<br /><br /><strong>Personalizado:</strong> tú indicas cuántos equipos continúan con opción al título.</span></span></span>}>
