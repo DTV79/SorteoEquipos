@@ -1088,7 +1088,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                       <span>Objetivo: <b>máxima ocupación de pistas</b> · {previsualizacionPrimeraFase.jornadas_planificados} jornadas</span>
                       {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
                         <div key={turno}>
-                          <b>Turno {turno}</b>
+                          <b>Jornada {turno}</b>
                           <div className="lista-pistas-turno">
                             {previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <div className="linea-pista-turno" key={`${p.numero}-${p.pista}`}><span><b>Pista {p.pista}:</b> {p.local} — {p.visitante}</span></div>)}
                             {(() => {
