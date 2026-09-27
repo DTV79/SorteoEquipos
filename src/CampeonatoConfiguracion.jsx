@@ -411,6 +411,12 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   async function previsualizarPrimeraFase() {
+    if (hayCambiosSinGuardar) {
+      const guardado = await guardarConfiguracion()
+      if (!guardado) return
+      cambiosSinGuardarRef.current = false
+      setHayCambiosSinGuardar(false)
+    }
     setPrevisualizandoPrimeraFase(true)
     setErrorPrimeraFase('')
     setPrevisualizacionPrimeraFase(null)
@@ -946,7 +952,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset className="generacion-primera-fase">
             <legend>Generación de la competición</legend>
             <p>La configuración guardada decide cómo se crea la primera fase. La previsualización no crea ni modifica partidos.</p>
-            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}>
               {previsualizandoPrimeraFase ? 'Comprobando…' : 'Previsualizar primera fase'}
             </button>
             {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla, Grupos o Champions.</small>}
