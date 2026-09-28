@@ -36,3 +36,8 @@
 .economia-aviso-flotante.correcto { background:#ecfdf5; border:1px solid #86efac; color:#166534; }
 .economia-aviso-flotante.error { background:#fff1f2; border:1px solid #fecaca; color:#b91c1c; }
 .economia-aviso-flotante button { border:0; background:transparent; color:inherit; font-size:1.25rem; line-height:1; cursor:pointer; }
+
+/* Meteorología: botón de consulta visible sobre fondo blanco */
+.gastos-campeonato .meteo-obtener { color:#fff !important; background:#1e3a8a !important; border:1px solid #1e3a8a !important; font-weight:800; }
+.gastos-campeonato .meteo-obtener:hover { background:#1d4ed8 !important; border-color:#1d4ed8 !important; }
+.gastos-campeonato .meteo-obtener:disabled { color:#fff !important; opacity:.65; }
