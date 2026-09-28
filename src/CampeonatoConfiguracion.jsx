@@ -188,6 +188,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoRegrupos, setGenerandoRegrupos] = useState(false)
   const [errorRegrupos, setErrorRegrupos] = useState('')
   const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)
+  const [estadoEliminatoriasGeneradas, setEstadoEliminatoriasGeneradas] = useState(null)
   const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)
   const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)
   const [errorEliminatorias, setErrorEliminatorias] = useState('')
@@ -228,17 +229,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         if (!cancelado && estadoEliminatorias.data?.ok === true && estadoEliminatorias.data?.ya_generadas) {
           const estado = estadoEliminatorias.data
           const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
-          setPrevisualizacionEliminatorias(configuracionCargada.tipo_campeonato === 'Champions'
-            ? {
-                ...estado,
-                fase_origen: 'Champions',
-                puede_generar: false,
-                ...(borrado?.ok === true ? { borrado } : {}),
-              }
-            : {
-                ...estado,
-                ...(borrado?.ok === true ? { borrado } : {}),
-              })
+          setEstadoEliminatoriasGeneradas({
+            ...estado,
+            ...(borrado?.ok === true ? { borrado } : {}),
+          })
+          setPrevisualizacionEliminatorias(null)
+        } else if (!cancelado) {
+          setEstadoEliminatoriasGeneradas(null)
         }
       }
       setCargando(false)
@@ -265,6 +262,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizacionPrimeraFase(null)
     setPrevisualizacionRegrupos(null)
     setPrevisualizacionEliminatorias(null)
+    setEstadoEliminatoriasGeneradas(null)
     setPrevisualizacionPalas(null)
   }
 
@@ -595,7 +593,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       : data
     if (data?.ya_generadas) {
       const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
-      if (borrado?.ok === true) vista = { ...data, borrado }
+      if (borrado?.ok === true) vista = { ...vista, borrado }
+      setEstadoEliminatoriasGeneradas(vista)
+    } else {
+      setEstadoEliminatoriasGeneradas(null)
     }
     setPrevisualizacionEliminatorias(vista)
   }
@@ -717,6 +718,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
     if (esEliminatorias) {
       setPrevisualizacionEliminatorias(null)
+      setEstadoEliminatoriasGeneradas(null)
       setPrevisualizacionPalas(null)
     } else {
       setPrevisualizacionPalas(null)
@@ -1198,7 +1200,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
             <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
-            {previsualizacionEliminatorias?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {previsualizacionEliminatorias.partidos_existentes ?? 0} {Number(previsualizacionEliminatorias.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. No se volverán a generar.</p>}
+            {estadoEliminatoriasGeneradas?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {estadoEliminatoriasGeneradas.partidos_existentes ?? 0} {Number(estadoEliminatoriasGeneradas.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. No se volverán a generar. Pulsa “Previsualizar eliminatorias” para ver el cuadro.</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
               <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
               {!previsualizacionEliminatorias.ya_generadas && <><span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span></>}
