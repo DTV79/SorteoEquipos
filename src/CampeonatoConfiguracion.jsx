@@ -1195,10 +1195,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
             {!previsualizacionEliminatorias?.ya_generadas && <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>}
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
-            {previsualizacionEliminatorias?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {previsualizacionEliminatorias.partidos_existentes ?? 0} partidos existentes. No se volverán a generar.</p>}
+            {previsualizacionEliminatorias?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {previsualizacionEliminatorias.partidos_existentes ?? 0} {Number(previsualizacionEliminatorias.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. No se volverán a generar.</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
               <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
-              <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
+              {!previsualizacionEliminatorias.ya_generadas && <><span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span></>}
               {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
               {config.tipo_campeonato === 'Champions' && Array.isArray(previsualizacionEliminatorias.exentos) && previsualizacionEliminatorias.exentos.length > 0 && <>
                 <span><b>Exentos:</b></span>
