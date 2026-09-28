@@ -2246,7 +2246,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
               <label className="campo-completo"><span>Observaciones</span><textarea name="observaciones" rows="4" defaultValue={meteo.observaciones||''}/></label>
               <div className="acciones-formulario-economia campo-completo">
                 <button className="boton boton-principal" type="submit" disabled={guardandoMeteo}>{guardandoMeteo?'Guardando…':'Guardar meteorología'}</button>
-                <button className="boton boton-secundario" type="button" disabled={cargandoMeteoAuto} onClick={async (e)=>{
+                <button className="boton boton-secundario meteo-obtener" type="button" disabled={cargandoMeteoAuto} onClick={async (e)=>{
                   const form=e.currentTarget.closest('form'); if(!form)return
                   const fd=new FormData(form); const localidad=String(fd.get('localidad')||'').trim(); const fecha=String(fd.get('datos_fecha')||'').trim()
                   if(!localidad||!fecha){setMensaje({tipo:'error',texto:'Indica localidad y fecha antes de consultar MeteoGalicia.'});return}
