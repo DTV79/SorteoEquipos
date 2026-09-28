@@ -139,8 +139,12 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
         {!cargando && !error && (
           <>
             <section className="resumen-formato-cuadro">
-              <div><small>FORMATO SELECCIONADO</small><strong>{config.formato_acceso_eliminatorias || 'Cruces normales'}</strong></div>
-              <span>{especial ? 'Los campeones de ReGrupo esperan directamente en semifinales.' : `El cuadro comenzará en ${config.ronda_inicial_eliminatorias || 'la ronda configurada'}.`}</span>
+              <div><small>FORMATO SELECCIONADO</small><strong>{esChampions ? 'Champions' : (config.formato_acceso_eliminatorias || 'Cruces normales')}</strong></div>
+              <span>{esChampions
+                ? 'Cuadro por el título con reseeding según la clasificación Champions.'
+                : especial
+                  ? 'Los campeones de ReGrupo esperan directamente en semifinales.'
+                  : `El cuadro comenzará en ${config.ronda_inicial_eliminatorias || 'la ronda configurada'}.`}</span>
               <button type="button" className="boton boton-secundario" onClick={cargar}>↻ Actualizar clasificación</button>
             </section>
 
@@ -149,15 +153,32 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                 <section className="aviso-cuadro-normal">
                   <strong>Champions · cuadro por el título</strong>
                   <p>{previaChampions?.mensaje_eliminatorias || 'Preparando la clasificación final Champions.'}</p>
-                  {previaChampions?.ronda_a_generar && <p>Ronda inicial: <b>{previaChampions.ronda_a_generar}</b>.</p>}
-                  {(previaChampions?.cruces || []).map((x) => <p key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></p>)}
-                  {(previaChampions?.exentos || []).length > 0 && <p><b>Exentos:</b> {(previaChampions.exentos || []).map((x) => `${x.posicion}.º ${x.equipo}`).join(' · ')}</p>}
-                  {config.hay_copa_palas_playa && <p>🏖️ Palas de Playa utilizará el módulo común y se preparará cuando terminen los cuartos del cuadro principal.</p>}
+                  {!previaChampions?.ya_generadas && previaChampions?.ronda_a_generar && <p>Ronda inicial: <b>{previaChampions.ronda_a_generar}</b>.</p>}
+                  {!previaChampions?.ya_generadas && (previaChampions?.cruces || []).map((x) => <p key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></p>)}
+                  {!previaChampions?.ya_generadas && (previaChampions?.exentos || []).length > 0 && <>
+                    <p><b>Exentos:</b></p>
+                    {(previaChampions.exentos || []).map((x) => <p key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</p>)}
+                  </>}
+                  {config.hay_copa_palas_playa && <p>🏖️ Palas de Playa utiliza el módulo común del campeonato.</p>}
                 </section>
-                <section className="barra-generar-cuadro">
-                  <div><strong>{mensaje || (previaChampions?.puede_generar_eliminatorias ? 'Clasificación Champions preparada' : 'El cuadro todavía no puede generarse')}</strong><span>Los partidos se crearán en el módulo común de Eliminatorias.</span></div>
-                  <button type="button" className="boton boton-principal" disabled={generando || !previaChampions?.puede_generar_eliminatorias} onClick={generarCuadro}>{generando ? 'Generando…' : 'Generar eliminatorias'}</button>
-                </section>
+
+                {previaChampions?.ya_generadas ? (
+                  <section className="barra-generar-cuadro">
+                    <div>
+                      <strong>Eliminatorias ya generadas</strong>
+                      <span>{previaChampions.partidos_existentes ?? 0} {Number(previaChampions.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. El cuadro no se volverá a generar.</span>
+                    </div>
+                    <button type="button" className="boton boton-principal" onClick={onResultados}>Ver eliminatorias</button>
+                  </section>
+                ) : (
+                  <section className="barra-generar-cuadro">
+                    <div>
+                      <strong>{mensaje || (previaChampions?.puede_generar_eliminatorias ? 'Clasificación Champions preparada' : 'El cuadro todavía no puede generarse')}</strong>
+                      <span>{previaChampions?.puede_generar_eliminatorias ? 'Los partidos se crearán en el módulo común de Eliminatorias.' : 'Primero debe completarse la fase Champions.'}</span>
+                    </div>
+                    <button type="button" className="boton boton-principal" disabled={generando || !previaChampions?.puede_generar_eliminatorias} onClick={generarCuadro}>{generando ? 'Generando…' : 'Generar eliminatorias'}</button>
+                  </section>
+                )}
               </>
             )}
 
