@@ -94,15 +94,13 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     const [
       { data, error: errorConsulta },
       { data: datosDescansos, error: errorDescansos },
-      { data: descansosPalas, error: errorDescansosPalas },
     ] = await Promise.all([
       supabaseCampeonato.rpc('admin_listar_partidos', { p_codigo: codigoElegido }),
       supabaseCampeonato.rpc('admin_listar_descansos', { p_codigo: codigoElegido }),
-      supabaseCampeonato.rpc('web_descansos_palas', { p_codigo: codigoElegido }),
     ])
 
-    if (errorConsulta || errorDescansos || errorDescansosPalas) {
-      setError(errorConsulta?.message || errorDescansos?.message || errorDescansosPalas?.message)
+    if (errorConsulta || errorDescansos) {
+      setError(errorConsulta?.message || errorDescansos?.message)
       setCargando(false)
       return
     }
@@ -116,23 +114,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       return
     }
 
-    const descansosCopa = (Array.isArray(descansosPalas) ? descansosPalas : []).map((descanso) => ({
-      id_partido: `${codigoElegido}-PP-DESC-${descanso.id_equipo}`,
-      codigo_fase: 'PP',
-      codigo_grupo: null,
-      codigo_ronda: descanso.codigo_ronda,
-      jornada: null,
-      orden: 0,
-      equipo_1: descanso.equipo,
-      equipo_2: '',
-      estado: 'descanso',
-      es_descanso_palas: true,
-      mensaje_descanso: descanso.mensaje || 'Descansa y pasa directamente',
-      sets: [],
-      participantes: [],
-    }))
-
-    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? []), ...descansosCopa])
+    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? [])])
     setJugadores(data.jugadores ?? [])
     setMensajeGenerador((actual) => actual?.tipo === 'error' ? null : actual)
     setCargando(false)
