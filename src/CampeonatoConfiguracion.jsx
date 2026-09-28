@@ -227,15 +227,18 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
         const estadoEliminatorias = await supabaseCampeonato.rpc(funcionEstadoEliminatorias, { p_codigo: codigo })
         if (!cancelado && estadoEliminatorias.data?.ok === true && estadoEliminatorias.data?.ya_generadas) {
           const estado = estadoEliminatorias.data
+          const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
           setPrevisualizacionEliminatorias(configuracionCargada.tipo_campeonato === 'Champions'
             ? {
                 ...estado,
                 fase_origen: 'Champions',
                 puede_generar: false,
-                partidos: [],
-                nombres_equipos: {},
+                ...(borrado?.ok === true ? { borrado } : {}),
               }
-            : estado)
+            : {
+                ...estado,
+                ...(borrado?.ok === true ? { borrado } : {}),
+              })
         }
       }
       setCargando(false)
@@ -1193,7 +1196,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <legend>Generación de Eliminatorias</legend>
             <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
-            {!previsualizacionEliminatorias?.ya_generadas && <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>}
+            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
             {previsualizacionEliminatorias?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {previsualizacionEliminatorias.partidos_existentes ?? 0} {Number(previsualizacionEliminatorias.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. No se volverán a generar.</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
@@ -1207,10 +1210,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
               {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><span><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b>: {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
               {previsualizacionEliminatorias.ya_generadas ? <>
-                <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase) || Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0}>
-                  {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
-                </button>
-                <small>También elimina Palas de Playa. Solo está disponible si no hay ningún partido disputado.</small>
+                {Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0 ? (
+                  <span className="aviso-configuracion-pendiente">
+                    No se pueden eliminar las Eliminatorias: hay {previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0} partido(s) disputado(s){previsualizacionEliminatorias.borrado ? ' entre Eliminatorias y Palas de Playa' : ''}.
+                  </span>
+                ) : <>
+                  <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase)}>
+                    {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
+                  </button>
+                  <small>También elimina Palas de Playa. Solo está disponible si no hay ningún partido disputado.</small>
+                </>}
               </> : <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>}
             </div>}
           </fieldset>
