@@ -355,6 +355,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   const [guardandoObservaciones, setGuardandoObservaciones] = useState(false)
   const [meteo, setMeteo] = useState({})
   const [guardandoMeteo, setGuardandoMeteo] = useState(false)
+  const [cargandoMeteoAuto, setCargandoMeteoAuto] = useState(false)
   const [columnasInformeGestion, setColumnasInformeGestion] = useState(() => {
     const base = {
       fecha: true,
@@ -2241,7 +2242,23 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
               <label className="campo-ancho"><span>Estado del cielo</span><input name="estado_cielo" defaultValue={meteo.estado_cielo||''} placeholder="Despejado, nublado, lluvia…"/></label>
               <label className="campo-ancho"><span>Condiciones de juego</span><input name="condiciones_juego" defaultValue={meteo.condiciones_juego||''} placeholder="Seco, húmedo, calor, viento…"/></label>
               <label className="campo-completo"><span>Observaciones</span><textarea name="observaciones" rows="4" defaultValue={meteo.observaciones||''}/></label>
-              <div className="acciones-formulario-economia campo-completo"><button className="boton boton-principal" type="submit" disabled={guardandoMeteo}>{guardandoMeteo?'Guardando…':'Guardar meteorología'}</button></div>
+              <div className="acciones-formulario-economia campo-completo">
+                <button className="boton boton-principal" type="submit" disabled={guardandoMeteo}>{guardandoMeteo?'Guardando…':'Guardar meteorología'}</button>
+                <button className="boton boton-secundario" type="button" disabled={cargandoMeteoAuto} onClick={async (e)=>{
+                  const form=e.currentTarget.closest('form'); if(!form)return
+                  const fd=new FormData(form); const localidad=String(fd.get('localidad')||'').trim(); const fecha=String(fd.get('datos_fecha')||'').trim()
+                  if(!localidad||!fecha){setMensaje({tipo:'error',texto:'Indica localidad y fecha antes de consultar MeteoGalicia.'});return}
+                  setCargandoMeteoAuto(true); setMensaje(null)
+                  const estacionTexto=String(fd.get('estacion')||'').trim(); const idCoincide=estacionTexto.match(/(?:ID\s*)?(\d{4,6})/i)
+                  const {data,error}=await supabaseCampeonato.functions.invoke('meteogalicia-campeonato',{body:{localidad,fecha,idEstacion:idCoincide?.[1]||null}})
+                  setCargandoMeteoAuto(false)
+                  if(error||!data?.ok){setMensaje({tipo:'error',texto:data?.error||error?.message||'No se pudieron obtener los datos de MeteoGalicia.'});return}
+                  const poner=(nombre,valor)=>{const el=form.elements.namedItem(nombre); if(el&&valor!=null)el.value=valor}
+                  poner('estacion',data.estacion?.nombre ? `${data.estacion.nombre} (ID ${data.estacion.id})` : '')
+                  poner('fuente','MeteoGalicia'); poner('temperatura_min',data.temperatura_min); poner('temperatura_max',data.temperatura_max); poner('temperatura_media',data.temperatura_media); poner('precipitacion',data.precipitacion); poner('viento_medio',data.viento_medio); poner('viento_max',data.viento_max)
+                  setMensaje({tipo:'correcto',texto:`Datos cargados desde MeteoGalicia · ${data.estacion?.nombre||'estación encontrada'}. Revísalos y pulsa Guardar meteorología.`})
+                }}>{cargandoMeteoAuto?'Consultando…':'Obtener de MeteoGalicia'}</button>
+              </div>
             </form>
           </section>
         )}
