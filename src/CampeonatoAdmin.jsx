@@ -15,6 +15,7 @@ function tituloFase(partido) {
   const fase = {
     GR: 'Grupos',
     RG: 'Regrupos',
+    CH: 'Champions',
     MM: 'Mata-Mata',
     PP: 'Palas de playa',
   }[partido.codigo_fase] ?? partido.codigo_fase
@@ -60,6 +61,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const [partidoAAnular, setPartidoAAnular] = useState(null)
   const [previaGrupos, setPreviaGrupos] = useState(null)
   const [previaRegrupos, setPreviaRegrupos] = useState(null)
+  const [previaChampionsTitulo, setPreviaChampionsTitulo] = useState(null)
   const [generandoGrupos, setGenerandoGrupos] = useState(false)
   const [mensajeGenerador, setMensajeGenerador] = useState(null)
 
@@ -92,15 +94,13 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     const [
       { data, error: errorConsulta },
       { data: datosDescansos, error: errorDescansos },
-      { data: descansosPalas, error: errorDescansosPalas },
     ] = await Promise.all([
       supabaseCampeonato.rpc('admin_listar_partidos', { p_codigo: codigoElegido }),
       supabaseCampeonato.rpc('admin_listar_descansos', { p_codigo: codigoElegido }),
-      supabaseCampeonato.rpc('web_descansos_palas', { p_codigo: codigoElegido }),
     ])
 
-    if (errorConsulta || errorDescansos || errorDescansosPalas) {
-      setError(errorConsulta?.message || errorDescansos?.message || errorDescansosPalas?.message)
+    if (errorConsulta || errorDescansos) {
+      setError(errorConsulta?.message || errorDescansos?.message)
       setCargando(false)
       return
     }
@@ -114,23 +114,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       return
     }
 
-    const descansosCopa = (Array.isArray(descansosPalas) ? descansosPalas : []).map((descanso) => ({
-      id_partido: `${codigoElegido}-PP-DESC-${descanso.id_equipo}`,
-      codigo_fase: 'PP',
-      codigo_grupo: null,
-      codigo_ronda: descanso.codigo_ronda,
-      jornada: null,
-      orden: 0,
-      equipo_1: descanso.equipo,
-      equipo_2: '',
-      estado: 'descanso',
-      es_descanso_palas: true,
-      mensaje_descanso: descanso.mensaje || 'Descansa y pasa directamente',
-      sets: [],
-      participantes: [],
-    }))
-
-    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? []), ...descansosCopa])
+    setPartidos([...(data.partidos ?? []), ...(datosDescansos?.descansos ?? [])])
     setJugadores(data.jugadores ?? [])
     setMensajeGenerador((actual) => actual?.tipo === 'error' ? null : actual)
     setCargando(false)
@@ -149,6 +133,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
         const maximo = Number(configuracion.puntos_maximos_por_set)
         if (Number.isFinite(maximo) && maximo > 0) setPuntosMaximos(maximo)
         setEstructuraPrimeraFase(configuracion.estructura_primera_fase || 'Grupos')
+        if (String(configuracion.estructura_primera_fase || '').toLowerCase().includes('champions')) setFaseActiva('CH')
         setModoGenerarJornadas(configuracion.modo_generar_jornadas || '')
         setHayRegrupos(Boolean(configuracion.hay_regrupos))
         setHayPalas(Boolean(configuracion.hay_copa_palas_playa))
@@ -158,6 +143,36 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       vigente = false
     }
   }, [cargarPartidos, codigo, seccion])
+
+  const partidosChampionsReales = useMemo(
+    () => partidos.filter((p) => p.codigo_fase === 'CH' && !p.es_descanso && !p.es_descanso_palas),
+    [partidos]
+  )
+
+  const championsTerminada = partidosChampionsReales.length > 0
+    && partidosChampionsReales.every((p) => p.estado === 'jugado')
+
+  const ordenRondasChampions = { PREV: 0, DF: 1, OF: 2, CF: 3, SF: 4, F: 5 }
+  const nombresRondasChampions = { PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final' }
+  const siguienteRondaChampions = { PREV: 'Cuartos de final', DF: 'Octavos', OF: 'Cuartos de final', CF: 'Semifinales', SF: 'Final' }
+
+  const partidosEliminatoriasChampions = useMemo(
+    () => partidos.filter((p) => p.codigo_fase === 'MM' && !p.es_descanso && !p.es_descanso_palas),
+    [partidos]
+  )
+
+  const rondaActualChampions = useMemo(() => {
+    const rondas = [...new Set(partidosEliminatoriasChampions.map((p) => p.codigo_ronda).filter(Boolean))]
+    return rondas.sort((a, b) => (ordenRondasChampions[b] ?? -1) - (ordenRondasChampions[a] ?? -1))[0] || ''
+  }, [partidosEliminatoriasChampions])
+
+  const partidosRondaActualChampions = useMemo(
+    () => partidosEliminatoriasChampions.filter((p) => p.codigo_ronda === rondaActualChampions),
+    [partidosEliminatoriasChampions, rondaActualChampions]
+  )
+
+  const rondaActualChampionsCompleta = partidosRondaActualChampions.length > 0
+    && partidosRondaActualChampions.every((p) => p.estado === 'jugado')
 
   const partidosVisibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
@@ -184,7 +199,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       if (porJornada) return porJornada
 
       if (['MM', 'PP'].includes(faseActiva)) {
-        const ordenRondas = { OCT: 1, CUA: 2, SEM: 3, FIN: 4 }
+        const ordenRondas = { PREV: 0, DF: 1, OF: 2, CF: 3, SF: 4, F: 5, OCT: 2, CUA: 3, SEM: 4, FIN: 5 }
         const porRonda = (ordenRondas[a.codigo_ronda] ?? 99) - (ordenRondas[b.codigo_ronda] ?? 99)
         if (porRonda) return porRonda
       }
@@ -207,7 +222,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
   const rondasDisponibles = useMemo(() => {
     const existentes = new Set(partidosFaseActiva.map((partido) => partido.codigo_ronda).filter(Boolean))
-    return ['CUA', 'SEM', 'FIN'].filter((ronda) => existentes.has(ronda))
+    return ['PREV', 'DF', 'OF', 'CF', 'SF', 'F', 'OCT', 'CUA', 'SEM', 'FIN'].filter((ronda) => existentes.has(ronda))
   }, [partidosFaseActiva])
 
   async function guardarResultado(evento, partido) {
@@ -558,6 +573,49 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     setGenerandoGrupos(false)
   }
 
+  async function generarPartidosChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_partidos_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron generar los partidos Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: `${data.partidos ?? 0} partidos Champions generados en ${data.jornadas ?? 0} jornadas.` }); setFaseActiva('CH'); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
+  async function prepararEliminatoriasChampions() {
+    setGenerandoGrupos(true)
+    setPreviaChampionsTitulo(null)
+    setMensajeGenerador({ tipo: 'correcto', contexto: 'eliminatorias-champions', texto: 'Calculando cruces Champions…' })
+    try {
+      const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
+      if (error || data?.ok !== true) {
+        setMensajeGenerador({ tipo: 'error', contexto: 'eliminatorias-champions', texto: error?.message || data?.error || 'No se pudo preparar la eliminatoria Champions.' })
+      } else {
+        setPreviaChampionsTitulo(data)
+        setMensajeGenerador(null)
+      }
+    } catch (error) {
+      setMensajeGenerador({ tipo: 'error', contexto: 'eliminatorias-champions', texto: error?.message || 'Error inesperado al preparar la eliminatoria Champions.' })
+    } finally {
+      setGenerandoGrupos(false)
+    }
+  }
+
+  async function generarEliminatoriasChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_eliminatorias_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo generar la eliminatoria Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: data.mensaje }); setPreviaChampionsTitulo(null); setFaseActiva('MM'); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
+  async function generarSiguienteRondaChampions() {
+    setGenerandoGrupos(true); setMensajeGenerador(null)
+    const { data, error } = await supabaseCampeonato.rpc('admin_generar_siguiente_ronda_champions', { p_codigo: codigo })
+    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo generar la siguiente ronda Champions.' })
+    else { setMensajeGenerador({ tipo: 'correcto', texto: data.mensaje }); await cargarPartidos(codigo) }
+    setGenerandoGrupos(false)
+  }
+
   if (seccion === 'campeonatos' || !codigo) {
     return <SelectorCampeonatos onSeleccionar={seleccionarCampeonato} onVolver={volverPanelPrincipal} />
   }
@@ -731,16 +789,20 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </div>
         </header>
 
-        {(hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
+        {(String(estructuraPrimeraFase).toLowerCase().includes('champions') || hayRegrupos || partidos.some((partido) => ['MM', 'PP'].includes(partido.codigo_fase))) && (
           <div className="selector-fase-campeonato" role="group" aria-label="Fase de los partidos">
-            <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
-            <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>
+            {String(estructuraPrimeraFase).toLowerCase().includes('champions') ? (
+              <button type="button" className={faseActiva === 'CH' ? 'activo' : ''} onClick={() => { setFaseActiva('CH'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Fase Champions</button>
+            ) : (
+              <button type="button" className={faseActiva === 'GR' ? 'activo' : ''} onClick={() => { setFaseActiva('GR'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Primera fase · Grupos</button>
+            )}
+            {hayRegrupos && <button type="button" className={faseActiva === 'RG' ? 'activo' : ''} onClick={() => { setFaseActiva('RG'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Segunda fase · ReGrupos</button>}
             {partidos.some((partido) => partido.codigo_fase === 'MM') && <button type="button" className={faseActiva === 'MM' ? 'activo' : ''} onClick={() => { setFaseActiva('MM'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Eliminatorias</button>}
             {hayPalas && partidos.some((partido) => partido.codigo_fase === 'PP') && <button type="button" className={faseActiva === 'PP' ? 'activo' : ''} onClick={() => { setFaseActiva('PP'); setFiltroJornada('todas'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Palas de Playa</button>}
           </div>
         )}
 
-        {!String(estructuraPrimeraFase).toLowerCase().includes('grupo') && faseActiva === 'GR' && (
+        {!String(estructuraPrimeraFase).toLowerCase().includes('grupo') && !String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'GR' && (
           <section className="generador-partidos-grupos">
             <div>
               <strong>Liguilla · siguiente jornada</strong>
@@ -789,22 +851,86 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
           </section>
         )}
 
+        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'CH' && (
+          <>
+            <section className="generador-partidos-grupos">
+              <div><strong>Fase Champions</strong><span>Genera los enfrentamientos y la planificación de jornadas y pistas definidos en Configuración.</span></div>
+              <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.some((p) => p.codigo_fase === 'CH')} onClick={generarPartidosChampions}>{generandoGrupos ? 'Generando…' : partidos.some((p) => p.codigo_fase === 'CH') ? 'Partidos Champions generados' : 'Generar partidos Champions'}</button>
+            </section>
+            <section className="generador-partidos-grupos">
+              <div>
+                <strong>Eliminatorias Champions</strong>
+                <span>{
+                  partidosEliminatoriasChampions.length > 0
+                    ? `Eliminatorias ya generadas: ${partidosEliminatoriasChampions.length} ${partidosEliminatoriasChampions.length === 1 ? 'partido existente' : 'partidos existentes'}.`
+                    : partidosChampionsReales.length === 0
+                      ? 'Primero debes generar y disputar la fase Champions.'
+                      : !championsTerminada
+                        ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.'
+                        : previaChampionsTitulo
+                          ? previaChampionsTitulo.mensaje_eliminatorias
+                          : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'
+                }</span>
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <>
+                  <span><b>Exentos:</b></span>
+                  {(previaChampionsTitulo.exentos || []).map((x) => <span key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</span>)}
+                </>}
+                {mensajeGenerador?.contexto === 'eliminatorias-champions' && <span><b>{mensajeGenerador.texto}</b></span>}
+              </div>
+              {partidosEliminatoriasChampions.length > 0
+                ? <button type="button" className="boton boton-principal" onClick={() => { setFaseActiva('MM'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Ver eliminatorias</button>
+                : previaChampionsTitulo?.puede_generar_eliminatorias
+                  ? <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
+                  : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidosChampionsReales.length === 0 || !championsTerminada} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
+            </section>
+          </>
+        )}
+        {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'MM' && (
+          <section className="generador-partidos-grupos">
+            <div>
+              <strong>Siguiente ronda Champions</strong>
+              <span>{
+                rondaActualChampions === 'F'
+                  ? 'El cuadro principal ha llegado a la Final.'
+                  : !rondaActualChampionsCompleta
+                    ? `Primero deben terminar todos los partidos de ${nombresRondasChampions[rondaActualChampions] || 'la ronda actual'}.`
+                    : `La ronda actual está terminada. Se aplicará reseeding: mejor superviviente contra peor superviviente.`
+              }</span>
+            </div>
+            <button
+              type="button"
+              className="boton boton-principal"
+              disabled={generandoGrupos || !rondaActualChampions || !rondaActualChampionsCompleta || rondaActualChampions === 'F'}
+              onClick={generarSiguienteRondaChampions}
+            >
+              {generandoGrupos
+                ? 'Calculando…'
+                : rondaActualChampions === 'F'
+                  ? 'Cuadro finalizado'
+                  : rondaActualChampionsCompleta
+                    ? `Generar ${siguienteRondaChampions[rondaActualChampions] || 'siguiente ronda'}`
+                    : 'Ronda pendiente'}
+            </button>
+          </section>
+        )}
         {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
 
         <div className="barra-campeonato">
           <div>
-            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: 'de grupos', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
+            <strong>{partidosFaseActiva.filter((partido) => !partido.es_descanso && !partido.es_descanso_palas).length} partidos {({ GR: 'de grupos', CH: 'de Champions', RG: 'de ReGrupos', MM: 'de eliminatorias', PP: 'de Palas de Playa' })[faseActiva]}</strong>
             <span>Introduce el marcador y guarda el partido.</span>
           </div>
 
           <div className="filtros-partidos-campeonato">
-            {['GR', 'RG'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
+            {['GR', 'RG', 'CH'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
               <option value="todas">Todas las jornadas</option>
-              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>Jornada {jornada}</option>)}
+              {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>{faseActiva === 'CH' ? 'Jornada' : 'Jornada'} {jornada}</option>)}
             </select>}
             {['MM', 'PP'].includes(faseActiva) && <select value={filtroRonda} onChange={(evento) => setFiltroRonda(evento.target.value)} aria-label="Filtrar por ronda">
               <option value="todas">Todos los cruces</option>
-              {rondasDisponibles.map((ronda) => <option key={ronda} value={ronda}>{({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[ronda]}</option>)}
+              {rondasDisponibles.map((ronda) => <option key={ronda} value={ronda}>{({ PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final', CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[ronda]}</option>)}
             </select>}
             <input
               type="search"
@@ -836,7 +962,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             const claveRonda = ['MM', 'PP'].includes(faseActiva) ? partido.codigo_ronda : partido.jornada
             const claveRondaAnterior = ['MM', 'PP'].includes(faseActiva) ? partidosVisibles[indice - 1]?.codigo_ronda : partidosVisibles[indice - 1]?.jornada
             const abreJornada = indice === 0 || claveRondaAnterior !== claveRonda
-            const nombreRonda = ({ CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
+            const nombreRonda = ({ PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final', CUA: 'Cuartos de final', SEM: 'Semifinales', FIN: 'Final' })[partido.codigo_ronda] || partido.codigo_ronda
 
             if (partido.es_descanso_palas) {
               return (
@@ -859,15 +985,15 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             if (partido.es_descanso) {
               return (
                 <Fragment key={partido.id_partido}>
-                  {abreJornada && <h3 className="separador-jornada">{`Jornada ${partido.jornada}`}</h3>}
+                  {abreJornada && <h3 className="separador-jornada">{`${partido.codigo_fase === 'CH' ? 'Jornada' : 'Jornada'} ${partido.jornada}`}</h3>}
                   <article className="tarjeta-partido-campeonato tarjeta-descanso-campeonato">
                     <div className="partido-cabecera-campeonato">
-                      <span>Liguilla · Jornada {partido.jornada}</span>
+                      <span>{partido.codigo_fase === 'CH' ? 'Champions' : 'Liguilla'} · {partido.codigo_fase === 'CH' ? 'Jornada' : 'Jornada'} {partido.jornada}</span>
                       <b className="badge-partido descanso">Descanso</b>
                     </div>
                     <div className="equipos-campeonato descanso">
                       <strong>💤 {partido.equipo_1}</strong>
-                      <span>{partido.puntos_descanso} puntos</span>
+                      <span>{partido.codigo_fase === 'CH' ? 'Descansa en esta jornada' : `${partido.puntos_descanso} puntos`}</span>
                     </div>
                   </article>
                 </Fragment>
@@ -876,7 +1002,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
             return (
               <Fragment key={`${partido.id_partido}-${partido.estado}-${partido.sets?.length ?? 0}`}>
-              {abreJornada && <h3 className="separador-jornada">{['MM', 'PP'].includes(faseActiva) ? nombreRonda : `Jornada ${partido.jornada}`}</h3>}
+              {abreJornada && <h3 className="separador-jornada">{['MM', 'PP'].includes(faseActiva) ? nombreRonda : `${faseActiva === 'CH' ? 'Jornada' : 'Jornada'} ${partido.jornada}`}</h3>}
               <form
                 className="tarjeta-partido-campeonato"
                 onSubmit={(evento) =>

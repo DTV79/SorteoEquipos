@@ -31,6 +31,7 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const [error, setError] = useState('')
   const [generando, setGenerando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [previaChampions, setPreviaChampions] = useState(null)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -44,7 +45,8 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
       setError(consultaConfig.error?.message || consultaConfig.data?.error || 'No se pudo cargar la configuración.')
     } else {
       const configuracion = consultaConfig.data.configuracion ?? {}
-      const faseClasificacion = configuracion.hay_regrupos ? 'RG' : 'GR'
+      const esChampionsConfig = String(configuracion.tipo_campeonato || configuracion.estructura_primera_fase || '').toLowerCase().includes('champions')
+      const faseClasificacion = esChampionsConfig ? 'CH' : (configuracion.hay_regrupos ? 'RG' : 'GR')
       const consultaClasificacion = await supabaseCampeonato.rpc(
         'admin_listar_clasificaciones',
         { p_codigo: codigo, p_fase: faseClasificacion }
@@ -54,6 +56,11 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
       } else {
         setConfig(configuracion)
         setClasificacion(consultaClasificacion.data.clasificacion ?? [])
+        if (esChampionsConfig) {
+          const previa = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
+          if (previa.error || previa.data?.ok !== true) setError(previa.error?.message || previa.data?.error || 'No se pudo preparar la eliminatoria Champions.')
+          else setPreviaChampions(previa.data)
+        } else setPreviaChampions(null)
       }
     }
     setCargando(false)
@@ -75,6 +82,7 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
 
   const especial = config.formato_acceso_eliminatorias === FORMATO_ESPECIAL
   const esLiguilla = config.tipo_campeonato === 'Liguilla'
+  const esChampions = String(config.tipo_campeonato || config.estructura_primera_fase || '').toLowerCase().includes('champions')
   const posicionInicioPalas = Math.max(1, Number(config.posicion_inicio_palas_playa) || 1)
   const participantesPalasLiguilla = esLiguilla
     ? clasificacion.filter((fila) => Number(fila.posicion) >= posicionInicioPalas)
@@ -99,14 +107,15 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
     setError('')
     setMensaje('')
     const { data, error: errorGeneracion } = await supabaseCampeonato.rpc(
-      especial ? 'admin_generar_cuadro_especial' : 'admin_generar_cuadro_normal',
+      esChampions ? 'admin_generar_eliminatorias_champions' : (especial ? 'admin_generar_cuadro_especial' : 'admin_generar_cuadro_normal'),
       { p_codigo: codigo }
     )
     if (errorGeneracion || data?.ok !== true) {
       setError(errorGeneracion?.message || data?.error || 'No se pudo generar el cuadro.')
     } else {
       const jornadasRetiradas = Number(data.jornadas_pendientes_retiradas) || 0
-      setMensaje(`Cuadro creado correctamente: ${data.partidos_creados} partidos de ${especial ? 'cuartos' : (data.ronda_inicial || 'la ronda inicial').toLowerCase()}.${data.copa_palas ? ' La Copa Palas de Playa también queda preparada.' : ''}${jornadasRetiradas ? ` Se retiraron ${jornadasRetiradas} jornadas completamente pendientes.` : ''} Las siguientes rondas aparecerán al guardar los resultados.`)
+      setMensaje(esChampions ? (data.mensaje || `Eliminatoria Champions creada correctamente: ${data.partidos_creados || 0} partido(s).`) : `Cuadro creado correctamente: ${data.partidos_creados} partidos de ${especial ? 'cuartos' : (data.ronda_inicial || 'la ronda inicial').toLowerCase()}.${data.copa_palas ? ' La Copa Palas de Playa también queda preparada.' : ''}${jornadasRetiradas ? ` Se retiraron ${jornadasRetiradas} jornadas completamente pendientes.` : ''} Las siguientes rondas aparecerán al guardar los resultados.`)
+      await cargar()
     }
     setGenerando(false)
   }
@@ -135,7 +144,24 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
               <button type="button" className="boton boton-secundario" onClick={cargar}>↻ Actualizar clasificación</button>
             </section>
 
-            {!especial && (
+            {esChampions && (
+              <>
+                <section className="aviso-cuadro-normal">
+                  <strong>Champions · cuadro por el título</strong>
+                  <p>{previaChampions?.mensaje_eliminatorias || 'Preparando la clasificación final Champions.'}</p>
+                  {previaChampions?.ronda_a_generar && <p>Ronda inicial: <b>{previaChampions.ronda_a_generar}</b>.</p>}
+                  {(previaChampions?.cruces || []).map((x) => <p key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></p>)}
+                  {(previaChampions?.exentos || []).length > 0 && <p><b>Exentos:</b> {(previaChampions.exentos || []).map((x) => `${x.posicion}.º ${x.equipo}`).join(' · ')}</p>}
+                  {config.hay_copa_palas_playa && <p>🏖️ Palas de Playa utilizará el módulo común y se preparará cuando terminen los cuartos del cuadro principal.</p>}
+                </section>
+                <section className="barra-generar-cuadro">
+                  <div><strong>{mensaje || (previaChampions?.puede_generar_eliminatorias ? 'Clasificación Champions preparada' : 'El cuadro todavía no puede generarse')}</strong><span>Los partidos se crearán en el módulo común de Eliminatorias.</span></div>
+                  <button type="button" className="boton boton-principal" disabled={generando || !previaChampions?.puede_generar_eliminatorias} onClick={generarCuadro}>{generando ? 'Generando…' : 'Generar eliminatorias'}</button>
+                </section>
+              </>
+            )}
+
+            {!esChampions && !especial && (
               <>
                 <section className="aviso-cuadro-normal">
                   <strong>Cruces normales</strong>

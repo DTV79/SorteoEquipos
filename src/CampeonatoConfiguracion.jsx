@@ -41,6 +41,15 @@ const VALORES_INICIALES = {
   sistemas_puntuacion: SISTEMAS_PUNTUACION_INICIALES,
   ordenar_clasificacion: 'A',
   modo_generar_jornadas: '',
+  champions_partidos_por_equipo_modo: 'Automático',
+  champions_partidos_por_equipo: 4,
+  champions_modo_generacion: 'Equilibrado + azar',
+  champions_criterio_nivel: 'ISP',
+  champions_descanso_minimo_jornadas: 1,
+  champions_permitir_reducir_descanso: true,
+  champions_equipos_titulo_modo: 'Automático',
+  champions_equipos_titulo_personalizado: '',
+  champions_reseeding: true,
   url_inscripcion: '',
   mostrar_ranking_historico: true,
   mostrar_estadisticas: true,
@@ -68,6 +77,8 @@ const CAMPOS_BOOLEANOS = new Set([
   'mostrar_campeones',
   'mostrar_aviso_proxima_edicion',
   'modo_mantenimiento',
+  'champions_permitir_reducir_descanso',
+  'champions_reseeding',
 ])
 
 const CAMPOS_NUMERICOS = new Set([
@@ -81,6 +92,9 @@ const CAMPOS_NUMERICOS = new Set([
   'posicion_inicio_palas_playa',
   'puntos_objetivo_set',
   'puntos_maximos_por_set',
+  'champions_partidos_por_equipo',
+  'champions_descanso_minimo_jornadas',
+  'champions_equipos_titulo_personalizado',
 ])
 
 function aBooleano(valor) {
@@ -122,6 +136,13 @@ function normalizarConfiguracion(datos) {
     if (config.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
       config.formato_acceso_eliminatorias = 'Cruces normales'
     }
+  } else if (config.tipo_campeonato === 'Champions') {
+    config.estructura_primera_fase = 'Champions · Liga única'
+    config.num_grupos_iniciales = 1
+    config.hay_regrupos = false
+    config.repetir_enfrentamientos_regrupos = false
+    config.formato_acceso_eliminatorias = 'Cruces normales'
+    config.criterio_generar_cruces = 'Por Clasificación'
   } else if (config.tipo_campeonato === 'Grupos') {
     if (!['2 Grupos', '4 Grupos'].includes(config.estructura_primera_fase)) {
       config.estructura_primera_fase = '2 Grupos'
@@ -158,12 +179,16 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [previsualizacionPrimeraFase, setPrevisualizacionPrimeraFase] = useState(null)
   const [previsualizandoPrimeraFase, setPrevisualizandoPrimeraFase] = useState(false)
   const [generandoPrimeraFase, setGenerandoPrimeraFase] = useState(false)
+  const [nivelesManualesChampions, setNivelesManualesChampions] = useState([])
+  const [guardandoNivelesChampions, setGuardandoNivelesChampions] = useState(false)
+  const [nivelesChampionsGuardados, setNivelesChampionsGuardados] = useState(false)
   const [errorPrimeraFase, setErrorPrimeraFase] = useState('')
   const [previsualizacionRegrupos, setPrevisualizacionRegrupos] = useState(null)
   const [previsualizandoRegrupos, setPrevisualizandoRegrupos] = useState(false)
   const [generandoRegrupos, setGenerandoRegrupos] = useState(false)
   const [errorRegrupos, setErrorRegrupos] = useState('')
   const [previsualizacionEliminatorias, setPrevisualizacionEliminatorias] = useState(null)
+  const [estadoEliminatoriasGeneradas, setEstadoEliminatoriasGeneradas] = useState(null)
   const [previsualizandoEliminatorias, setPrevisualizandoEliminatorias] = useState(false)
   const [generandoEliminatorias, setGenerandoEliminatorias] = useState(false)
   const [errorEliminatorias, setErrorEliminatorias] = useState('')
@@ -172,6 +197,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoPalas, setGenerandoPalas] = useState(false)
   const [errorPalas, setErrorPalas] = useState('')
   const [eliminandoFase, setEliminandoFase] = useState('')
+  const [confirmacionBorradoFase, setConfirmacionBorradoFase] = useState(null)
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
   const cambiosSinGuardarRef = useRef(false)
   const [accionSalidaPendiente, setAccionSalidaPendiente] = useState(null)
@@ -189,9 +215,28 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       if (error || data?.ok !== true) {
         setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo cargar la configuración.' })
       } else {
-        setConfig(normalizarConfiguracion(data.configuracion))
+        const configuracionCargada = normalizarConfiguracion(data.configuracion)
+        setConfig(configuracionCargada)
         cambiosSinGuardarRef.current = false
         setHayCambiosSinGuardar(false)
+
+        const funcionEstadoEliminatorias = configuracionCargada.tipo_campeonato === 'Champions'
+          ? 'admin_previsualizar_eliminatorias_champions'
+          : configuracionCargada.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+            ? 'admin_previsualizar_cuadro_especial'
+            : 'admin_previsualizar_eliminatorias'
+        const estadoEliminatorias = await supabaseCampeonato.rpc(funcionEstadoEliminatorias, { p_codigo: codigo })
+        if (!cancelado && estadoEliminatorias.data?.ok === true && estadoEliminatorias.data?.ya_generadas) {
+          const estado = estadoEliminatorias.data
+          const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
+          setEstadoEliminatoriasGeneradas({
+            ...estado,
+            ...(borrado?.ok === true ? { borrado } : {}),
+          })
+          setPrevisualizacionEliminatorias(null)
+        } else if (!cancelado) {
+          setEstadoEliminatoriasGeneradas(null)
+        }
       }
       setCargando(false)
     }
@@ -217,6 +262,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizacionPrimeraFase(null)
     setPrevisualizacionRegrupos(null)
     setPrevisualizacionEliminatorias(null)
+    setEstadoEliminatoriasGeneradas(null)
     setPrevisualizacionPalas(null)
   }
 
@@ -239,6 +285,13 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           if (actual.formato_acceso_eliminatorias === 'Campeones de ReGrupo directos a semifinales') {
             siguiente.formato_acceso_eliminatorias = 'Cruces normales'
           }
+        } else if (value === 'Champions') {
+          siguiente.estructura_primera_fase = 'Champions · Liga única'
+          siguiente.num_grupos_iniciales = 1
+          siguiente.hay_regrupos = false
+          siguiente.repetir_enfrentamientos_regrupos = false
+          siguiente.formato_acceso_eliminatorias = 'Cruces normales'
+          siguiente.criterio_generar_cruces = 'Por Clasificación'
         } else if (value === 'Grupos') {
           siguiente.estructura_primera_fase = ['2 Grupos', '4 Grupos'].includes(actual.estructura_primera_fase)
             ? actual.estructura_primera_fase
@@ -318,14 +371,36 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   async function guardarConfiguracion() {
     setGuardando(true)
+    if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual' && nivelesManualesChampions.length > 0) {
+      const pendientes = nivelesManualesChampions.filter(j => !j.nivel)
+      if (pendientes.length > 0) {
+        setMensaje({ tipo: 'error', texto: `Falta asignar nivel manual a: ${pendientes.map(j => j.jugador).join(', ')}.` })
+        setGuardando(false)
+        return false
+      }
+      const { data: nivelesData, error: nivelesError } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+        p_codigo: codigo,
+        p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: String(j.nivel) })),
+      })
+      if (nivelesError || nivelesData?.ok !== true) {
+        setMensaje({ tipo: 'error', texto: nivelesError?.message || nivelesData?.error || 'No se pudieron guardar los niveles manuales.' })
+        setGuardando(false)
+        return false
+      }
+      setNivelesManualesChampions(nivelesData.jugadores || [])
+    }
     setMensaje({ tipo: '', texto: 'Guardando configuración y recalculando la clasificación…' })
 
-    const configuracionAGuardar = config.tipo_campeonato === 'Liguilla'
+    const configuracionAGuardar = ['Liguilla', 'Champions'].includes(config.tipo_campeonato)
       ? { ...config, hay_regrupos: false, repetir_enfrentamientos_regrupos: false }
       : config
 
+    const funcionGuardar = config.tipo_campeonato === 'Champions'
+      ? 'admin_guardar_configuracion_champions'
+      : 'admin_guardar_configuracion'
+
     const { data, error } = await supabaseCampeonato.rpc(
-      'admin_guardar_configuracion',
+      funcionGuardar,
       { p_codigo: codigo, p_configuracion: configuracionAGuardar }
     )
 
@@ -378,11 +453,72 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     window.setTimeout(() => accion?.(), 0)
   }
 
+  async function cargarNivelesManualesChampions() {
+    const { data, error } = await supabaseCampeonato.rpc('admin_obtener_niveles_manuales_champions', { p_codigo: codigo })
+    if (!error && data?.ok === true) setNivelesManualesChampions((data.jugadores || []).map(j => ({ ...j, nivel: ({ 'Básico': '1', 'Principiante': '2', 'Medio': '3', 'Medio-alto': '4', 'Avanzado': '5' })[j.nivel] || j.nivel })))
+  }
+
+  async function guardarNivelesManualesChampions() {
+    setGuardandoNivelesChampions(true)
+    const { data, error } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+      p_codigo: codigo,
+      p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: j.nivel || '' })),
+    })
+    setGuardandoNivelesChampions(false)
+    if (error || data?.ok !== true) {
+      setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudieron guardar los niveles manuales.' })
+      return false
+    }
+    setNivelesManualesChampions((data.jugadores || []).map(j => ({ ...j, nivel: ({ 'Básico': '1', 'Principiante': '2', 'Medio': '3', 'Medio-alto': '4', 'Avanzado': '5' })[j.nivel] || j.nivel })))
+    setNivelesChampionsGuardados(true)
+    setPrevisualizacionPrimeraFase(null)
+    setMensaje({ tipo: 'correcto', texto: '✓ Niveles manuales Champions guardados.' })
+    return true
+  }
+
   async function previsualizarPrimeraFase() {
     setPrevisualizandoPrimeraFase(true)
     setErrorPrimeraFase('')
+    try {
+      if (config.tipo_campeonato === 'Champions' && config.champions_criterio_nivel === 'Manual') {
+        if (nivelesManualesChampions.length === 0) {
+          setErrorPrimeraFase('Carga y asigna primero los niveles manuales de los jugadores.')
+          return
+        }
+        const pendientes = nivelesManualesChampions.filter(j => !j.nivel)
+        if (pendientes.length > 0) {
+          setErrorPrimeraFase(`Falta asignar nivel manual a: ${pendientes.map(j => j.jugador).join(', ')}.`)
+          return
+        }
+        const { data: nd, error: ne } = await supabaseCampeonato.rpc('admin_guardar_niveles_manuales_champions', {
+          p_codigo: codigo,
+          p_niveles: nivelesManualesChampions.map(j => ({ id_jugador: j.id_jugador, nivel: Number(j.nivel) })),
+        })
+        if (ne || nd?.ok !== true) {
+          setErrorPrimeraFase(ne?.message || nd?.error || 'No se pudieron guardar los niveles manuales.')
+          return
+        }
+        setNivelesManualesChampions(nd.jugadores || [])
+      }
+      if (hayCambiosSinGuardar) {
+        const guardado = await guardarConfiguracion()
+        if (!guardado) {
+          setErrorPrimeraFase('No se pudo guardar la configuración antes de previsualizar.')
+          return
+        }
+        cambiosSinGuardarRef.current = false
+        setHayCambiosSinGuardar(false)
+      }
+    } finally {
+      setPrevisualizandoPrimeraFase(false)
+    }
+    setPrevisualizandoPrimeraFase(true)
+    setErrorPrimeraFase('')
     setPrevisualizacionPrimeraFase(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_primera_fase', { p_codigo: codigo })
+    const funcionPrevia = config.tipo_campeonato === 'Champions'
+      ? 'admin_previsualizar_planificacion_champions'
+      : 'admin_previsualizar_primera_fase'
+    const { data, error } = await supabaseCampeonato.rpc(funcionPrevia, { p_codigo: codigo })
     setPrevisualizandoPrimeraFase(false)
     if (error || data?.ok !== true) {
       setErrorPrimeraFase(error?.message || data?.error || 'No se pudo preparar la primera fase.')
@@ -393,6 +529,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
 
   async function generarPrimeraFase() {
     if (!previsualizacionPrimeraFase) return
+    if (previsualizacionPrimeraFase.requiere_confirmacion_manual) {
+      const aceptar = window.confirm(`${previsualizacionPrimeraFase.aviso_manual || 'La configuración manual requiere condiciones especiales.'}\n\n¿Quieres generar igualmente la primera fase?`)
+      if (!aceptar) return
+    }
     setGenerandoPrimeraFase(true)
     setErrorPrimeraFase('')
     const { data, error } = await supabaseCampeonato.rpc('admin_generar_primera_fase', { p_codigo: codigo })
@@ -440,16 +580,23 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizandoEliminatorias(true)
     setErrorEliminatorias('')
     setPrevisualizacionEliminatorias(null)
-    const funcionPrevisualizacion = config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
-      ? 'admin_previsualizar_cuadro_especial'
-      : 'admin_previsualizar_eliminatorias'
+    const funcionPrevisualizacion = config.tipo_campeonato === 'Champions'
+      ? 'admin_previsualizar_eliminatorias_champions'
+      : config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+        ? 'admin_previsualizar_cuadro_especial'
+        : 'admin_previsualizar_eliminatorias'
     const { data, error } = await supabaseCampeonato.rpc(funcionPrevisualizacion, { p_codigo: codigo })
     setPrevisualizandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron preparar las eliminatorias.'); return }
-    let vista = data
+    let vista = config.tipo_campeonato === 'Champions'
+      ? { ...data, ronda_inicial: data.ronda_a_generar, criterio_cruces: 'Clasificación Champions · mejor contra peor', fase_origen: 'Champions', clasificados: data.equipos_titulo, partidos: (data.cruces || []).map(x => ({ orden: x.orden, ronda: data.ronda_a_generar, equipo_1: x.equipo_1?.id_equipo, equipo_2: x.equipo_2?.id_equipo })), nombres_equipos: Object.fromEntries((data.clasificados || []).map(x => [x.id_equipo, x.equipo])), puede_generar: data.puede_generar_eliminatorias, mensaje: data.mensaje_eliminatorias, exentos: data.exentos || [] }
+      : data
     if (data?.ya_generadas) {
       const { data: borrado } = await supabaseCampeonato.rpc('admin_previsualizar_borrado_fase', { p_codigo: codigo, p_fase: 'MM' })
-      if (borrado?.ok === true) vista = { ...data, borrado }
+      if (borrado?.ok === true) vista = { ...vista, borrado }
+      setEstadoEliminatoriasGeneradas(vista)
+    } else {
+      setEstadoEliminatoriasGeneradas(null)
     }
     setPrevisualizacionEliminatorias(vista)
   }
@@ -464,13 +611,15 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       return
     }
     setGenerandoEliminatorias(true); setErrorEliminatorias('')
-    const funcionGeneracion = config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
-      ? 'admin_generar_cuadro_especial'
-      : 'admin_generar_cuadro_normal'
+    const funcionGeneracion = config.tipo_campeonato === 'Champions'
+      ? 'admin_generar_eliminatorias_champions'
+      : config.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+        ? 'admin_generar_cuadro_especial'
+        : 'admin_generar_cuadro_normal'
     const { data, error } = await supabaseCampeonato.rpc(funcionGeneracion, { p_codigo: codigo })
     setGenerandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
-    setPrevisualizacionEliminatorias(null)
+    await previsualizarEliminatorias()
     setMensaje({ tipo: 'correcto', texto: data?.mensaje || `Eliminatorias generadas desde ${config.ronda_inicial_eliminatorias}.` })
   }
 
@@ -479,7 +628,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizandoPalas(true)
     setErrorPalas('')
     setPrevisualizacionPalas(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_palas_playa', { p_codigo: codigo })
+    const funcionPrevisualizacionPalas = config.tipo_campeonato === 'Champions'
+      ? 'admin_previsualizar_palas_playa_champions'
+      : 'admin_previsualizar_palas_playa'
+    const { data, error } = await supabaseCampeonato.rpc(funcionPrevisualizacionPalas, { p_codigo: codigo })
     setPrevisualizandoPalas(false)
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo preparar Palas de Playa.'); return }
     let vista = data
@@ -494,7 +646,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     if (!previsualizacionPalas?.puede_generar || hayCambiosSinGuardar) return
     setGenerandoPalas(true)
     setErrorPalas('')
-    const { data, error } = await supabaseCampeonato.rpc('admin_generar_palas_playa', { p_codigo: codigo })
+    const funcionGeneracionPalas = config.tipo_campeonato === 'Champions'
+      ? 'admin_generar_palas_playa_champions'
+      : 'admin_generar_palas_playa'
+    const { data, error } = await supabaseCampeonato.rpc(funcionGeneracionPalas, { p_codigo: codigo })
     setGenerandoPalas(false)
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo generar Palas de Playa.'); return }
     setPrevisualizacionPalas(null)
@@ -514,29 +669,34 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       { p_codigo: codigo, p_fase: fase }
     )
 
+    setEliminandoFase('')
+
     if (errorPrevia || previa?.ok !== true) {
       setError(errorPrevia?.message || previa?.error || `No se pudo comprobar ${etiqueta}.`)
-      setEliminandoFase('')
       return
     }
 
     if (Number(previa.partidos_jugados || 0) > 0) {
       setError(`No se puede eliminar ${etiqueta}: hay ${previa.partidos_jugados} partido(s) disputado(s).`)
-      setEliminandoFase('')
       return
     }
 
-    const avisoDependencia = esEliminatorias
-      ? ' También se eliminará Palas de Playa, porque depende de las Eliminatorias.'
-      : ''
-    const confirmado = window.confirm(
-      `Se eliminarán ${previa.partidos || 0} partido(s) de ${etiqueta}.${avisoDependencia}\n\nNo hay resultados guardados. ¿Quieres continuar?`
-    )
+    setConfirmacionBorradoFase({
+      fase,
+      etiqueta,
+      esEliminatorias,
+      previa,
+    })
+  }
 
-    if (!confirmado) {
-      setEliminandoFase('')
-      return
-    }
+  async function confirmarEliminarFase() {
+    if (!confirmacionBorradoFase) return
+
+    const { fase, etiqueta, esEliminatorias, previa } = confirmacionBorradoFase
+    const setError = esEliminatorias ? setErrorEliminatorias : setErrorPalas
+
+    setEliminandoFase(fase)
+    setError('')
 
     const { data, error } = await supabaseCampeonato.rpc(
       'admin_borrar_fase_campeonato',
@@ -554,8 +714,11 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       return
     }
 
+    setConfirmacionBorradoFase(null)
+
     if (esEliminatorias) {
       setPrevisualizacionEliminatorias(null)
+      setEstadoEliminatoriasGeneradas(null)
       setPrevisualizacionPalas(null)
     } else {
       setPrevisualizacionPalas(null)
@@ -623,6 +786,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   }
 
   const esGrupos = config.tipo_campeonato === 'Grupos'
+  const esChampions = config.tipo_campeonato === 'Champions'
 
   return (
     <main className="app app-admin app-configuracion-campeonato">
@@ -662,18 +826,76 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset>
             <legend>Estructura del torneo</legend>
             <div className="rejilla-configuracion">
-              <Campo etiqueta="Tipo de campeonato" ayuda="Elige — mientras el formato todavía no esté decidido."><select name="tipo_campeonato" value={config.tipo_campeonato || ''} onChange={cambiar}><option value="">—</option><option value="Liguilla">Liguilla</option><option value="Grupos">Grupos</option></select></Campo>
+              <Campo etiqueta="Tipo de campeonato" ayuda="Elige — mientras el formato todavía no esté decidido."><select name="tipo_campeonato" value={config.tipo_campeonato || ''} onChange={cambiar}><option value="">—</option><option value="Liguilla">Liguilla</option><option value="Grupos">Grupos</option><option value="Champions">🏆 Champions</option></select></Campo>
               <Campo etiqueta="Primera fase" ayuda={config.tipo_campeonato ? 'Las opciones dependen del tipo de campeonato.' : 'Primero elige el tipo de campeonato.'}>
-                <select name="estructura_primera_fase" value={config.tipo_campeonato ? config.estructura_primera_fase : ''} onChange={cambiar} disabled={!esGrupos}>
+                <select name="estructura_primera_fase" value={config.tipo_campeonato ? config.estructura_primera_fase : ''} onChange={cambiar} disabled={!esGrupos && !esChampions}>
                   {!config.tipo_campeonato && <option value="">—</option>}
                   {config.tipo_campeonato === 'Liguilla' && <option>Liguilla Única</option>}
                   {esGrupos && <><option>2 Grupos</option><option>4 Grupos</option></>}
+                  {esChampions && <option>Champions · Liga única</option>}
                 </select>
               </Campo>
               {esGrupos && <Campo etiqueta="Equipos previstos por grupo" ayuda="De momento todos los grupos deben tener el mismo número."><input type="number" min="2" name="equipos_por_grupo" value={config.equipos_por_grupo} onChange={cambiar} /></Campo>}
-              <Campo etiqueta="Pistas disponibles"><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
-              <Campo etiqueta={esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias'}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esChampions ? <span className="etiqueta-con-info">Pistas disponibles <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre pistas disponibles">i<span className="info-criterio-texto">Número máximo de partidos que pueden jugarse simultáneamente. En Champions el planificador intentará <strong>ocupar todas las pistas posibles</strong> en cada jornada; nunca dejará una libre solo para provocar descansos.</span></span></span> : "Pistas disponibles"}><input type="number" min="1" name="num_pistas_disponibles" value={config.num_pistas_disponibles} onChange={cambiar} /></Campo>
+              <Campo etiqueta={esChampions ? <span className="etiqueta-con-info">Equipos que pasan a eliminatorias <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que pasan a eliminatorias">i<span className="info-criterio-texto">Número de plazas del cuadro eliminatorio. En Champions se combina con la configuración de equipos que mantienen opción al título para determinar accesos directos y, cuando corresponda, playoff previo.</span></span></span> : (esGrupos ? 'Equipos que pasan a eliminatorias por grupo' : 'Equipos que pasan a eliminatorias')}><input type="number" min="1" max={esGrupos ? config.equipos_por_grupo || undefined : undefined} name="equipos_pasan_a_cruces_por_grupo" value={config.equipos_pasan_a_cruces_por_grupo} onChange={cambiar} /></Campo>
             </div>
+            {esChampions && (
+              <div className="bloque-dependiente">
+                <div className="resumen-formato-especial">
+                  <strong>🏆 Modo Champions · Liga única</strong>
+                  <span>Todos los equipos comparten clasificación, pero cada uno disputa solo una parte de los rivales.</span>
+                  <span>La posición Champions se conservará como semilla durante playoff, cuartos y semifinales.</span>
+                  <small>El generador equilibrará la dificultad con ISP y permitirá cualquier número de pistas.</small>
+                </div>
+                <div className="rejilla-configuracion">
+                  <Campo etiqueta={<span className="etiqueta-con-info">Partidos por equipo <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre partidos por equipo">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula una cantidad adecuada de partidos según los equipos inscritos.<br /><br /><strong>Manual:</strong> tú decides cuántos partidos jugará cada equipo.</span></span></span>}>
+                    <select name="champions_partidos_por_equipo_modo" value={config.champions_partidos_por_equipo_modo} onChange={cambiar}>
+                      <option>Automático</option><option>Manual</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta={<span className="etiqueta-con-info">N.º de partidos <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre n.º de partidos">i<span className="info-criterio-texto">Indica cuántos partidos disputará cada equipo cuando <strong>Partidos por equipo</strong> está en Manual. El sistema comprobará que la cantidad sea matemáticamente posible.</span></span></span>} ayuda="Solo se usa en modo Manual. El sistema comprobará que sea matemáticamente posible.">
+                    <input type="number" min="1" name="champions_partidos_por_equipo" value={config.champions_partidos_por_equipo} onChange={cambiar} disabled={config.champions_partidos_por_equipo_modo !== 'Manual'} />
+                  </Campo>
+                  <Campo etiqueta={<span className="etiqueta-con-info">Generación de rivales <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre generación de rivales">i<span className="info-criterio-texto"><strong>Equilibrado + azar:</strong> busca que todos tengan una dificultad de calendario parecida según el nivel elegido, introduciendo azar entre soluciones similares.<br /><br /><strong>Equilibrado:</strong> prioriza al máximo igualar la dificultad de los rivales de todos los equipos.<br /><br /><strong>Sorteo puro:</strong> los rivales se eligen al azar, sin intentar equilibrarlos por nivel.</span></span></span>}>
+                    <select name="champions_modo_generacion" value={config.champions_modo_generacion} onChange={cambiar}>
+                      <option>Equilibrado + azar</option><option>Equilibrado</option><option>Sorteo puro</option>
+                    </select>
+                  </Campo>
+                  <Campo etiqueta={<span className="etiqueta-con-info">Criterio de nivel <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre criterio de nivel">i<span className="info-criterio-texto"><strong>ISP:</strong> utiliza el Índice Sprint Pádel de los jugadores para estimar el nivel del equipo.<br /><br /><strong>Ranking histórico:</strong> utiliza la clasificación histórica disponible.<br /><br /><strong>Manual:</strong> permite trabajar con el nivel asignado manualmente, sin depender del ISP o del ranking histórico.</span></span></span>}>
+                    <select name="champions_criterio_nivel" value={config.champions_criterio_nivel} onChange={cambiar}>
+                      <option>ISP</option><option>Ranking histórico</option><option>Manual</option>
+                    </select>
+                  </Campo>
+                  {config.champions_criterio_nivel === 'Manual' && (
+                    <div className="resumen-formato-especial">
+                      <strong>🎚️ Nivel manual de jugadores</strong>
+                      <small>Asigna un nivel del 1 al 5. Se guarda en la ficha del jugador y se reutiliza en futuros campeonatos. El nivel de la pareja será la media de sus dos jugadores.</small>
+                      {nivelesManualesChampions.length === 0 && <button type="button" className="boton boton-secundario" onClick={cargarNivelesManualesChampions}>Cargar jugadores</button>}
+                      {nivelesManualesChampions.map((j, i) => (
+                        <label className="campo-configuracion" key={j.id_jugador}>
+                          <span>{j.jugador}</span>
+                          <select value={j.nivel || ''} onChange={e => { setNivelesChampionsGuardados(false); setNivelesManualesChampions(actual => actual.map((x, n) => n === i ? { ...x, nivel: e.target.value } : x)) }}>
+                            <option value="">Sin asignar</option><option value="1">1 · Bajo</option><option value="2">2 · Medio-bajo</option><option value="3">3 · Medio</option><option value="4">4 · Medio-alto</option><option value="5">5 · Alto</option>
+                          </select>
+                        </label>
+                      ))}
+                      {nivelesManualesChampions.length > 0 && <button type="button" className="boton boton-secundario" onClick={guardarNivelesManualesChampions} disabled={guardandoNivelesChampions}>{guardandoNivelesChampions ? 'Guardando…' : nivelesChampionsGuardados ? '✓ Niveles guardados' : 'Guardar niveles manuales'}</button>}
+                    </div>
+                  )}
+                  <Campo etiqueta={<span className="etiqueta-con-info">Equipos que mantienen opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre equipos que mantienen opción al título">i<span className="info-criterio-texto"><strong>Automático:</strong> el sistema calcula el acceso a eliminatorias según el número de equipos y el cuadro disponible.<br /><br /><strong>Todos:</strong> todos los equipos conservan una vía para luchar por el título después de la Liga Champions.<br /><br /><strong>Personalizado:</strong> tú indicas cuántos equipos continúan con opción al título.</span></span></span>}>
+                    <select name="champions_equipos_titulo_modo" value={config.champions_equipos_titulo_modo} onChange={cambiar}>
+                      <option>Automático</option><option>Todos</option><option>Personalizado</option>
+                    </select>
+                  </Campo>
+                  {config.champions_equipos_titulo_modo === 'Personalizado' && (
+                    <Campo etiqueta={<span className="etiqueta-con-info">N.º de equipos con opción al título <span className="info-criterio" tabIndex="0" role="button" aria-label="Información sobre n.º de equipos con opción al título">i<span className="info-criterio-texto">Solo se usa en modo <strong>Personalizado</strong>. Indica cuántos equipos de la clasificación Champions conservarán acceso al camino por el título.</span></span></span>}>
+                      <input type="number" min="2" name="champions_equipos_titulo_personalizado" value={config.champions_equipos_titulo_personalizado} onChange={cambiar} />
+                    </Campo>
+                  )}
+                </div>
+                <small className="ayuda-regrupos">La clasificación Champions se mantiene como referencia durante las eliminatorias: en cada ronda, el mejor clasificado que siga en competición se enfrentará al peor clasificado superviviente. Ejemplo: si llegan a semifinales 1.º, 3.º, 6.º y 7.º → 1.º vs 7.º y 3.º vs 6.º.</small>
+              </div>
+            )}
             {esGrupos && (
               <div className="resumen-formato-especial">
                 <strong>Vista previa del formato actual</strong>
@@ -868,25 +1090,69 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
           <fieldset className="generacion-primera-fase">
             <legend>Generación de la competición</legend>
             <p>La configuración guardada decide cómo se crea la primera fase. La previsualización no crea ni modifica partidos.</p>
-            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato || hayCambiosSinGuardar}>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarPrimeraFase} disabled={previsualizandoPrimeraFase || generandoPrimeraFase || !config.tipo_campeonato}>
               {previsualizandoPrimeraFase ? 'Comprobando…' : 'Previsualizar primera fase'}
             </button>
-            {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla o Grupos.</small>}
+            {!config.tipo_campeonato && <small className="ayuda-generacion-primera-fase">Define y guarda primero si el campeonato será Liguilla, Grupos o Champions.</small>}
             {errorPrimeraFase && <p className="error-generacion-primera-fase">{errorPrimeraFase}</p>}
             {previsualizacionPrimeraFase && (
               <div className="resumen-generacion-primera-fase">
                 <strong>Previsualización · {previsualizacionPrimeraFase.tipo || previsualizacionPrimeraFase.tipo_campeonato || config.tipo_campeonato}</strong>
                 {previsualizacionPrimeraFase.mensaje && <span>{previsualizacionPrimeraFase.mensaje}</span>}
+                {previsualizacionPrimeraFase.aviso_manual && <div className="aviso-configuracion-champions"><strong>⚠️ Advertencia:</strong> {previsualizacionPrimeraFase.aviso_manual}<br /><small>Puedes continuar si aceptas que el calendario se genere con estas condiciones.</small></div>}
                 <span>Equipos: {previsualizacionPrimeraFase.equipos ?? previsualizacionPrimeraFase.total_equipos ?? 0}</span>
                 <span>Pistas disponibles: {previsualizacionPrimeraFase.pistas ?? config.num_pistas_disponibles}</span>
                 {previsualizacionPrimeraFase.num_grupos != null && <span>Grupos: {previsualizacionPrimeraFase.num_grupos}</span>}
                 {(previsualizacionPrimeraFase.partidos ?? previsualizacionPrimeraFase.partidos_previstos) != null && <span>Partidos previstos: {previsualizacionPrimeraFase.partidos ?? previsualizacionPrimeraFase.partidos_previstos}</span>}
                 {(previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas) != null && <span>Jornadas: {previsualizacionPrimeraFase.jornadas ?? previsualizacionPrimeraFase.jornadas_previstas}</span>}
+                {previsualizacionPrimeraFase.tipo === 'Champions' && <>
+                  <span>Partidos por equipo: <b>{previsualizacionPrimeraFase.partidos_por_equipo}</b> · Total fase Champions: <b>{previsualizacionPrimeraFase.partidos_totales}</b></span>
+                  <span>Jornadas mínimas teóricas con {previsualizacionPrimeraFase.pistas} pista(s): <b>{previsualizacionPrimeraFase.jornadas_minimos_teoricos}</b></span>
+                  <span>Equipos que mantienen opción al título: <b>{previsualizacionPrimeraFase.equipos_titulo}</b></span>
+                  <span>Primera ronda por el título: <b>{previsualizacionPrimeraFase.ronda_inicial_titulo}</b></span>
+                  {previsualizacionPrimeraFase.partidos_playoff === 0 && <span>Clasificados desde Champions: <b>1.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b> · entran directamente en {previsualizacionPrimeraFase.ronda_inicial_titulo}</span>}
+                  {previsualizacionPrimeraFase.partidos_playoff > 0 && <>
+                    <span>Exentos de la ronda previa: <b>1.º–{previsualizacionPrimeraFase.exentos_playoff}.º</b></span>
+                    <span>Ronda previa: <b>{previsualizacionPrimeraFase.partidos_playoff} partido(s)</b> · puestos <b>{previsualizacionPrimeraFase.inicio_playoff}.º–{previsualizacionPrimeraFase.equipos_titulo}.º</b></span>
+                  </>}
+                  <span>Fuera de la lucha por el título tras Champions: <b>{previsualizacionPrimeraFase.fuera_titulo}</b>{previsualizacionPrimeraFase.palas ? ' · entrarán en Palas de Playa' : ''}</span>
+                  <span>Generación aplicada: <b>{previsualizacionPrimeraFase.modo_generacion_aplicado || previsualizacionPrimeraFase.modo_generacion}</b> · Criterio aplicado: <b>{previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel}</b></span>
+                  {previsualizacionPrimeraFase.requiere_preliminar_extra && <span className="aviso-configuracion-pendiente">Este ajuste necesita más de una ronda previa para reducir los equipos hasta el cuadro eliminatorio.</span>}
+                  {Array.isArray(previsualizacionPrimeraFase.equipos_nivel) && previsualizacionPrimeraFase.equipos_nivel.length > 0 && (
+                    <div className="resumen-formato-especial">
+                      <strong>⚖️ Nivel y dificultad prevista</strong>
+                      {previsualizacionPrimeraFase.equipos_nivel.map((e, i) => <span key={e.id_equipo}>{i + 1}. {e.equipo} · Nivel equipo <b>{e.nivel ?? 'pendiente'}</b> · Dificultad calendario <b>{e.dificultad_calendario ?? 'pendiente'}</b></span>)}
+                      {previsualizacionPrimeraFase.criterio_nivel_aplicado === 'Manual' && previsualizacionPrimeraFase.equipos_nivel.some(e => e.nivel == null) && <span className="aviso-configuracion-pendiente">Faltan niveles manuales en uno o más jugadores. Guarda los niveles antes de usar el equilibrio manual.</span>}
+                      {previsualizacionPrimeraFase.equilibrio && <small>{(previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel) === 'ISP' ? 'Equilibrio de calendarios (ISP)' : `Equilibrio de calendarios (${previsualizacionPrimeraFase.criterio_nivel_aplicado || previsualizacionPrimeraFase.criterio_nivel})`}: {previsualizacionPrimeraFase.equilibrio.dificultad_min}–{previsualizacionPrimeraFase.equilibrio.dificultad_max}{previsualizacionPrimeraFase.equilibrio.diferencia != null ? ` · diferencia máxima ${previsualizacionPrimeraFase.equilibrio.diferencia}` : ' · sorteo sin objetivo de equilibrio'}</small>}
+                    </div>
+                  )}
+                  {Array.isArray(previsualizacionPrimeraFase.planificacion) && previsualizacionPrimeraFase.planificacion.length > 0 && (
+                    <div className="resumen-formato-especial">
+                      <strong>📅 Jornadas y pistas</strong>
+                      <span>Planificación: <b>{previsualizacionPrimeraFase.jornadas_planificados} jornadas</b> · Ocupación {previsualizacionPrimeraFase.ocupacion_teorica}%</span>
+                      <span>Objetivo: <b>máxima ocupación de pistas</b> · {previsualizacionPrimeraFase.jornadas_planificados} jornadas</span>
+                      {Array.from(new Set(previsualizacionPrimeraFase.planificacion.map(p => p.turno))).map(turno => (
+                        <div key={turno}>
+                          <b>Jornada {turno}</b>
+                          <div className="lista-pistas-turno">
+                            {previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).map(p => <div className="linea-pista-turno" key={`${p.numero}-${p.pista}`}><span><b>Pista {p.pista}:</b> {p.local} — {p.visitante}</span></div>)}
+                            {(() => {
+                              const juegan = new Set(previsualizacionPrimeraFase.planificacion.filter(p => p.turno === turno).flatMap(p => [p.local_id, p.visitante_id]))
+                              const nombres = new Map(previsualizacionPrimeraFase.planificacion.flatMap(p => [[p.local_id,p.local],[p.visitante_id,p.visitante]]))
+                              const descansan = (previsualizacionPrimeraFase.equipos_planificacion || []).filter(id => !juegan.has(id)).map(id => nombres.get(id)).filter(Boolean)
+                              return descansan.length > 0 ? <div className="linea-pista-turno"><span><b>Descansa:</b> {descansan.join(' · ')}</span></div> : null
+                            })()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>}
                 {Array.isArray(previsualizacionPrimeraFase.grupos) && previsualizacionPrimeraFase.grupos.map((grupo) => <div className="detalle-regrupo" key={grupo.grupo}><b>Grupo {grupo.grupo}</b><span>{grupo.equipos} equipos · {grupo.jornadas} jornadas · {grupo.partidos} partidos{grupo.hay_descansos ? ' · habrá descansos' : ''}</span></div>)}
-                {Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.map((partido, indice) => partido.descansa ? <div className="detalle-cruce-eliminatoria" key={`d-${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada}</b><span>Descansa: {partido.nombre_descansa || partido.descansa}</span></div> : <div className="detalle-cruce-eliminatoria" key={`${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada} · Pista {partido.pista}</b><span>{partido.nombre_1 || partido.equipo_1} — {partido.nombre_2 || partido.equipo_2}</span></div>)}
+                {previsualizacionPrimeraFase.tipo !== 'Champions' && Array.isArray(previsualizacionPrimeraFase.emparejamientos) && previsualizacionPrimeraFase.emparejamientos.map((partido, indice) => partido.descansa ? <div className="detalle-cruce-eliminatoria" key={`d-${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada}</b><span>Descansa: {partido.nombre_descansa || partido.descansa}</span></div> : <div className="detalle-cruce-eliminatoria" key={`${partido.grupo}-${partido.jornada}-${indice}`}><b>Grupo {partido.grupo} · Jornada {partido.jornada} · Pista {partido.pista}</b><span>{partido.nombre_1 || partido.equipo_1} — {partido.nombre_2 || partido.equipo_2}</span></div>)}
                 {previsualizacionPrimeraFase.hay_descanso === true && <span>Habrá descanso por número impar de equipos.</span>}
                 {previsualizacionPrimeraFase.ya_generada ? <span className="aviso-configuracion-pendiente">Primera fase ya generada: {previsualizacionPrimeraFase.partidos_existentes} partidos existentes. No se volverá a generar.</span> : <button type="button" className="boton boton-principal" onClick={generarPrimeraFase} disabled={generandoPrimeraFase || previsualizacionPrimeraFase.puede_generar === false}>
-                  {generandoPrimeraFase ? 'Generando…' : 'Confirmar y generar primera fase'}
+                  {generandoPrimeraFase ? 'Generando…' : previsualizacionPrimeraFase.tipo === 'Champions' ? `Confirmar y generar ${previsualizacionPrimeraFase.partidos_totales ?? ''} partidos Champions` : 'Confirmar y generar primera fase'}
                 </button>}
               </div>
             )}
@@ -932,20 +1198,30 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <legend>Generación de Eliminatorias</legend>
             <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
-            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || !config.ronda_inicial_eliminatorias}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
+            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
+            {estadoEliminatoriasGeneradas?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {estadoEliminatoriasGeneradas.partidos_existentes ?? 0} {Number(estadoEliminatoriasGeneradas.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. No se volverán a generar. Pulsa “Previsualizar eliminatorias” para ver el cuadro.</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
               <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
-              <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
+              {!previsualizacionEliminatorias.ya_generadas && <><span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span></>}
               {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
+              {config.tipo_campeonato === 'Champions' && Array.isArray(previsualizacionEliminatorias.exentos) && previsualizacionEliminatorias.exentos.length > 0 && <>
+                <span><b>Exentos:</b></span>
+                {previsualizacionEliminatorias.exentos.map((x) => <span key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</span>)}
+              </>}
               {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
-              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b><span>{previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+              {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><span><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b>: {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
               {previsualizacionEliminatorias.ya_generadas ? <>
-                <span className="aviso-configuracion-pendiente">Las eliminatorias ya están generadas. Esta vista no modifica ni vuelve a crear partidos.</span>
-                <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase) || Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0}>
-                  {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
-                </button>
-                <small>También elimina Palas de Playa. Solo está disponible si no hay ningún partido disputado.</small>
+                {Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0 ? (
+                  <span className="aviso-configuracion-pendiente">
+                    No se pueden eliminar las Eliminatorias: hay {previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0} partido(s) disputado(s){previsualizacionEliminatorias.borrado ? ' entre Eliminatorias y Palas de Playa' : ''}.
+                  </span>
+                ) : <>
+                  <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase)}>
+                    {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
+                  </button>
+                  <small>También elimina Palas de Playa. Solo está disponible si no hay ningún partido disputado.</small>
+                </>}
               </> : <button type="button" className="boton boton-principal" onClick={generarEliminatorias} disabled={generandoEliminatorias || !previsualizacionEliminatorias.puede_generar}>{generandoEliminatorias ? 'Generando…' : 'Confirmar y generar eliminatorias'}</button>}
             </div>}
           </fieldset>
@@ -962,7 +1238,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
                 {previsualizacionPalas.mensaje && <span>{previsualizacionPalas.mensaje}</span>}
                 {previsualizacionPalas.participantes != null && <span>Equipos participantes: {previsualizacionPalas.participantes}</span>}
                 {previsualizacionPalas.ronda_inicial && <span>Ronda inicial: {previsualizacionPalas.ronda_inicial}</span>}
-                {Array.isArray(previsualizacionPalas.partidos) && previsualizacionPalas.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={`${partido.ronda || 'PP'}-${partido.orden || indice}`}><b>{partido.ronda || 'Palas'} · Partido {partido.orden || indice + 1}{partido.pista ? ` · Pista ${partido.pista}` : ''}</b><span>{previsualizacionPalas.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionPalas.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
+                {Array.isArray(previsualizacionPalas.partidos) && previsualizacionPalas.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={`${partido.ronda || 'PP'}-${partido.orden || indice}`}><span><b>{partido.ronda || 'Palas'} · Partido {partido.orden || indice + 1}{partido.pista ? ` · Pista ${partido.pista}` : ''}:</b> {previsualizacionPalas.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionPalas.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
                 {previsualizacionPalas.descansa && <div className="detalle-regrupo"><b>Descanso</b><span>{previsualizacionPalas.nombres_equipos?.[previsualizacionPalas.descansa] || previsualizacionPalas.descansa} · descansa por ser el peor clasificado disponible</span></div>}
                 {previsualizacionPalas.ya_generada ? <>
                   <span className="aviso-configuracion-pendiente">Palas de Playa ya está generada. No se volverá a crear.</span>
@@ -1033,6 +1309,23 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               </div>
             </article>
           </section>
+        </div>
+      )}
+      {confirmacionBorradoFase && (
+        <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !eliminandoFase && setConfirmacionBorradoFase(null)}>
+          <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-borrado-fase" onMouseDown={(evento) => evento.stopPropagation()}>
+            <span className="icono-peligro">!</span>
+            <h3 id="titulo-borrado-fase">{confirmacionBorradoFase.esEliminatorias ? 'Eliminar Eliminatorias' : 'Eliminar Palas de Playa'}</h3>
+            <p>Se eliminarán <b>{confirmacionBorradoFase.previa?.partidos ?? 0} partido(s)</b> de {confirmacionBorradoFase.etiqueta}.</p>
+            {confirmacionBorradoFase.esEliminatorias && <p>También se eliminará Palas de Playa, porque depende de las Eliminatorias.</p>}
+            <p>No hay resultados guardados. ¿Quieres continuar?</p>
+            <div className="botones-modal-mantenimiento">
+              <button type="button" className="boton boton-secundario" onClick={() => setConfirmacionBorradoFase(null)} disabled={Boolean(eliminandoFase)}>Cancelar</button>
+              <button type="button" className="boton boton-peligro" onClick={confirmarEliminarFase} disabled={Boolean(eliminandoFase)}>
+                {eliminandoFase ? 'Eliminando…' : confirmacionBorradoFase.esEliminatorias ? 'Eliminar Eliminatorias' : 'Eliminar Palas de Playa'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {accionSalidaPendiente && (
