@@ -880,7 +880,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                 <strong>Eliminatorias Champions</strong>
                 <span>{
                   partidosEliminatoriasChampions.length > 0
-                    ? `Eliminatorias ya generadas: ${partidosEliminatoriasChampions.length} partido(s) existentes.`
+                    ? `Eliminatorias ya generadas: ${partidosEliminatoriasChampions.length} ${partidosEliminatoriasChampions.length === 1 ? 'partido existente' : 'partidos existentes'}.`
                     : partidosChampionsReales.length === 0
                       ? 'Primero debes generar y disputar la fase Champions.'
                       : !championsTerminada
@@ -943,7 +943,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
 
           <div className="filtros-partidos-campeonato">
             {['GR', 'RG', 'CH'].includes(faseActiva) && <select value={filtroJornada} onChange={(evento) => setFiltroJornada(evento.target.value)} aria-label="Filtrar por jornada">
-              <option value="todas">{faseActiva === 'CH' ? 'Todos los jornadas' : 'Todas las jornadas'}</option>
+              <option value="todas">Todas las jornadas</option>
               {jornadasDisponibles.map((jornada) => <option key={jornada} value={jornada}>{faseActiva === 'CH' ? 'Jornada' : 'Jornada'} {jornada}</option>)}
             </select>}
             {['MM', 'PP'].includes(faseActiva) && <select value={filtroRonda} onChange={(evento) => setFiltroRonda(evento.target.value)} aria-label="Filtrar por ronda">
