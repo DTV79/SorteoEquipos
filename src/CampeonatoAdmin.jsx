@@ -162,6 +162,14 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
     }
   }, [cargarPartidos, codigo, seccion])
 
+  const partidosChampionsReales = useMemo(
+    () => partidos.filter((p) => p.codigo_fase === 'CH' && !p.es_descanso && !p.es_descanso_palas),
+    [partidos]
+  )
+
+  const championsTerminada = partidosChampionsReales.length > 0
+    && partidosChampionsReales.every((p) => p.estado === 'jugado')
+
   const partidosVisibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
 
@@ -848,7 +856,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <section className="generador-partidos-grupos">
               <div>
                 <strong>Eliminatorias Champions</strong>
-                <span>{partidos.filter((p) => p.codigo_fase === 'CH').length === 0 ? 'Primero debes generar y disputar la fase Champions.' : partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado') ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : previaChampionsTitulo ? previaChampionsTitulo.mensaje_eliminatorias : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span>
+                <span>{partidosChampionsReales.length === 0 ? 'Primero debes generar y disputar la fase Champions.' : !championsTerminada ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : previaChampionsTitulo ? previaChampionsTitulo.mensaje_eliminatorias : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span>
                 {previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
                 {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
                 {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <>
@@ -859,7 +867,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               </div>
               {previaChampionsTitulo?.puede_generar_eliminatorias
                 ? <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
-                : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.filter((p) => p.codigo_fase === 'CH').length === 0 || partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado')} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
+                : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidosChampionsReales.length === 0 || !championsTerminada} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
             </section>
           </>
         )}
