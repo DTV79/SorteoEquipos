@@ -1165,7 +1165,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
               <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
               {previsualizacionEliminatorias.mensaje && <span>{previsualizacionEliminatorias.mensaje}</span>}
-              {config.tipo_campeonato === 'Champions' && Array.isArray(previsualizacionEliminatorias.exentos) && previsualizacionEliminatorias.exentos.length > 0 && <span><b>Exentos:</b> {previsualizacionEliminatorias.exentos.map((x) => `${x.posicion}.º ${x.equipo}`).join(' · ')}</span>}
+              {config.tipo_campeonato === 'Champions' && Array.isArray(previsualizacionEliminatorias.exentos) && previsualizacionEliminatorias.exentos.length > 0 && <>
+                <span><b>Exentos:</b></span>
+                {previsualizacionEliminatorias.exentos.map((x) => <span key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</span>)}
+              </>}
               {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
               {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><span><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b>: {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
               {previsualizacionEliminatorias.ya_generadas ? <>
