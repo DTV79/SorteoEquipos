@@ -824,3 +824,27 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Meteorología: ajuste móvil */
+@media (max-width: 680px) {
+  .gastos-campeonato .formulario-economia {
+    width: 100%;
+    min-width: 0;
+  }
+  .gastos-campeonato .formulario-economia > label,
+  .gastos-campeonato .formulario-economia > div {
+    min-width: 0;
+    width: 100%;
+  }
+  .gastos-campeonato .formulario-economia input,
+  .gastos-campeonato .formulario-economia select,
+  .gastos-campeonato .formulario-economia textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .gastos-campeonato .formulario-economia > div[aria-hidden="true"] {
+    display: none;
+  }
+}
