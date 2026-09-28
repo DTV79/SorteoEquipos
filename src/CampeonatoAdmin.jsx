@@ -851,7 +851,10 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
                 <span>{partidos.filter((p) => p.codigo_fase === 'CH').length === 0 ? 'Primero debes generar y disputar la fase Champions.' : partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado') ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : previaChampionsTitulo ? previaChampionsTitulo.mensaje_eliminatorias : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span>
                 {previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
                 {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
-                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <span><b>Exentos:</b> {(previaChampionsTitulo.exentos || []).map((x) => `${x.posicion}.º ${x.equipo}`).join(' · ')}</span>}
+                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <>
+                  <span><b>Exentos:</b></span>
+                  {(previaChampionsTitulo.exentos || []).map((x) => <span key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</span>)}
+                </>}
                 {mensajeGenerador?.contexto === 'eliminatorias-champions' && <span><b>{mensajeGenerador.texto}</b></span>}
               </div>
               {previaChampionsTitulo?.puede_generar_eliminatorias
