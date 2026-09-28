@@ -624,7 +624,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     setPrevisualizandoPalas(true)
     setErrorPalas('')
     setPrevisualizacionPalas(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_palas_playa', { p_codigo: codigo })
+    const funcionPrevisualizacionPalas = config.tipo_campeonato === 'Champions'
+      ? 'admin_previsualizar_palas_playa_champions'
+      : 'admin_previsualizar_palas_playa'
+    const { data, error } = await supabaseCampeonato.rpc(funcionPrevisualizacionPalas, { p_codigo: codigo })
     setPrevisualizandoPalas(false)
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo preparar Palas de Playa.'); return }
     let vista = data
@@ -639,7 +642,10 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     if (!previsualizacionPalas?.puede_generar || hayCambiosSinGuardar) return
     setGenerandoPalas(true)
     setErrorPalas('')
-    const { data, error } = await supabaseCampeonato.rpc('admin_generar_palas_playa', { p_codigo: codigo })
+    const funcionGeneracionPalas = config.tipo_campeonato === 'Champions'
+      ? 'admin_generar_palas_playa_champions'
+      : 'admin_generar_palas_playa'
+    const { data, error } = await supabaseCampeonato.rpc(funcionGeneracionPalas, { p_codigo: codigo })
     setGenerandoPalas(false)
     if (error || data?.ok !== true) { setErrorPalas(error?.message || data?.error || 'No se pudo generar Palas de Playa.'); return }
     setPrevisualizacionPalas(null)
