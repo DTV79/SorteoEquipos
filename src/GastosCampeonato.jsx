@@ -2226,10 +2226,12 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
             <form className="formulario-economia" onSubmit={async (e) => {
               e.preventDefault(); setGuardandoMeteo(true)
               const fd=new FormData(e.currentTarget); const v=(n)=>fd.get(n)===''?null:numero(fd.get(n))
-              const {data,error}=await supabaseCampeonato.rpc('admin_economia_guardar_meteorologia',{p_codigo:codigo,p_localidad:fd.get('localidad')||null,p_estacion:fd.get('estacion')||null,p_fuente:fd.get('fuente')||'Manual',p_temperatura_min:v('temperatura_min'),p_temperatura_max:v('temperatura_max'),p_temperatura_media:v('temperatura_media'),p_precipitacion:v('precipitacion'),p_viento_medio:v('viento_medio'),p_viento_max:v('viento_max'),p_estado_cielo:fd.get('estado_cielo')||null,p_condiciones_juego:fd.get('condiciones_juego')||null,p_observaciones:fd.get('observaciones')||null,p_datos_fecha:fd.get('datos_fecha')||null})
+              const {data,error}=await supabaseCampeonato.rpc('admin_economia_guardar_meteorologia',{p_codigo:codigo,p_localidad:fd.get('localidad')||null,p_estacion:fd.get('estacion')||null,p_fuente:fd.get('fuente')||'Manual',p_temperatura_min:v('temperatura_min'),p_temperatura_max:v('temperatura_max'),p_temperatura_media:v('temperatura_media'),p_precipitacion:v('precipitacion'),p_viento_medio:v('viento_medio'),p_viento_max:v('viento_max'),p_estado_cielo:fd.get('estado_cielo')||null,p_condiciones_juego:fd.get('condiciones_juego')||null,p_observaciones:fd.get('observaciones')||null,p_datos_fecha:fd.get('datos_fecha')||null,p_hora_inicio:fd.get('hora_inicio')||null,p_hora_fin:fd.get('hora_fin')||null})
               setGuardandoMeteo(false); setMensaje(error||!data?.ok?{tipo:'error',texto:error?.message||data?.error||'No se pudo guardar.'}:{tipo:'correcto',texto:'Meteorología guardada.'}); if(!error&&data?.ok)cargar()
             }}>
               <label><span>Fecha</span><input type="date" name="datos_fecha" defaultValue={meteo.datos_fecha||datos.campeonato?.fecha_inicio||''}/></label>
+              <label><span>Hora de inicio</span><input type="time" name="hora_inicio" defaultValue={meteo.hora_inicio?.slice?.(0,5)||''}/></label>
+              <label><span>Hora de fin</span><input type="time" name="hora_fin" defaultValue={meteo.hora_fin?.slice?.(0,5)||''}/></label>
               <label><span>Localidad</span><input name="localidad" defaultValue={meteo.localidad||datos.campeonato?.localidad||''}/></label>
               <label><span>Estación MeteoGalicia</span><input name="estacion" defaultValue={meteo.estacion||''} placeholder="Opcional"/></label>
               <label><span>Fuente</span><select name="fuente" defaultValue={meteo.fuente||'Manual'}><option>Manual</option><option>MeteoGalicia</option></select></label>
@@ -2250,13 +2252,14 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
                   if(!localidad||!fecha){setMensaje({tipo:'error',texto:'Indica localidad y fecha antes de consultar MeteoGalicia.'});return}
                   setCargandoMeteoAuto(true); setMensaje(null)
                   const estacionTexto=String(fd.get('estacion')||'').trim(); const idCoincide=estacionTexto.match(/(?:ID\s*)?(\d{4,6})/i)
-                  const {data,error}=await supabaseCampeonato.functions.invoke('meteogalicia-campeonato',{body:{localidad,fecha,idEstacion:idCoincide?.[1]||null}})
+                  const horaInicio=String(fd.get('hora_inicio')||'').trim(); const horaFin=String(fd.get('hora_fin')||'').trim()
+                  const {data,error}=await supabaseCampeonato.functions.invoke('meteogalicia-campeonato',{body:{localidad,fecha,horaInicio,horaFin,idEstacion:idCoincide?.[1]||null}})
                   setCargandoMeteoAuto(false)
                   if(error||!data?.ok){setMensaje({tipo:'error',texto:data?.error||error?.message||'No se pudieron obtener los datos de MeteoGalicia.'});return}
                   const poner=(nombre,valor)=>{const el=form.elements.namedItem(nombre); if(el&&valor!=null)el.value=valor}
                   poner('estacion',data.estacion?.nombre ? `${data.estacion.nombre} (ID ${data.estacion.id})` : '')
                   poner('fuente','MeteoGalicia'); poner('temperatura_min',data.temperatura_min); poner('temperatura_max',data.temperatura_max); poner('temperatura_media',data.temperatura_media); poner('precipitacion',data.precipitacion); poner('viento_medio',data.viento_medio); poner('viento_max',data.viento_max)
-                  setMensaje({tipo:'correcto',texto:`Datos cargados desde MeteoGalicia · ${data.estacion?.nombre||'estación encontrada'}. Revísalos y pulsa Guardar meteorología.`})
+                  setMensaje({tipo:'correcto',texto:`Datos cargados desde MeteoGalicia · ${data.estacion?.nombre||'estación encontrada'}${data.tipo==='horario' ? ` · intervalo ${horaInicio}–${horaFin} (${data.lecturas} lecturas)` : ' · resumen diario'}. Revísalos y pulsa Guardar meteorología.`})
                 }}>{cargandoMeteoAuto?'Consultando…':'Obtener de MeteoGalicia'}</button>
               </div>
             </form>
