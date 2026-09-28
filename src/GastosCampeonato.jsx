@@ -2264,7 +2264,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
                   if(error||!data?.ok){setMensaje({tipo:'error',texto:data?.error||error?.message||'No se pudieron obtener los datos de MeteoGalicia.'});return}
                   const poner=(nombre,valor)=>{const el=form.elements.namedItem(nombre); if(el&&valor!=null)el.value=valor}
                   poner('estacion',data.estacion?.nombre ? `${data.estacion.nombre} (ID ${data.estacion.id})` : '')
-                  poner('fuente','MeteoGalicia'); poner('temperatura_min',data.temperatura_min); poner('temperatura_max',data.temperatura_max); poner('hora_temperatura_min',data.hora_temperatura_min); poner('hora_temperatura_max',data.hora_temperatura_max); poner('temperatura_media',data.temperatura_media); poner('precipitacion',data.precipitacion); poner('viento_medio',data.viento_medio); poner('viento_max',data.viento_max)
+                  poner('fuente','MeteoGalicia'); poner('temperatura_min',data.temperatura_min); poner('temperatura_max',data.temperatura_max); poner('hora_temperatura_min',data.hora_temperatura_min||data.hora_minima||''); poner('hora_temperatura_max',data.hora_temperatura_max||data.hora_maxima||''); poner('temperatura_media',data.temperatura_media); poner('precipitacion',data.precipitacion); poner('viento_medio',data.viento_medio); poner('viento_max',data.viento_max)
                   setMensaje({tipo:'correcto',texto:`Datos cargados desde MeteoGalicia · ${data.estacion?.nombre||'estación encontrada'} · intervalo ${horaInicio}–${horaFin} (${data.lecturas} lecturas). Revísalos y pulsa Guardar meteorología.`})
                 }}>{cargandoMeteoAuto?'Consultando…':'Obtener de MeteoGalicia'}</button>
               </div>
