@@ -213,9 +213,29 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       if (error || data?.ok !== true) {
         setMensaje({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo cargar la configuración.' })
       } else {
-        setConfig(normalizarConfiguracion(data.configuracion))
+        const configuracionCargada = normalizarConfiguracion(data.configuracion)
+        setConfig(configuracionCargada)
         cambiosSinGuardarRef.current = false
         setHayCambiosSinGuardar(false)
+
+        const funcionEstadoEliminatorias = configuracionCargada.tipo_campeonato === 'Champions'
+          ? 'admin_previsualizar_eliminatorias_champions'
+          : configuracionCargada.formato_acceso_eliminatorias === FORMATO_ELIMINATORIAS_ESPECIAL
+            ? 'admin_previsualizar_cuadro_especial'
+            : 'admin_previsualizar_eliminatorias'
+        const estadoEliminatorias = await supabaseCampeonato.rpc(funcionEstadoEliminatorias, { p_codigo: codigo })
+        if (!cancelado && estadoEliminatorias.data?.ok === true && estadoEliminatorias.data?.ya_generadas) {
+          const estado = estadoEliminatorias.data
+          setPrevisualizacionEliminatorias(configuracionCargada.tipo_campeonato === 'Champions'
+            ? {
+                ...estado,
+                fase_origen: 'Champions',
+                puede_generar: false,
+                partidos: [],
+                nombres_equipos: {},
+              }
+            : estado)
+        }
       }
       setCargando(false)
     }
@@ -594,7 +614,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
     const { data, error } = await supabaseCampeonato.rpc(funcionGeneracion, { p_codigo: codigo })
     setGenerandoEliminatorias(false)
     if (error || data?.ok !== true) { setErrorEliminatorias(error?.message || data?.error || 'No se pudieron generar las eliminatorias.'); return }
-    setPrevisualizacionEliminatorias(null)
+    await previsualizarEliminatorias()
     setMensaje({ tipo: 'correcto', texto: data?.mensaje || `Eliminatorias generadas desde ${config.ronda_inicial_eliminatorias}.` })
   }
 
@@ -1159,8 +1179,9 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
             <legend>Generación de Eliminatorias</legend>
             <p>Usa la configuración guardada y la clasificación de la última fase completada. La previsualización no crea partidos.</p>
             {hayCambiosSinGuardar && <p className="aviso-configuracion-pendiente">Hay cambios sin guardar. Guarda la configuración antes de previsualizar o generar cruces.</p>}
-            <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>
+            {!previsualizacionEliminatorias?.ya_generadas && <button type="button" className="boton boton-secundario" onClick={previsualizarEliminatorias} disabled={previsualizandoEliminatorias || generandoEliminatorias || hayCambiosSinGuardar || (config.tipo_campeonato !== 'Champions' && !config.ronda_inicial_eliminatorias)}>{previsualizandoEliminatorias ? 'Comprobando…' : 'Previsualizar eliminatorias'}</button>}
             {errorEliminatorias && <p className="error-generacion-primera-fase">{errorEliminatorias}</p>}
+            {previsualizacionEliminatorias?.ya_generadas && <p className="aviso-configuracion-pendiente">Eliminatorias ya generadas: {previsualizacionEliminatorias.partidos_existentes ?? 0} partidos existentes. No se volverán a generar.</p>}
             {previsualizacionEliminatorias && <div className="resumen-generacion-primera-fase">
               <strong>{previsualizacionEliminatorias.ya_generadas ? 'Eliminatorias actuales · solo lectura' : `${previsualizacionEliminatorias.ronda_inicial} · ${previsualizacionEliminatorias.criterio_cruces}`}</strong>
               <span>Fase de origen: {previsualizacionEliminatorias.fase_origen}</span><span>Clasificados: {previsualizacionEliminatorias.clasificados}</span>
@@ -1172,7 +1193,6 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               {previsualizacionEliminatorias.ya_generadas && <span>Jugados: {previsualizacionEliminatorias.partidos_jugados ?? 0} · Pendientes: {previsualizacionEliminatorias.partidos_pendientes ?? 0}</span>}
               {Array.isArray(previsualizacionEliminatorias.partidos) && previsualizacionEliminatorias.partidos.map((partido, indice) => <div className="detalle-cruce-eliminatoria" key={partido.id_partido || `${partido.ronda || 'MM'}-${partido.orden || indice}`}><span><b>{partido.ronda ? `${partido.ronda} · ` : ''}Cruce {partido.orden}</b>: {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_1] || partido.equipo_1} — {previsualizacionEliminatorias.nombres_equipos?.[partido.equipo_2] || partido.equipo_2}</span></div>)}
               {previsualizacionEliminatorias.ya_generadas ? <>
-                <span className="aviso-configuracion-pendiente">Las eliminatorias ya están generadas. Esta vista no modifica ni vuelve a crear partidos.</span>
                 <button type="button" className="boton boton-peligro" onClick={() => eliminarFaseSinResultados('MM')} disabled={Boolean(eliminandoFase) || Number(previsualizacionEliminatorias.borrado?.partidos_jugados ?? previsualizacionEliminatorias.partidos_jugados ?? 0) > 0}>
                   {eliminandoFase === 'MM' ? 'Eliminando…' : 'Eliminar Eliminatorias'}
                 </button>
