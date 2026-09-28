@@ -2219,6 +2219,33 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
           </>
         )}
 
+        {pestana === 'meteorologia' && (
+          <section className="bloque-economia">
+            <div className="titulo-bloque-economia"><div><h3>🌤️ Meteorología del campeonato</h3><p>Guarda las condiciones reales del día asociadas a este campeonato.</p></div></div>
+            <form className="formulario-economia" onSubmit={async (e) => {
+              e.preventDefault(); setGuardandoMeteo(true)
+              const fd=new FormData(e.currentTarget); const v=(n)=>fd.get(n)===''?null:numero(fd.get(n))
+              const {data,error}=await supabaseCampeonato.rpc('admin_economia_guardar_meteorologia',{p_codigo:codigo,p_localidad:fd.get('localidad')||null,p_estacion:fd.get('estacion')||null,p_fuente:fd.get('fuente')||'Manual',p_temperatura_min:v('temperatura_min'),p_temperatura_max:v('temperatura_max'),p_temperatura_media:v('temperatura_media'),p_precipitacion:v('precipitacion'),p_viento_medio:v('viento_medio'),p_viento_max:v('viento_max'),p_estado_cielo:fd.get('estado_cielo')||null,p_condiciones_juego:fd.get('condiciones_juego')||null,p_observaciones:fd.get('observaciones')||null,p_datos_fecha:fd.get('datos_fecha')||null})
+              setGuardandoMeteo(false); setMensaje(error||!data?.ok?{tipo:'error',texto:error?.message||data?.error||'No se pudo guardar.'}:{tipo:'correcto',texto:'Meteorología guardada.'}); if(!error&&data?.ok)cargar()
+            }}>
+              <label><span>Fecha</span><input type="date" name="datos_fecha" defaultValue={meteo.datos_fecha||datos.campeonato?.fecha_inicio||''}/></label>
+              <label><span>Localidad</span><input name="localidad" defaultValue={meteo.localidad||datos.campeonato?.localidad||''}/></label>
+              <label><span>Estación MeteoGalicia</span><input name="estacion" defaultValue={meteo.estacion||''} placeholder="Opcional"/></label>
+              <label><span>Fuente</span><select name="fuente" defaultValue={meteo.fuente||'Manual'}><option>Manual</option><option>MeteoGalicia</option></select></label>
+              <label><span>Temperatura mínima (°C)</span><input type="number" step="0.1" name="temperatura_min" defaultValue={meteo.temperatura_min??''}/></label>
+              <label><span>Temperatura máxima (°C)</span><input type="number" step="0.1" name="temperatura_max" defaultValue={meteo.temperatura_max??''}/></label>
+              <label><span>Temperatura media (°C)</span><input type="number" step="0.1" name="temperatura_media" defaultValue={meteo.temperatura_media??''}/></label>
+              <label><span>Precipitación (l/m²)</span><input type="number" min="0" step="0.1" name="precipitacion" defaultValue={meteo.precipitacion??''}/></label>
+              <label><span>Viento medio (km/h)</span><input type="number" min="0" step="0.1" name="viento_medio" defaultValue={meteo.viento_medio??''}/></label>
+              <label><span>Racha máxima (km/h)</span><input type="number" min="0" step="0.1" name="viento_max" defaultValue={meteo.viento_max??''}/></label>
+              <label className="campo-ancho"><span>Estado del cielo</span><input name="estado_cielo" defaultValue={meteo.estado_cielo||''} placeholder="Despejado, nublado, lluvia…"/></label>
+              <label className="campo-ancho"><span>Condiciones de juego</span><input name="condiciones_juego" defaultValue={meteo.condiciones_juego||''} placeholder="Seco, húmedo, calor, viento…"/></label>
+              <label className="campo-completo"><span>Observaciones</span><textarea name="observaciones" rows="4" defaultValue={meteo.observaciones||''}/></label>
+              <div className="acciones-formulario-economia campo-completo"><button className="boton boton-principal" type="submit" disabled={guardandoMeteo}>{guardandoMeteo?'Guardando…':'Guardar meteorología'}</button></div>
+            </form>
+          </section>
+        )}
+
         {pestana === 'configuracion' && (
           <>
             <section className="bloque-economia">
