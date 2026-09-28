@@ -570,11 +570,22 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   }
 
   async function prepararEliminatoriasChampions() {
-    setGenerandoGrupos(true); setMensajeGenerador(null)
-    const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
-    if (error || data?.ok !== true) setMensajeGenerador({ tipo: 'error', texto: error?.message || data?.error || 'No se pudo preparar la eliminatoria Champions.' })
-    else setPreviaChampionsTitulo(data)
-    setGenerandoGrupos(false)
+    setGenerandoGrupos(true)
+    setPreviaChampionsTitulo(null)
+    setMensajeGenerador({ tipo: 'correcto', contexto: 'eliminatorias-champions', texto: 'Calculando cruces Champions…' })
+    try {
+      const { data, error } = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
+      if (error || data?.ok !== true) {
+        setMensajeGenerador({ tipo: 'error', contexto: 'eliminatorias-champions', texto: error?.message || data?.error || 'No se pudo preparar la eliminatoria Champions.' })
+      } else {
+        setPreviaChampionsTitulo(data)
+        setMensajeGenerador(null)
+      }
+    } catch (error) {
+      setMensajeGenerador({ tipo: 'error', contexto: 'eliminatorias-champions', texto: error?.message || 'Error inesperado al preparar la eliminatoria Champions.' })
+    } finally {
+      setGenerandoGrupos(false)
+    }
   }
 
   async function generarEliminatoriasChampions() {
@@ -835,8 +846,17 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
               <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.some((p) => p.codigo_fase === 'CH')} onClick={generarPartidosChampions}>{generandoGrupos ? 'Generando…' : partidos.some((p) => p.codigo_fase === 'CH') ? 'Partidos Champions generados' : 'Generar partidos Champions'}</button>
             </section>
             <section className="generador-partidos-grupos">
-              <div><strong>Eliminatorias Champions</strong><span>{partidos.filter((p) => p.codigo_fase === 'CH').length === 0 ? 'Primero debes generar y disputar la fase Champions.' : partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado') ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span></div>
-              <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.filter((p) => p.codigo_fase === 'CH').length === 0 || partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado')} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>
+              <div>
+                <strong>Eliminatorias Champions</strong>
+                <span>{partidos.filter((p) => p.codigo_fase === 'CH').length === 0 ? 'Primero debes generar y disputar la fase Champions.' : partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado') ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : previaChampionsTitulo ? previaChampionsTitulo.mensaje_eliminatorias : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span>
+                {previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
+                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
+                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <span><b>Exentos:</b> {(previaChampionsTitulo.exentos || []).map((x) => `${x.posicion}.º ${x.equipo}`).join(' · ')}</span>}
+                {mensajeGenerador?.contexto === 'eliminatorias-champions' && <span><b>{mensajeGenerador.texto}</b></span>}
+              </div>
+              {previaChampionsTitulo?.puede_generar_eliminatorias
+                ? <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
+                : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidos.filter((p) => p.codigo_fase === 'CH').length === 0 || partidos.some((p) => p.codigo_fase === 'CH' && p.estado !== 'jugado')} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
             </section>
           </>
         )}
@@ -846,15 +866,6 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarSiguienteRondaChampions}>{generandoGrupos ? 'Calculando…' : 'Generar siguiente ronda'}</button>
           </section>
         )}
-        {previaChampionsTitulo && (
-          <section className="generador-partidos-grupos">
-            <div><strong>{previaChampionsTitulo.champions_terminada ? previaChampionsTitulo.ronda_a_generar : 'Champions todavía en juego'}</strong>
-            <span>{previaChampionsTitulo.mensaje_eliminatorias}</span>
-            {previaChampionsTitulo.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}</div>
-            {previaChampionsTitulo.puede_generar_eliminatorias && <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>Confirmar y generar</button>}
-          </section>
-        )}
-
         {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
 
         <div className="barra-campeonato">
