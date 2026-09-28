@@ -45,3 +45,7 @@
 /* Meteorología: acciones alineadas */
 .gastos-campeonato .acciones-formulario-economia .boton-principal,
 .gastos-campeonato .acciones-formulario-economia .meteo-obtener { min-height:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; padding:0 18px; box-sizing:border-box; }
+
+/* Acciones finales de Meteorología: mismo tamaño y separación */
+.gastos-campeonato form .acciones-formulario-economia.campo-completo { display:flex !important; align-items:center !important; gap:14px !important; }
+.gastos-campeonato form .acciones-formulario-economia.campo-completo > .boton { height:44px !important; min-height:44px !important; line-height:1 !important; margin:0 !important; padding:0 18px !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box !important; }
