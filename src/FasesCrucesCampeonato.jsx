@@ -4,6 +4,23 @@ import './FasesCrucesCampeonato.css'
 
 const FORMATO_ESPECIAL = 'Campeones de ReGrupo directos a semifinales'
 
+const ORDEN_RONDAS_CHAMPIONS = ['PREV', 'DF', 'OF', 'CF', 'SF', 'F']
+const NOMBRES_RONDAS_CHAMPIONS = {
+  PREV: 'Ronda previa',
+  DF: 'Dieciseisavos',
+  OF: 'Octavos',
+  CF: 'Cuartos de final',
+  SF: 'Semifinales',
+  F: 'Gran final',
+}
+const ORDEN_RONDAS_PALAS = ['OCT', 'CUA', 'SEM', 'FIN']
+const NOMBRES_RONDAS_PALAS = {
+  OCT: 'Octavos',
+  CUA: 'Cuartos de final',
+  SEM: 'Semifinales',
+  FIN: 'Final Palas de Playa',
+}
+
 function Equipo({ equipo, pendiente }) {
   return (
     <div className={`equipo-cruce${pendiente ? ' pendiente' : ''}`}>
@@ -24,6 +41,24 @@ function Partido({ titulo, equipo1, equipo2, pendiente1, pendiente2, tono = '' }
   )
 }
 
+function DescansoCuadro({ equipo }) {
+  return (
+    <article className="partido-cuadro palas descanso-cuadro">
+      <span>DESCANSO</span>
+      <Equipo equipo={equipo} />
+      <b>→</b>
+      <Equipo pendiente="Pasa directamente" />
+    </article>
+  )
+}
+
+function equipoPartido(partido, lado) {
+  return {
+    id_equipo: partido?.[`id_equipo_${lado}`] || '',
+    equipo: partido?.[`equipo_${lado}`] || '',
+  }
+}
+
 export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracion, onResultados, onPanelPrincipal }) {
   const [config, setConfig] = useState({})
   const [clasificacion, setClasificacion] = useState([])
@@ -32,6 +67,8 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
   const [generando, setGenerando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [previaChampions, setPreviaChampions] = useState(null)
+  const [partidosChampions, setPartidosChampions] = useState([])
+  const [descansosPalasChampions, setDescansosPalasChampions] = useState([])
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -57,10 +94,28 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
         setConfig(configuracion)
         setClasificacion(consultaClasificacion.data.clasificacion ?? [])
         if (esChampionsConfig) {
-          const previa = await supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo })
-          if (previa.error || previa.data?.ok !== true) setError(previa.error?.message || previa.data?.error || 'No se pudo preparar la eliminatoria Champions.')
-          else setPreviaChampions(previa.data)
-        } else setPreviaChampions(null)
+          const [previa, partidos, descansos] = await Promise.all([
+            supabaseCampeonato.rpc('admin_previsualizar_eliminatorias_champions', { p_codigo: codigo }),
+            supabaseCampeonato.rpc('admin_listar_partidos', { p_codigo: codigo }),
+            supabaseCampeonato.rpc('admin_listar_descansos', { p_codigo: codigo }),
+          ])
+
+          if (previa.error || previa.data?.ok !== true) {
+            setError(previa.error?.message || previa.data?.error || 'No se pudo preparar la eliminatoria Champions.')
+          } else if (partidos.error || partidos.data?.ok !== true) {
+            setError(partidos.error?.message || partidos.data?.error || 'No se pudieron cargar los partidos del cuadro Champions.')
+          } else if (descansos.error || descansos.data?.ok !== true) {
+            setError(descansos.error?.message || descansos.data?.error || 'No se pudieron cargar los descansos de Palas de Playa.')
+          } else {
+            setPreviaChampions(previa.data)
+            setPartidosChampions((partidos.data.partidos ?? []).filter((p) => p.codigo_fase === 'MM' || p.codigo_fase === 'PP'))
+            setDescansosPalasChampions((descansos.data.descansos ?? []).filter((d) => d.codigo_fase === 'PP'))
+          }
+        } else {
+          setPreviaChampions(null)
+          setPartidosChampions([])
+          setDescansosPalasChampions([])
+        }
       }
     }
     setCargando(false)
@@ -101,6 +156,31 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
     ? clasificacion.filter((fila) => Number(fila.posicion) <= equiposNecesarios)
     : clasificacion.filter((fila) => Number(fila.posicion) <= clasificadosPorGrupo)
   const cuadroNormalCompleto = !especial && equiposNecesarios > 0 && clasificadosNormales.length === equiposNecesarios
+
+  const rondasTituloChampions = useMemo(() => {
+    return ORDEN_RONDAS_CHAMPIONS
+      .map((codigoRonda) => ({
+        codigoRonda,
+        nombre: NOMBRES_RONDAS_CHAMPIONS[codigoRonda] || codigoRonda,
+        partidos: partidosChampions
+          .filter((p) => p.codigo_fase === 'MM' && p.codigo_ronda === codigoRonda)
+          .sort((a, b) => Number(a.orden) - Number(b.orden)),
+      }))
+      .filter((ronda) => ronda.partidos.length > 0)
+  }, [partidosChampions])
+
+  const rondasPalasChampions = useMemo(() => {
+    return ORDEN_RONDAS_PALAS
+      .map((codigoRonda) => ({
+        codigoRonda,
+        nombre: NOMBRES_RONDAS_PALAS[codigoRonda] || codigoRonda,
+        partidos: partidosChampions
+          .filter((p) => p.codigo_fase === 'PP' && p.codigo_ronda === codigoRonda)
+          .sort((a, b) => Number(a.orden) - Number(b.orden)),
+        descansos: descansosPalasChampions.filter((d) => d.codigo_ronda === codigoRonda),
+      }))
+      .filter((ronda) => ronda.partidos.length > 0 || ronda.descansos.length > 0)
+  }, [partidosChampions, descansosPalasChampions])
 
   async function generarCuadro() {
     setGenerando(true)
@@ -163,13 +243,71 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                 </section>
 
                 {previaChampions?.ya_generadas ? (
-                  <section className="barra-generar-cuadro">
-                    <div>
-                      <strong>Eliminatorias ya generadas</strong>
-                      <span>{previaChampions.partidos_existentes ?? 0} {Number(previaChampions.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. El cuadro no se volverá a generar.</span>
-                    </div>
-                    <button type="button" className="boton boton-principal" onClick={onResultados}>Ver eliminatorias</button>
-                  </section>
+                  <>
+                    {rondasTituloChampions.length > 0 && (
+                      <section className="cuadro-eliminatorias cuadro-eliminatorias-champions">
+                        {rondasTituloChampions.map((ronda, indice) => (
+                          <div
+                            className={`columna-cuadro${ronda.codigoRonda === 'F' ? ' final' : ronda.codigoRonda === 'SF' ? ' destacada' : ''}`}
+                            key={ronda.codigoRonda}
+                          >
+                            <header>
+                              <small>{indice === 0 ? 'RONDA INICIAL' : ronda.codigoRonda === 'F' ? 'TÍTULO' : 'CUADRO PRINCIPAL'}</small>
+                              <h3>{ronda.nombre}</h3>
+                            </header>
+                            {ronda.partidos.map((partido, partidoIndice) => (
+                              <Partido
+                                key={partido.id_partido}
+                                titulo={`${ronda.nombre === 'Gran final' ? 'Final del campeonato' : `${ronda.nombre} ${partidoIndice + 1}`}`}
+                                equipo1={equipoPartido(partido, 1)}
+                                equipo2={equipoPartido(partido, 2)}
+                                tono={ronda.codigoRonda === 'F' ? 'final' : ''}
+                              />
+                            ))}
+                          </div>
+                        ))}
+                      </section>
+                    )}
+
+                    {config.hay_copa_palas_playa && rondasPalasChampions.length > 0 && (
+                      <section className="copa-palas-cuadro">
+                        <header>
+                          <div><small>CUADRO DE CONSOLACIÓN</small><h3>🏖️ Copa Palas de Playa</h3></div>
+                          <span>En Palas de Playa continúan los perdedores</span>
+                        </header>
+                        <div className="cuadro-palas-champions">
+                          {rondasPalasChampions.map((ronda) => (
+                            <div className="columna-cuadro columna-palas-champions" key={ronda.codigoRonda}>
+                              <header><small>PALAS DE PLAYA</small><h3>{ronda.nombre}</h3></header>
+                              {ronda.descansos.map((descanso) => (
+                                <DescansoCuadro
+                                  key={descanso.id_partido || `${ronda.codigoRonda}-${descanso.equipo_1}`}
+                                  equipo={{ id_equipo: descanso.id_equipo || '', equipo: descanso.equipo_1 || descanso.equipo || '' }}
+                                />
+                              ))}
+                              {ronda.partidos.map((partido, partidoIndice) => (
+                                <Partido
+                                  key={partido.id_partido}
+                                  titulo={ronda.codigoRonda === 'FIN' ? 'Final Palas de Playa' : `${ronda.nombre} ${partidoIndice + 1}`}
+                                  equipo1={equipoPartido(partido, 1)}
+                                  equipo2={equipoPartido(partido, 2)}
+                                  tono={`palas${ronda.codigoRonda === 'FIN' ? ' final' : ''}`}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    <section className="barra-generar-cuadro">
+                      <div>
+                        <strong>Eliminatorias ya generadas</strong>
+                        <span>{previaChampions.partidos_existentes ?? 0} {Number(previaChampions.partidos_existentes ?? 0) === 1 ? 'partido existente' : 'partidos existentes'}. El cuadro se muestra con los cruces reales del campeonato.</span>
+                      </div>
+                      <button type="button" className="boton boton-principal" onClick={onResultados}>Ver eliminatorias</button>
+                    </section>
+                  </>
                 ) : (
                   <section className="barra-generar-cuadro">
                     <div>
