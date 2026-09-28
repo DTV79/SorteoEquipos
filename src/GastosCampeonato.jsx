@@ -353,6 +353,8 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   })
   const [observacionesResumen, setObservacionesResumen] = useState('')
   const [guardandoObservaciones, setGuardandoObservaciones] = useState(false)
+  const [meteo, setMeteo] = useState({})
+  const [guardandoMeteo, setGuardandoMeteo] = useState(false)
   const [columnasInformeGestion, setColumnasInformeGestion] = useState(() => {
     const base = {
       fecha: true,
@@ -455,6 +457,8 @@ export default function GastosCampeonato({ codigo, onVolver }) {
     setObservacionesResumen(
       typeof observacionesGuardadas === 'string' ? observacionesGuardadas : ''
     )
+    const { data: meteoGuardada } = await supabaseCampeonato.rpc('admin_economia_obtener_meteorologia', { p_codigo: codigo })
+    if (meteoGuardada?.ok) setMeteo(meteoGuardada.meteorologia || {})
     setCargando(false)
   }, [codigo])
 
@@ -1422,6 +1426,7 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
           >
             Asistencia y cobros
           </button>
+          <button type="button" className={pestana === 'meteorologia' ? 'activo' : ''} onClick={() => setPestana('meteorologia')}>Meteorología</button>
           <button
             type="button"
             className={pestana === 'configuracion' ? 'activo' : ''}
