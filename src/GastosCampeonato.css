@@ -848,3 +848,42 @@
     display: none;
   }
 }
+
+/* Meteorología móvil: evitar desbordes nativos de fecha/hora y acciones */
+@media (max-width: 680px) {
+  .gastos-campeonato .bloque-economia {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .gastos-campeonato .formulario-economia {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .gastos-campeonato .formulario-economia input[type="date"],
+  .gastos-campeonato .formulario-economia input[type="time"] {
+    display: block;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .gastos-campeonato form .acciones-formulario-economia.campo-completo {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .gastos-campeonato form .acciones-formulario-economia.campo-completo > .boton {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 10px 14px !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+  }
+}
