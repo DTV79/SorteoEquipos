@@ -170,6 +170,28 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
   const championsTerminada = partidosChampionsReales.length > 0
     && partidosChampionsReales.every((p) => p.estado === 'jugado')
 
+  const ordenRondasChampions = { PREV: 0, DF: 1, OF: 2, CF: 3, SF: 4, F: 5 }
+  const nombresRondasChampions = { PREV: 'Ronda previa', DF: 'Dieciseisavos', OF: 'Octavos', CF: 'Cuartos de final', SF: 'Semifinales', F: 'Final' }
+  const siguienteRondaChampions = { PREV: 'Cuartos de final', DF: 'Octavos', OF: 'Cuartos de final', CF: 'Semifinales', SF: 'Final' }
+
+  const partidosEliminatoriasChampions = useMemo(
+    () => partidos.filter((p) => p.codigo_fase === 'MM' && !p.es_descanso && !p.es_descanso_palas),
+    [partidos]
+  )
+
+  const rondaActualChampions = useMemo(() => {
+    const rondas = [...new Set(partidosEliminatoriasChampions.map((p) => p.codigo_ronda).filter(Boolean))]
+    return rondas.sort((a, b) => (ordenRondasChampions[b] ?? -1) - (ordenRondasChampions[a] ?? -1))[0] || ''
+  }, [partidosEliminatoriasChampions])
+
+  const partidosRondaActualChampions = useMemo(
+    () => partidosEliminatoriasChampions.filter((p) => p.codigo_ronda === rondaActualChampions),
+    [partidosEliminatoriasChampions, rondaActualChampions]
+  )
+
+  const rondaActualChampionsCompleta = partidosRondaActualChampions.length > 0
+    && partidosRondaActualChampions.every((p) => p.estado === 'jugado')
+
   const partidosVisibles = useMemo(() => {
     const texto = filtro.trim().toLowerCase()
 
@@ -195,7 +217,7 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
       if (porJornada) return porJornada
 
       if (['MM', 'PP'].includes(faseActiva)) {
-        const ordenRondas = { OCT: 1, CUA: 2, SEM: 3, FIN: 4 }
+        const ordenRondas = { PREV: 0, DF: 1, OF: 2, CF: 3, SF: 4, F: 5, OCT: 2, CUA: 3, SEM: 4, FIN: 5 }
         const porRonda = (ordenRondas[a.codigo_ronda] ?? 99) - (ordenRondas[b.codigo_ronda] ?? 99)
         if (porRonda) return porRonda
       }
@@ -856,25 +878,59 @@ export default function CampeonatoAdmin({ onVolver, onAbrirSorteo, onCrearSorteo
             <section className="generador-partidos-grupos">
               <div>
                 <strong>Eliminatorias Champions</strong>
-                <span>{partidosChampionsReales.length === 0 ? 'Primero debes generar y disputar la fase Champions.' : !championsTerminada ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.' : previaChampionsTitulo ? previaChampionsTitulo.mensaje_eliminatorias : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'}</span>
-                {previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
-                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
-                {previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <>
+                <span>{
+                  partidosEliminatoriasChampions.length > 0
+                    ? `Eliminatorias ya generadas: ${partidosEliminatoriasChampions.length} partido(s) existentes.`
+                    : partidosChampionsReales.length === 0
+                      ? 'Primero debes generar y disputar la fase Champions.'
+                      : !championsTerminada
+                        ? 'Se habilitará cuando estén disputados todos los partidos de la fase Champions.'
+                        : previaChampionsTitulo
+                          ? previaChampionsTitulo.mensaje_eliminatorias
+                          : 'La fase Champions está terminada. Ya puedes preparar los cruces por el título.'
+                }</span>
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && <span><b>{previaChampionsTitulo.ronda_a_generar}</b></span>}
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.cruces || []).map((x) => <span key={x.orden}><b>{x.equipo_1?.posicion}.º {x.equipo_1?.equipo}</b> vs <b>{x.equipo_2?.posicion}.º {x.equipo_2?.equipo}</b></span>)}
+                {partidosEliminatoriasChampions.length === 0 && previaChampionsTitulo?.champions_terminada && (previaChampionsTitulo.exentos || []).length > 0 && <>
                   <span><b>Exentos:</b></span>
                   {(previaChampionsTitulo.exentos || []).map((x) => <span key={x.id_equipo || x.posicion}>· {x.posicion}.º {x.equipo}</span>)}
                 </>}
                 {mensajeGenerador?.contexto === 'eliminatorias-champions' && <span><b>{mensajeGenerador.texto}</b></span>}
               </div>
-              {previaChampionsTitulo?.puede_generar_eliminatorias
-                ? <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
-                : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidosChampionsReales.length === 0 || !championsTerminada} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
+              {partidosEliminatoriasChampions.length > 0
+                ? <button type="button" className="boton boton-principal" onClick={() => { setFaseActiva('MM'); setFiltroRonda('todas'); setMensajeGenerador(null) }}>Ver eliminatorias</button>
+                : previaChampionsTitulo?.puede_generar_eliminatorias
+                  ? <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarEliminatoriasChampions}>{generandoGrupos ? 'Generando…' : 'Confirmar y generar'}</button>
+                  : <button type="button" className="boton boton-principal" disabled={generandoGrupos || partidosChampionsReales.length === 0 || !championsTerminada} onClick={prepararEliminatoriasChampions}>{generandoGrupos ? 'Comprobando…' : 'Preparar eliminatorias'}</button>}
             </section>
           </>
         )}
         {String(estructuraPrimeraFase).toLowerCase().includes('champions') && faseActiva === 'MM' && (
           <section className="generador-partidos-grupos">
-            <div><strong>Siguiente ronda Champions</strong><span>Cuando termine la ronda actual, recalcula los supervivientes y enfrenta al mejor clasificado con el peor.</span></div>
-            <button type="button" className="boton boton-principal" disabled={generandoGrupos} onClick={generarSiguienteRondaChampions}>{generandoGrupos ? 'Calculando…' : 'Generar siguiente ronda'}</button>
+            <div>
+              <strong>Siguiente ronda Champions</strong>
+              <span>{
+                rondaActualChampions === 'F'
+                  ? 'El cuadro principal ha llegado a la Final.'
+                  : !rondaActualChampionsCompleta
+                    ? `Primero deben terminar todos los partidos de ${nombresRondasChampions[rondaActualChampions] || 'la ronda actual'}.`
+                    : `La ronda actual está terminada. Se aplicará reseeding: mejor superviviente contra peor superviviente.`
+              }</span>
+            </div>
+            <button
+              type="button"
+              className="boton boton-principal"
+              disabled={generandoGrupos || !rondaActualChampions || !rondaActualChampionsCompleta || rondaActualChampions === 'F'}
+              onClick={generarSiguienteRondaChampions}
+            >
+              {generandoGrupos
+                ? 'Calculando…'
+                : rondaActualChampions === 'F'
+                  ? 'Cuadro finalizado'
+                  : rondaActualChampionsCompleta
+                    ? `Generar ${siguienteRondaChampions[rondaActualChampions] || 'siguiente ronda'}`
+                    : 'Ronda pendiente'}
+            </button>
           </section>
         )}
         {mensajeGenerador && <p className={`mensaje-generador-grupos ${mensajeGenerador.tipo}`}>{mensajeGenerador.texto}</p>}
