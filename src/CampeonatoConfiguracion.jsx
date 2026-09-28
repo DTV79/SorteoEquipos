@@ -196,6 +196,7 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
   const [generandoPalas, setGenerandoPalas] = useState(false)
   const [errorPalas, setErrorPalas] = useState('')
   const [eliminandoFase, setEliminandoFase] = useState('')
+  const [confirmacionBorradoFase, setConfirmacionBorradoFase] = useState(null)
   const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false)
   const cambiosSinGuardarRef = useRef(false)
   const [accionSalidaPendiente, setAccionSalidaPendiente] = useState(null)
@@ -658,29 +659,34 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       { p_codigo: codigo, p_fase: fase }
     )
 
+    setEliminandoFase('')
+
     if (errorPrevia || previa?.ok !== true) {
       setError(errorPrevia?.message || previa?.error || `No se pudo comprobar ${etiqueta}.`)
-      setEliminandoFase('')
       return
     }
 
     if (Number(previa.partidos_jugados || 0) > 0) {
       setError(`No se puede eliminar ${etiqueta}: hay ${previa.partidos_jugados} partido(s) disputado(s).`)
-      setEliminandoFase('')
       return
     }
 
-    const avisoDependencia = esEliminatorias
-      ? ' También se eliminará Palas de Playa, porque depende de las Eliminatorias.'
-      : ''
-    const confirmado = window.confirm(
-      `Se eliminarán ${previa.partidos || 0} partido(s) de ${etiqueta}.${avisoDependencia}\n\nNo hay resultados guardados. ¿Quieres continuar?`
-    )
+    setConfirmacionBorradoFase({
+      fase,
+      etiqueta,
+      esEliminatorias,
+      previa,
+    })
+  }
 
-    if (!confirmado) {
-      setEliminandoFase('')
-      return
-    }
+  async function confirmarEliminarFase() {
+    if (!confirmacionBorradoFase) return
+
+    const { fase, etiqueta, esEliminatorias, previa } = confirmacionBorradoFase
+    const setError = esEliminatorias ? setErrorEliminatorias : setErrorPalas
+
+    setEliminandoFase(fase)
+    setError('')
 
     const { data, error } = await supabaseCampeonato.rpc(
       'admin_borrar_fase_campeonato',
@@ -697,6 +703,8 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
       setError(error?.message || data?.error || `No se pudo eliminar ${etiqueta}.`)
       return
     }
+
+    setConfirmacionBorradoFase(null)
 
     if (esEliminatorias) {
       setPrevisualizacionEliminatorias(null)
@@ -1284,6 +1292,23 @@ export default function CampeonatoConfiguracion({ codigo, onVolver, onResultados
               </div>
             </article>
           </section>
+        </div>
+      )}
+      {confirmacionBorradoFase && (
+        <div className="fondo-modal-mantenimiento" role="presentation" onMouseDown={() => !eliminandoFase && setConfirmacionBorradoFase(null)}>
+          <div className="modal-mantenimiento-campeonato" role="dialog" aria-modal="true" aria-labelledby="titulo-borrado-fase" onMouseDown={(evento) => evento.stopPropagation()}>
+            <span className="icono-peligro">!</span>
+            <h3 id="titulo-borrado-fase">{confirmacionBorradoFase.esEliminatorias ? 'Eliminar Eliminatorias' : 'Eliminar Palas de Playa'}</h3>
+            <p>Se eliminarán <b>{confirmacionBorradoFase.previa?.partidos ?? 0} partido(s)</b> de {confirmacionBorradoFase.etiqueta}.</p>
+            {confirmacionBorradoFase.esEliminatorias && <p>También se eliminará Palas de Playa, porque depende de las Eliminatorias.</p>}
+            <p>No hay resultados guardados. ¿Quieres continuar?</p>
+            <div className="botones-modal-mantenimiento">
+              <button type="button" className="boton boton-secundario" onClick={() => setConfirmacionBorradoFase(null)} disabled={Boolean(eliminandoFase)}>Cancelar</button>
+              <button type="button" className="boton boton-peligro" onClick={confirmarEliminarFase} disabled={Boolean(eliminandoFase)}>
+                {eliminandoFase ? 'Eliminando…' : confirmacionBorradoFase.esEliminatorias ? 'Eliminar Eliminatorias' : 'Eliminar Palas de Playa'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {accionSalidaPendiente && (
