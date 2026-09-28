@@ -356,6 +356,7 @@ export default function GastosCampeonato({ codigo, onVolver }) {
   const [meteo, setMeteo] = useState({})
   const [guardandoMeteo, setGuardandoMeteo] = useState(false)
   const [cargandoMeteoAuto, setCargandoMeteoAuto] = useState(false)
+  const [estacionesMeteo, setEstacionesMeteo] = useState([])
   const [columnasInformeGestion, setColumnasInformeGestion] = useState(() => {
     const base = {
       fecha: true,
@@ -2226,14 +2227,16 @@ tr{break-inside:avoid;page-break-inside:avoid}@media print{body{-webkit-print-co
             <form className="formulario-economia" onSubmit={async (e) => {
               e.preventDefault(); setGuardandoMeteo(true)
               const fd=new FormData(e.currentTarget); const v=(n)=>fd.get(n)===''?null:numero(fd.get(n))
-              const {data,error}=await supabaseCampeonato.rpc('admin_economia_guardar_meteorologia',{p_codigo:codigo,p_localidad:fd.get('localidad')||null,p_estacion:fd.get('estacion')||null,p_fuente:fd.get('fuente')||'Manual',p_temperatura_min:v('temperatura_min'),p_temperatura_max:v('temperatura_max'),p_temperatura_media:v('temperatura_media'),p_precipitacion:v('precipitacion'),p_viento_medio:v('viento_medio'),p_viento_max:v('viento_max'),p_estado_cielo:fd.get('estado_cielo')||null,p_condiciones_juego:fd.get('condiciones_juego')||null,p_observaciones:fd.get('observaciones')||null,p_datos_fecha:fd.get('datos_fecha')||null,p_hora_inicio:fd.get('hora_inicio')||null,p_hora_fin:fd.get('hora_fin')||null})
+              const {data,error}=await supabaseCampeonato.rpc('admin_economia_guardar_meteorologia',{p_codigo:codigo,p_localidad:fd.get('localidad')||null,p_estacion:fd.get('estacion')||null,p_fuente:fd.get('fuente')||'Manual',p_temperatura_min:v('temperatura_min'),p_temperatura_max:v('temperatura_max'),p_temperatura_media:v('temperatura_media'),p_precipitacion:v('precipitacion'),p_viento_medio:v('viento_medio'),p_viento_max:v('viento_max'),p_estado_cielo:fd.get('estado_cielo')||null,p_condiciones_juego:fd.get('condiciones_juego')||null,p_observaciones:fd.get('observaciones')||null,p_datos_fecha:fd.get('datos_fecha')||null,p_hora_inicio:fd.get('hora_inicio')||null,p_hora_fin:fd.get('hora_fin')||null,p_tipo_instalacion:fd.get('tipo_instalacion')||'exterior'})
               setGuardandoMeteo(false); setMensaje(error||!data?.ok?{tipo:'error',texto:error?.message||data?.error||'No se pudo guardar.'}:{tipo:'correcto',texto:'Meteorología guardada.'}); if(!error&&data?.ok)cargar()
             }}>
               <label><span>Fecha</span><input type="date" name="datos_fecha" defaultValue={meteo.datos_fecha||datos.campeonato?.fecha_inicio||''}/></label>
               <label><span>Hora de inicio</span><input type="time" name="hora_inicio" defaultValue={meteo.hora_inicio?.slice?.(0,5)||''}/></label>
               <label><span>Hora de fin</span><input type="time" name="hora_fin" defaultValue={meteo.hora_fin?.slice?.(0,5)||''}/></label>
               <label><span>Localidad</span><input name="localidad" defaultValue={meteo.localidad||datos.campeonato?.localidad||''}/></label>
-              <label><span>Estación MeteoGalicia</span><input name="estacion" defaultValue={meteo.estacion||''} placeholder="Opcional"/></label>
+              <label><span>Tipo de instalación</span><select name="tipo_instalacion" defaultValue={meteo.tipo_instalacion||'exterior'}><option value="exterior">Exterior</option><option value="cubierto_abierto">Pista cubierta / abierta</option><option value="interior">Interior / pabellón cerrado</option></select></label>
+              <label><span>Estación MeteoGalicia</span><select name="estacion" defaultValue={meteo.estacion||''}><option value={meteo.estacion||''}>{meteo.estacion||'Automática según localidad'}</option>{estacionesMeteo.map((x)=><option key={x.id} value={`${x.nombre} (ID ${x.id})`}>{x.nombre} · {x.concello} · ID {x.id}</option>)}</select></label>
+              <div className="acciones-formulario-economia"><button className="boton boton-secundario meteo-obtener" type="button" onClick={async(e)=>{const form=e.currentTarget.closest('form');const fd=new FormData(form);const localidad=String(fd.get('localidad')||'').trim();const {data,error}=await supabaseCampeonato.functions.invoke('meteogalicia-campeonato',{body:{accion:'estaciones',localidad}});if(error||!data?.ok){setMensaje({tipo:'error',texto:error?.message||data?.error||'No se pudieron cargar las estaciones.'});return}setEstacionesMeteo(data.estaciones||[]);setMensaje({tipo:'correcto',texto:'Estaciones de MeteoGalicia cargadas. Elige la que quieras usar.'})}}>Elegir estación</button></div>
               <label><span>Fuente</span><select name="fuente" defaultValue={meteo.fuente||'Manual'}><option>Manual</option><option>MeteoGalicia</option></select></label>
               <label><span>Temperatura mínima (°C)</span><input type="number" step="0.1" name="temperatura_min" defaultValue={meteo.temperatura_min??''}/></label>
               <label><span>Temperatura máxima (°C)</span><input type="number" step="0.1" name="temperatura_max" defaultValue={meteo.temperatura_max??''}/></label>
