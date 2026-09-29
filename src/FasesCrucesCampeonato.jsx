@@ -248,7 +248,7 @@ export default function FasesCrucesCampeonato({ codigo, onVolver, onConfiguracio
                       <section className="cuadro-eliminatorias cuadro-eliminatorias-champions">
                         {rondasTituloChampions.map((ronda, indice) => (
                           <div
-                            className={`columna-cuadro${ronda.codigoRonda === 'F' ? ' final' : ronda.codigoRonda === 'SF' ? ' destacada' : ''}`}
+                            className={`columna-cuadro ronda-champions ronda-${ronda.codigoRonda.toLowerCase()}${ronda.codigoRonda === 'F' ? ' final' : ronda.codigoRonda === 'SF' ? ' destacada' : ''}`}
                             key={ronda.codigoRonda}
                           >
                             <header>
