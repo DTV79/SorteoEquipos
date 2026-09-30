@@ -12,10 +12,11 @@ export default function Partidos({teams,onCambio}){
   const base=jugadoresEquipo(eid), prev=partidos.filter(x=>x.numero<p.numero&&x.estado==='finalizado')
   const prevIds=new Set(prev.map(x=>x.id)), usos={}
   for(const a of als)if(prevIds.has(a.partido_id)&&a.equipo_id===eid)usos[a.id_jugador]=(usos[a.id_jugador]||0)+1
-  const haySinJugar=base.some(j=>(usos[j.id_jugador]||0)===0)
+  const sinJugar=base.filter(j=>(usos[j.id_jugador]||0)===0), otroUsos=otroId?(usos[otroId]||0):null
   let lista=base.filter(j=>{
    const n=usos[j.id_jugador]||0
-   if(d.teams?.todos_antes_repetir&&haySinJugar&&n>0)return false
+   if(d.teams?.todos_antes_repetir&&sinJugar.length>=2&&n>0)return false
+   if(d.teams?.todos_antes_repetir&&sinJugar.length===1&&otroId&&otroUsos>0&&n>0)return false
    if(d.teams?.repetir_jugadores==='no'&&n>0)return false
    if(d.teams?.repetir_jugadores==='maximo'&&d.teams?.max_partidos_jugador&&n>=d.teams.max_partidos_jugador)return false
    return true
