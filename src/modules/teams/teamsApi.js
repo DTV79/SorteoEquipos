@@ -141,3 +141,10 @@ export async function impugnarResultadoTeams(partidoId, motivo) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_impugnar_resultado', { p_partido_id:partidoId, p_motivo:motivo||null })
   if (error) throw error
 }
+
+export async function resolverIncidenciaTeams(incidenciaId, accion, resolucion=null) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_resolver_incidencia', {
+    p_incidencia_id: incidenciaId, p_accion: accion, p_resolucion: resolucion || null,
+  })
+  if (error) throw error
+}
