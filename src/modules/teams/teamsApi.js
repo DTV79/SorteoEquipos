@@ -62,3 +62,11 @@ export async function configurarEquiposTeams(teamId, nombreA, capitanA, nombreB,
   })
   if (error) throw error
 }
+
+export async function guardarFormacionManualTeams(teamId, asignaciones) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_guardar_formacion_manual', {
+    p_team_id: teamId, p_asignaciones: asignaciones,
+  })
+  if (error) throw error
+  return data
+}
