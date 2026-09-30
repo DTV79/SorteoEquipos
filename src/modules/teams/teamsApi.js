@@ -70,3 +70,12 @@ export async function guardarFormacionManualTeams(teamId, asignaciones) {
   if (error) throw error
   return data
 }
+
+export async function cerrarPlantillasTeams(teamId) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_cerrar_plantillas', { p_team_id: teamId })
+  if (error) throw error
+}
+export async function reabrirPlantillasTeams(teamId) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_reabrir_plantillas', { p_team_id: teamId })
+  if (error) throw error
+}
