@@ -3,7 +3,7 @@ import './App.css'
 import { supabase } from './lib/supabase'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoAdmin from './CampeonatoAdmin'
-import TeamsAdmin from './TeamsAdmin'
+import TeamsAdmin from './modules/teams'
 
 /*
 ============================================================
