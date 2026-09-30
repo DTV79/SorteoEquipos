@@ -46,3 +46,19 @@ export async function guardarElegiblesTeams(teamId, jugadores) {
   if (error) throw error
   return data
 }
+
+export async function guardarConvocatoriaTeams(teamId, estados) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_guardar_convocatoria', {
+    p_team_id: teamId,
+    p_estados: estados,
+  })
+  if (error) throw error
+  return data
+}
+export async function configurarEquiposTeams(teamId, nombreA, capitanA, nombreB, capitanB) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_configurar_equipos', {
+    p_team_id: teamId, p_nombre_a: nombreA, p_capitan_a: capitanA,
+    p_nombre_b: nombreB, p_capitan_b: capitanB,
+  })
+  if (error) throw error
+}
