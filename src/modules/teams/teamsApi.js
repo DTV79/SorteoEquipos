@@ -30,3 +30,19 @@ export async function crearTeams(form) {
   if (errorConfig) throw errorConfig
   return id
 }
+
+export async function obtenerDetalleTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_detalle', { p_team_id: teamId })
+  if (error) throw error
+  return data
+}
+export async function catalogoJugadoresTeams() {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_catalogo_jugadores')
+  if (error) throw error
+  return data ?? []
+}
+export async function guardarElegiblesTeams(teamId, jugadores) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_guardar_elegibles', { p_team_id: teamId, p_jugadores: jugadores })
+  if (error) throw error
+  return data
+}
