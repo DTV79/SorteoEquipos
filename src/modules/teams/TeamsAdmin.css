@@ -165,3 +165,7 @@
 .teams-cierre-admin-acciones{display:flex;gap:9px;flex-wrap:wrap}
 .teams-confirmar-nombre{width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px 12px;border-radius:9px;border:1px solid #475569;background:#0b121a;color:#fff}
 @media(max-width:600px){.teams-cierre-admin{align-items:stretch;flex-direction:column}.teams-cierre-admin-acciones{display:grid;grid-template-columns:1fr}.teams-cierre-admin-acciones .boton{width:100%}}
+
+.teams-jugador-pie{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.teams-pin-btn{border:1px solid #334155;background:#111c28;color:#bfdbfe;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:800;cursor:pointer}
+.teams-pin-btn:hover{border-color:#60a5fa}
