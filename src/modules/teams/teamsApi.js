@@ -119,3 +119,12 @@ export async function actualizarPistaTeams(partidoId, pista) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_actualizar_pista', { p_partido_id: partidoId, p_pista: pista })
   if (error) throw error
 }
+
+export async function modificarProgramacionTeams(partidoId, fechaHora, pista = null) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_modificar_programacion', { p_partido_id: partidoId, p_fecha_hora: fechaHora, p_pista: pista || null })
+  if (error) throw error
+}
+export async function eliminarProgramacionTeams(partidoId) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_eliminar_programacion', { p_partido_id: partidoId })
+  if (error) throw error
+}
