@@ -61,10 +61,8 @@ export async function configurarEquiposTeams(teamId, nombreA, capitanA, nombreB,
     p_nombre_b: nombreB, p_capitan_b: capitanB,
   })
   if (!error) {
-    const { error: colorError } = await supabaseCampeonato.from('teams_equipos').update({ color: colorA }).eq('team_id', teamId).eq('lado', 'A')
+    const { error: colorError } = await supabaseCampeonato.rpc('admin_teams_guardar_colores', { p_team_id:teamId, p_color_a:colorA, p_color_b:colorB })
     if (colorError) throw colorError
-    const { error: colorErrorB } = await supabaseCampeonato.from('teams_equipos').update({ color: colorB }).eq('team_id', teamId).eq('lado', 'B')
-    if (colorErrorB) throw colorErrorB
   }
   if (error) throw error
 }
