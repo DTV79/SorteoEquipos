@@ -157,3 +157,11 @@
 .teams-resumen-head{padding-bottom:8px!important}
 .teams-resumen-head b{font-size:12px;color:#8fb3d9}
 @media(max-width:600px){.teams-resumen-serie>div{grid-template-columns:minmax(135px,1.5fr) 1fr 1fr;gap:5px;padding:6px 4px}.teams-resumen-serie span{font-size:11px}.teams-resumen-serie strong{font-size:13px}}
+
+.teams-cierre-admin{margin-top:18px;padding:17px 18px;border:1px solid #334155;border-radius:13px;background:#0b121a;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.teams-cierre-admin>div:first-child{display:flex;flex-direction:column;gap:4px}
+.teams-cierre-admin>div:first-child>b{font-size:16px;color:#fff}
+.teams-cierre-admin>div:first-child>span{font-size:12px;color:#94a3b8}
+.teams-cierre-admin-acciones{display:flex;gap:9px;flex-wrap:wrap}
+.teams-confirmar-nombre{width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px 12px;border-radius:9px;border:1px solid #475569;background:#0b121a;color:#fff}
+@media(max-width:600px){.teams-cierre-admin{align-items:stretch;flex-direction:column}.teams-cierre-admin-acciones{display:grid;grid-template-columns:1fr}.teams-cierre-admin-acciones .boton{width:100%}}
