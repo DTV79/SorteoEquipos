@@ -11,7 +11,19 @@ export default function Partidos({teams,onCambio}){
  function pareja(pid,eid){return als.filter(a=>a.partido_id===pid&&a.equipo_id===eid).sort((a,b)=>a.orden-b.orden)}
  function valor(pid,eid,n){return sel[pid+'-'+eid+'-'+n]??pareja(pid,eid)[n-1]?.id_jugador??''}
  function setv(pid,eid,n,v){setSel(x=>({...x,[pid+'-'+eid+'-'+n]:v}));setMensaje('')}
- function ag(pid,k){return agenda[pid+'-'+k]??''} function sag(pid,k,v){setAgenda(x=>({...x,[pid+'-'+k]:v}));setMensaje('')}
+ function valorResultado(pid,k){
+  const key=pid+'-'+k
+  if(Object.prototype.hasOwnProperty.call(agenda,key)) return agenda[key]
+  const p=(d.partidos||[]).find(x=>x.id===pid), ss=setsPartido(pid)
+  const m=k.match(/^(s|tb)([1-3])([ab])$/)
+  if(m){const st=ss.find(x=>x.numero===Number(m[2]));if(!st)return '';const campo=m[1]==='s'?'puntos_'+m[3]:'tiebreak_'+m[3];return st[campo]??''}
+  if(k==='fin') return p?.finalizacion||'normal'
+  if(k==='duracion') return p?.duracion_minutos??p?.duracion??''
+  if(k==='obs') return p?.observaciones??''
+  if(k==='ganador') return p?.equipo_ganador_id??''
+  return ''
+ }
+ function ag(pid,k){const key=pid+'-'+k;return Object.prototype.hasOwnProperty.call(agenda,key)?agenda[key]:valorResultado(pid,k)} function sag(pid,k,v){setAgenda(x=>({...x,[pid+'-'+k]:v}));setMensaje('')}
  function props(pid){return propuestas.filter(x=>x.partido_id===pid)}
  function setsPartido(pid){return (d.sets||[]).filter(x=>x.partido_id===pid).sort((a,b)=>a.numero-b.numero)} function incidenciaPartido(pid){return (d.incidencias||[]).find(x=>x.partido_id===pid&&x.estado==='pendiente')}
  function fecha(v){return new Intl.DateTimeFormat('es-ES',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v))}
