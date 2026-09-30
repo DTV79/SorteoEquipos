@@ -94,3 +94,14 @@ export async function iniciarTeams(teamId) {
   if (error) throw error
   return data
 }
+
+export async function guardarAlineacionTeams(partidoId, equipoId, jugador1, jugador2) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_guardar_alineacion', {
+    p_partido_id: partidoId, p_equipo_id: equipoId, p_jugador_1: jugador1, p_jugador_2: jugador2,
+  })
+  if (error) throw error
+}
+export async function revelarAlineacionesTeams(partidoId) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_revelar_alineaciones', { p_partido_id: partidoId })
+  if (error) throw error
+}
