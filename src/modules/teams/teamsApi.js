@@ -105,3 +105,17 @@ export async function revelarAlineacionesTeams(partidoId) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_revelar_alineaciones', { p_partido_id: partidoId })
   if (error) throw error
 }
+
+export async function proponerHorarioTeams(partidoId, fechaHora, pista = null) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_proponer_horario', { p_partido_id: partidoId, p_fecha_hora: fechaHora, p_pista: pista || null })
+  if (error) throw error
+  return data
+}
+export async function confirmarHorarioTeams(partidoId, propuestaId, pista = null) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_confirmar_horario', { p_partido_id: partidoId, p_propuesta_id: propuestaId, p_pista: pista || null })
+  if (error) throw error
+}
+export async function actualizarPistaTeams(partidoId, pista) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_actualizar_pista', { p_partido_id: partidoId, p_pista: pista })
+  if (error) throw error
+}
