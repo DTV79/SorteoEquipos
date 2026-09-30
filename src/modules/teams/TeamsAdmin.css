@@ -41,3 +41,5 @@
 .teams-tiebreak>span{color:#91a0b2}
 .teams-marcador-sets small,.teams-resultado-oficial small{font-size:10px;font-weight:700;color:#9fb0a6;margin-left:3px}
 @media(max-width:760px){.teams-resultado-extra{grid-template-columns:1fr!important}.teams-tiebreak{grid-column:1/-1;grid-template-columns:1fr 60px auto 60px}.teams-tiebreak input{width:60px}}
+
+.teams-impugnacion-panel{width:100%;margin-top:14px;padding-top:14px;border-top:1px solid #594819;display:grid;gap:12px}.teams-impugnacion-panel label{display:grid;gap:6px;font-weight:900}.teams-impugnacion-panel label small{font-weight:500;color:#b7a97d}.teams-impugnacion-panel textarea{width:100%;min-height:110px;box-sizing:border-box;resize:vertical;padding:12px 14px;border:1px solid #665321;border-radius:9px;background:#0d131a;color:#fff;font:inherit;line-height:1.4}.teams-impugnacion-panel textarea:focus{outline:none;border-color:#d59a27}.teams-impugnacion-panel>div{display:flex;justify-content:flex-end;gap:8px}@media(max-width:760px){.teams-impugnacion-panel>div{flex-direction:column}}
