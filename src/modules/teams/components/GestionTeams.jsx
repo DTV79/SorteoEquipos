@@ -1,0 +1,26 @@
+export default function GestionTeams({ teams, onVolver }) {
+ const pestañas=['General','Convocatoria','Equipos','Reglas','Partidos','Incidencias']
+ return <main className="teams-admin">
+  <header className="teams-gestion-cab">
+   <button className="boton-volver" onClick={onVolver}>← Todos los Teams</button>
+   <div className="teams-gestion-titulo"><div><p className="etiqueta">SPRINT PÁDEL · TEAMS</p><h1>{teams.nombre}</h1><p>Copa por equipos</p></div><span className={'teams-estado estado-'+teams.estado}>{teams.estado.replaceAll('_',' ')}</span></div>
+  </header>
+  <nav className="teams-tabs">{pestañas.map((p,i)=><button key={p} className={i===0?'activo':''} disabled={i!==0}>{p}{i!==0&&<small>Próximamente</small>}</button>)}</nav>
+  <section className="teams-dashboard">
+   <div className="teams-dashboard-principal">
+    <p className="etiqueta">ESTADO ACTUAL</p><h2>Preparación del Teams</h2>
+    <p>El Teams ya está creado. Ahora toca definir quién puede participar y preparar los dos equipos antes de iniciarlo.</p>
+    <div className="teams-flujo">
+     <div className="completado"><span>✓</span><div><b>Teams creado</b><small>Configuración general guardada</small></div></div>
+     <div className="actual"><span>2</span><div><b>Convocatoria</b><small>Seleccionar jugadores elegibles</small></div></div>
+     <div><span>3</span><div><b>Formación</b><small>{teams.metodo_formacion==='draft'?'Draft de capitanes':teams.metodo_formacion==='sorteo'?'Sorteo de equipos':'Formación manual'}</small></div></div>
+     <div><span>4</span><div><b>Cerrar plantillas</b><small>Revisar equipos y capitanes</small></div></div>
+     <div><span>5</span><div><b>Iniciar Teams</b><small>Bloquear plantillas y crear el primer partido</small></div></div>
+    </div>
+   </div>
+   <aside className="teams-ficha">
+    <h3>Resumen</h3><dl><div><dt>Formato</dt><dd>{teams.modalidad}</dd></div><div><dt>Partidos</dt><dd>{teams.numero_partidos}</dd></div><div><dt>Formación</dt><dd>{teams.metodo_formacion}</dd></div><div><dt>Jugadores/equipo</dt><dd>{teams.jugadores_por_equipo??'—'}</dd></div><div><dt>Reservas/equipo</dt><dd>{teams.reservas_por_equipo??0}</dd></div></dl>
+   </aside>
+  </section>
+ </main>
+}
