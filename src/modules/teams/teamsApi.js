@@ -79,3 +79,12 @@ export async function reabrirPlantillasTeams(teamId) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_reabrir_plantillas', { p_team_id: teamId })
   if (error) throw error
 }
+
+export async function guardarReglasTeams(teamId, config) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_guardar_configuracion', { p_team_id: teamId, p_config: config })
+  if (error) throw error
+}
+export async function marcarReglasRevisadasTeams(teamId, revisadas = true) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_marcar_reglas_revisadas', { p_team_id: teamId, p_revisadas: revisadas })
+  if (error) throw error
+}
