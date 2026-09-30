@@ -128,3 +128,16 @@ export async function eliminarProgramacionTeams(partidoId) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_eliminar_programacion', { p_partido_id: partidoId })
   if (error) throw error
 }
+
+export async function guardarResultadoTeams(partidoId, sets, finalizacion='normal', ganador=null, duracion=null, observaciones=null) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_guardar_resultado', { p_partido_id:partidoId, p_sets:sets, p_finalizacion:finalizacion, p_ganador:ganador, p_duracion:duracion||null, p_observaciones:observaciones||null })
+  if (error) throw error
+}
+export async function confirmarResultadoTeams(partidoId) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_confirmar_resultado', { p_partido_id:partidoId })
+  if (error) throw error
+}
+export async function impugnarResultadoTeams(partidoId, motivo) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_impugnar_resultado', { p_partido_id:partidoId, p_motivo:motivo||null })
+  if (error) throw error
+}
