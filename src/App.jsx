@@ -13070,11 +13070,7 @@ if (
   }
 
   if (pantalla === 'teams') {
-    return (
-      <TeamsAdmin
-        onVolver={() => setPantalla('panel-principal')}
-      />
-    )
+    return <TeamsAdmin onVolver={() => setPantalla('panel-principal')} />
   }
 
   /*
@@ -20025,3 +20021,368 @@ if (
                 className="boton boton-secundario"
                 onClick={
                   abrirGestionCatalogo
+                }
+              >
+                👥 Catálogo de jugadores
+              </button>
+
+              <button
+                className="boton boton-principal"
+                onClick={() => {
+                  setCampeonatoNuevoSorteo('')
+                  setInscritosNuevoSorteo([])
+                  setPantalla(
+                    'nuevo-sorteo'
+                  )
+                }}
+              >
+                + Nuevo sorteo
+              </button>
+            </div>
+
+          </div>
+
+          {mensajeVinculoSorteo && (
+            <p
+              className={`mensaje-vinculo-sorteo ${
+                mensajeVinculoSorteo.startsWith('Error:')
+                  ? 'mensaje-vinculo-error'
+                  : ''
+              }`}
+            >
+              {mensajeVinculoSorteo}
+            </p>
+          )}
+
+          {cargandoSorteos && (
+            <p className="estado">
+              Cargando sorteos...
+            </p>
+          )}
+
+          {errorSorteos && (
+            <p className="mensaje-login">
+              Error: {errorSorteos}
+            </p>
+          )}
+
+          {!cargandoSorteos &&
+            !errorSorteos &&
+            sorteos.length === 0 && (
+              <p className="estado">
+                Todavía no hay sorteos creados.
+              </p>
+            )}
+
+          <div className="lista-sorteos">
+
+            {sorteos.map(
+              (sorteo) => (
+                <article
+                  className="tarjeta-sorteo"
+                  key={sorteo.id}
+                >
+
+                  <div className="tarjeta-sorteo-superior">
+
+                    <div>
+
+                      <h3>
+                        {sorteo.nombre}
+                      </h3>
+
+                      {sorteo.descripcion && (
+                        <p>
+                          {
+                            sorteo.descripcion
+                          }
+                        </p>
+                      )}
+
+                    </div>
+
+                    <span
+                      className={`badge-estado estado-${sorteo.estado}`}
+                    >
+                      {sorteosOficiales[String(sorteo.id)]
+                        ? 'FINALIZADO · OFICIAL'
+                        : sorteo.estado}
+                    </span>
+
+                  </div>
+
+                  <div className="datos-sorteo">
+
+                    <span>
+                      {String(
+                        sorteo.formato_sorteo ?? 'grupos'
+                      ).toLowerCase() === 'liga_unica'
+                        ? 'Formato: Liga única'
+                        : `Grupos: ${sorteo.numero_grupos} · ${
+                            String(
+                              sorteo.distribucion_grupos ??
+                              'equilibrada'
+                            ).toLowerCase() === 'aleatoria'
+                              ? 'Aleatorio'
+                              : 'Equilibrado'
+                          }`}
+                    </span>
+
+                    <span>
+                      Fecha:{' '}
+                      {formatearFechaPantalla(
+                        sorteo.fecha_evento
+                      )}
+                    </span>
+
+                  </div>
+
+                  {!vinculosCampeonatoSorteos[String(sorteo.id)] && (
+                    <div className="vinculo-campeonato-tarjeta vinculo-campeonato-independiente">
+                        <div>
+                          <span>SORTEO INDEPENDIENTE</span>
+                          <small>
+                            Puedes vincularlo ahora o hacerlo más adelante.
+                          </small>
+                        </div>
+
+                        <div className="acciones-vinculo-campeonato">
+                          <select
+                            value={destinoCampeonatoSorteo[sorteo.id] || ''}
+                            onChange={(evento) =>
+                              setDestinoCampeonatoSorteo(
+                                (actual) => ({
+                                  ...actual,
+                                  [sorteo.id]: evento.target.value,
+                                })
+                              )
+                            }
+                          >
+                            <option value="">
+                              Selecciona campeonato
+                            </option>
+                            {campeonatosNuevoSorteo.map((campeonato) => {
+                              const yaVinculado = Object.values(
+                                vinculosCampeonatoSorteos
+                              ).some(
+                                (vinculo) =>
+                                  vinculo.codigo_campeonato ===
+                                  campeonato.codigo_campeonato
+                              )
+
+                              return (
+                                <option
+                                  key={campeonato.codigo_campeonato}
+                                  value={campeonato.codigo_campeonato}
+                                  disabled={yaVinculado}
+                                >
+                                  {campeonato.nombre} · {campeonato.codigo_campeonato}
+                                  {yaVinculado ? ' · ya vinculado' : ''}
+                                </option>
+                              )
+                            })}
+                          </select>
+
+                          <button
+                            type="button"
+                            className="boton boton-secundario"
+                            disabled={
+                              !destinoCampeonatoSorteo[sorteo.id] ||
+                              Boolean(vinculandoSorteo)
+                            }
+                            onClick={() =>
+                              vincularSorteoConCampeonato(sorteo)
+                            }
+                          >
+                            {vinculandoSorteo === String(sorteo.id)
+                              ? 'Vinculando…'
+                              : 'Vincular y enviar'}
+                          </button>
+                        </div>
+                    </div>
+                  )}
+
+                  <div className="acciones-tarjeta-sorteo">
+                    <button
+                      className="boton boton-secundario boton-gestionar"
+                      onClick={() =>
+                        gestionarSorteo(sorteo)
+                      }
+                    >
+                      Gestionar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton boton-eliminar-sorteo"
+                      onClick={() => {
+                        setMensajeEliminarSorteo('')
+                        setSorteoPendienteEliminar(
+                          sorteo
+                        )
+                      }}
+                    >
+                      🗑 Eliminar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="boton boton-principal boton-enviar-equipos-listado"
+                      disabled={
+                        !vinculosCampeonatoSorteos[String(sorteo.id)] ||
+                        !sorteosOficiales[String(sorteo.id)] ||
+                        Boolean(vinculandoSorteo)
+                      }
+                      title={
+                        !vinculosCampeonatoSorteos[String(sorteo.id)]
+                          ? 'Primero vincula el sorteo con un campeonato'
+                          : !sorteosOficiales[String(sorteo.id)]
+                            ? 'Estará disponible cuando el sorteo sea oficial'
+                            : 'Enviar los equipos oficiales al campeonato'
+                      }
+                      onClick={() =>
+                        enviarSorteoOficialDesdeListado(
+                          sorteo,
+                          vinculosCampeonatoSorteos[String(sorteo.id)]
+                        )
+                      }
+                    >
+                      {vinculandoSorteo === String(sorteo.id)
+                        ? 'Enviando…'
+                        : 'Enviar equipos oficiales'}
+                    </button>
+                  </div>
+
+                </article>
+              )
+            )}
+
+          </div>
+
+          {mensajeEliminarSorteo && (
+            <p className="mensaje-eliminar-sorteo">
+              {mensajeEliminarSorteo}
+            </p>
+          )}
+
+          {sorteoPendienteEliminar && (
+            <div
+              className="modal-fondo"
+              onClick={() =>
+                !eliminandoSorteo &&
+                setSorteoPendienteEliminar(
+                  null
+                )
+              }
+            >
+              <div
+                className="modal-confirmacion"
+                onClick={(evento) =>
+                  evento.stopPropagation()
+                }
+              >
+                <div className="modal-icono modal-icono-peligro">
+                  🗑
+                </div>
+
+                <h3>
+                  ¿Eliminar este sorteo?
+                </h3>
+
+                <p>
+                  Se eliminará completamente{' '}
+                  <strong>
+                    {sorteoPendienteEliminar.nombre}
+                  </strong>{' '}
+                  junto con sus participantes, bombos, reglas, grupos y ejecuciones.
+                </p>
+
+                <div className="modal-aviso modal-aviso-peligro">
+                  Esta acción es definitiva. Los sorteos con una ejecución oficial no podrán borrarse.
+                </div>
+
+                <div className="modal-acciones">
+                  <button
+                    type="button"
+                    className="boton boton-secundario"
+                    onClick={() =>
+                      setSorteoPendienteEliminar(
+                        null
+                      )
+                    }
+                    disabled={
+                      eliminandoSorteo
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="boton boton-peligro"
+                    onClick={
+                      confirmarEliminarSorteo
+                    }
+                    disabled={
+                      eliminandoSorteo
+                    }
+                  >
+                    {eliminandoSorteo
+                      ? 'Eliminando...'
+                      : 'Eliminar definitivamente'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </section>
+      </main>
+    )
+  }
+
+  /*
+  ============================================================
+  PORTADA
+  ============================================================
+  */
+
+  return (
+    <main className="app">
+      <section className="inicio">
+
+        <div className="logo">
+          🎾
+        </div>
+
+        <p className="etiqueta">
+          ADMINISTRACIÓN
+        </p>
+
+        <h1>
+          Sprint Pádel
+        </h1>
+
+        <p className="descripcion">
+          Administración del campeonato y sorteo de equipos.
+        </p>
+
+        <div className="acciones">
+
+          <button
+            className="boton boton-principal"
+            onClick={() =>
+                setPantalla('login')
+            }
+          >
+            Acceso administrador
+          </button>
+
+        </div>
+
+      </section>
+    </main>
+  )
+}
+
+export default App
