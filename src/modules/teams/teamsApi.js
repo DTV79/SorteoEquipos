@@ -158,3 +158,13 @@ export async function resolverIncidenciaTeams(incidenciaId, accion, resolucion=n
   })
   if (error) throw error
 }
+
+export async function cerrarTeams(teamId) {
+ const { error } = await supabaseCampeonato.rpc('admin_teams_cerrar',{p_team_id:teamId}); if(error) throw error
+}
+export async function reabrirTeams(teamId) {
+ const { error } = await supabaseCampeonato.rpc('admin_teams_reabrir',{p_team_id:teamId}); if(error) throw error
+}
+export async function eliminarTeams(teamId,nombre) {
+ const { error } = await supabaseCampeonato.rpc('admin_teams_eliminar',{p_team_id:teamId,p_nombre_confirmacion:nombre}); if(error) throw error
+}
