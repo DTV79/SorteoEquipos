@@ -64,3 +64,32 @@
 .teams-marcador-impugnado>span{font-size:14px;color:#cbd5e1;display:flex;align-items:baseline;gap:5px}
 .teams-marcador-impugnado>span>strong{font-size:20px;color:#fff;letter-spacing:.03em}
 .teams-marcador-impugnado>span>small{font-size:12px;color:#fbbf24}
+
+
+/* Ajuste responsive global del módulo Teams */
+@media(max-width:600px){
+ .teams-admin{padding:16px 12px 28px;overflow-x:hidden}
+ .teams-gestion-cab,.teams-dashboard,.teams-tabs,.teams-convocatoria,.teams-listado,.teams-asistente,.teams-error{width:100%;max-width:100%;box-sizing:border-box}
+ .teams-gestion-titulo h1,.teams-cabecera h1{font-size:38px}
+ .teams-tabs{margin-top:18px;gap:6px}
+ .teams-tabs button{padding:10px 12px}
+ .teams-convocatoria{padding:14px;margin-top:12px;border-radius:14px}
+ .teams-seccion-cab h2{font-size:23px}
+ .teams-contador{min-width:0}
+ .teams-partido-card,.teams-resultado,.teams-confirmar-resultado,.teams-resultado-oficial,.teams-resultado-impugnado{max-width:100%;box-sizing:border-box}
+ .teams-programado,.teams-programacion-confirmada{max-width:100%;box-sizing:border-box}
+ .teams-programado-botones{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%}
+ .teams-programado-botones .boton{width:100%!important;min-width:0!important}
+ .teams-pista-opcional{width:100%;box-sizing:border-box;grid-template-columns:1fr!important}
+ .teams-pista-opcional input,.teams-pista-opcional .boton{width:100%;min-width:0;box-sizing:border-box}
+ .teams-editar-programacion{width:100%;box-sizing:border-box}
+ .teams-editar-programacion>div{grid-template-columns:1fr!important}
+ .teams-editar-programacion .boton{width:100%}
+ .teams-equipos-partido{grid-template-columns:1fr!important}
+ .teams-resultado{margin-left:0;margin-right:0;padding:13px}
+ .teams-sets-editor{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr)}
+ .teams-tiebreak{grid-template-columns:1fr 54px auto 54px}
+ .teams-tiebreak input{width:54px}
+ .teams-confirmar-resultado,.teams-resultado-oficial,.teams-resultado-impugnado{margin-left:0;margin-right:0}
+ .teams-incidencia-acciones .boton,.teams-confirmacion-acciones .boton{width:100%}
+}
