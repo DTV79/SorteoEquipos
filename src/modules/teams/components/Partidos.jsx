@@ -1,0 +1,24 @@
+import { useEffect, useState } from 'react'
+import { guardarAlineacionTeams, obtenerDetalleTeams, revelarAlineacionesTeams } from '../teamsApi'
+export default function Partidos({teams,onCambio}){
+ const [d,setD]=useState(null),[sel,setSel]=useState({}),[mensaje,setMensaje]=useState(''),[guardando,setGuardando]=useState(false)
+ async function cargar(){try{setD(await obtenerDetalleTeams(teams.id))}catch(e){setMensaje('Error: '+e.message)}}
+ useEffect(()=>{void cargar()},[teams.id])
+ if(!d)return <section className="teams-convocatoria"><div className="teams-vacio">Cargando partidos…</div></section>
+ const eq=d.equipos||[],miembros=d.miembros||[],als=d.alineaciones||[],partidos=d.partidos||[]
+ const nombre=id=>{const j=miembros.find(x=>x.id_jugador===id);return j?.alias||j?.nombre||id}
+ function jugadoresEquipo(eid){return miembros.filter(m=>m.equipo_id===eid&&!m.es_reserva&&m.disponible!==false)}
+ function pareja(pid,eid){return als.filter(a=>a.partido_id===pid&&a.equipo_id===eid).sort((a,b)=>a.orden-b.orden)}
+ function valor(pid,eid,n){return sel[pid+'-'+eid+'-'+n]??pareja(pid,eid)[n-1]?.id_jugador??''}
+ function setv(pid,eid,n,v){setSel(x=>({...x,[pid+'-'+eid+'-'+n]:v}));setMensaje('')}
+ async function guardar(p,e){const j1=valor(p.id,e.id,1),j2=valor(p.id,e.id,2);if(!j1||!j2)return setMensaje('Error: Selecciona los dos jugadores de '+e.nombre+'.');setGuardando(true);try{await guardarAlineacionTeams(p.id,e.id,j1,j2);setMensaje('Pareja de '+e.nombre+' guardada correctamente.');await cargar()}catch(x){setMensaje('Error: '+x.message)}finally{setGuardando(false)}}
+ async function revelar(p){setGuardando(true);try{await revelarAlineacionesTeams(p.id);setMensaje('Parejas reveladas. El partido ya puede pasar a concertar fecha.');await cargar();onCambio?.()}catch(x){setMensaje('Error: '+x.message)}finally{setGuardando(false)}}
+ const estados={pendiente_alineaciones:'Pendiente de parejas',alineaciones_cerradas:'Parejas cerradas',revelado:'Parejas reveladas',concertando:'Concertando fecha',programado:'Programado',pendiente_resultado:'Pendiente de resultado',pendiente_confirmacion:'Pendiente de confirmación',finalizado:'Finalizado',suspendido:'Suspendido',incidencia:'Incidencia',anulado:'Anulado'}
+ return <section className="teams-convocatoria"><div className="teams-seccion-cab"><div><p className="etiqueta">PARTIDOS</p><h2>Partidos del Teams</h2><p>Gestiona las parejas y el avance de cada enfrentamiento.</p></div><div className="teams-contador"><strong>{partidos.length}</strong><span>partidos creados</span></div></div>
+ {mensaje&&<p className={mensaje.startsWith('Error:')?'teams-error':'teams-ok'}>{mensaje}</p>}
+ <div className="teams-partidos-lista">{partidos.map(p=><article className="teams-partido-card" key={p.id}><header><div><span className="teams-partido-num">PARTIDO {p.numero}</span><h3>{eq[0]?.nombre||'Equipo A'} <i>vs</i> {eq[1]?.nombre||'Equipo B'}</h3></div><span className={'teams-partido-estado estado-'+p.estado}>{estados[p.estado]||p.estado}</span></header>
+ <div className="teams-parejas">{eq.map(e=>{const par=pareja(p.id,e.id),bloqueado=!['pendiente_alineaciones','alineaciones_cerradas'].includes(p.estado);return <div className="teams-pareja-box" key={e.id}><div className="teams-pareja-titulo"><b>{e.nombre}</b>{p.presenta_primero_equipo_id===e.id&&<small>Presenta primero</small>}</div>{bloqueado?<div className="teams-pareja-revelada">{par.length?par.map(x=><span key={x.id_jugador}>{x.alias||x.nombre}</span>):<em>Sin pareja</em>}</div>:<><select value={valor(p.id,e.id,1)} onChange={x=>setv(p.id,e.id,1,x.target.value)}><option value="">Jugador 1…</option>{jugadoresEquipo(e.id).filter(j=>j.id_jugador!==valor(p.id,e.id,2)).map(j=><option key={j.id_jugador} value={j.id_jugador}>{j.alias||j.nombre}</option>)}</select><select value={valor(p.id,e.id,2)} onChange={x=>setv(p.id,e.id,2,x.target.value)}><option value="">Jugador 2…</option>{jugadoresEquipo(e.id).filter(j=>j.id_jugador!==valor(p.id,e.id,1)).map(j=><option key={j.id_jugador} value={j.id_jugador}>{j.alias||j.nombre}</option>)}</select><button type="button" className="boton boton-secundario" disabled={guardando} onClick={()=>guardar(p,e)}>{par.length===2?'Modificar pareja':'Guardar pareja'}</button></>}</div>})}</div>
+ {p.estado==='alineaciones_cerradas'&&<footer className="teams-partido-acciones"><span>✓ Las dos parejas están presentadas.</span><button type="button" className="boton boton-principal" disabled={guardando} onClick={()=>revelar(p)}>Revelar parejas</button></footer>}
+ {p.estado==='revelado'&&<footer className="teams-partido-acciones"><span>✓ Parejas publicadas. Siguiente paso: concertar el partido.</span></footer>}
+ </article>)}</div></section>
+}
