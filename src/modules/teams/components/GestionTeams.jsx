@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Convocatoria from './Convocatoria'
 import Equipos from './Equipos'
+import Reglas from './Reglas'
 import { obtenerDetalleTeams } from '../teamsApi'
 
 export default function GestionTeams({ teams, onVolver }) {
@@ -13,7 +14,7 @@ export default function GestionTeams({ teams, onVolver }) {
  const convocatoriaOk=elegibles.length>0,equiposOk=Boolean(ea?.id_capitan&&eb?.id_capitan)
  const formacionOk=equiposOk&&miembros.some(m=>m.equipo_id===ea?.id)&&miembros.some(m=>m.equipo_id===eb?.id)
  const cerradas=Boolean(t.plantillas_cerradas)
- const reglasOk=false,iniciado=t.estado==='en_curso'||t.estado==='finalizado'
+ const reglasOk=Boolean(t.reglas_revisadas),iniciado=t.estado==='en_curso'||t.estado==='finalizado'
  const pasos=[
   {n:1,t:'Teams creado',s:'Configuración general guardada',ok:true,tab:'General'},
   {n:2,t:'Convocatoria',s:convocatoriaOk?elegibles.length+' jugadores apuntados':'Registrar disponibilidad de jugadores',ok:convocatoriaOk,tab:'Convocatoria'},
@@ -26,7 +27,7 @@ export default function GestionTeams({ teams, onVolver }) {
  const actual=pasos.find(p=>!p.ok)?.n??7
  return <main className="teams-admin">
   <header className="teams-gestion-cab"><button className="boton-volver" onClick={onVolver}>← Todos los Teams</button><div className="teams-gestion-titulo"><div><p className="etiqueta">SPRINT PÁDEL · TEAMS</p><h1>{teams.nombre}</h1><p>Copa por equipos</p></div><span className={'teams-estado estado-'+t.estado}>{t.estado.replaceAll('_',' ')}</span></div></header>
-  <nav className="teams-tabs">{pestañas.map(p=><button key={p} className={tab===p?'activo':''} disabled={!['General','Convocatoria','Equipos'].includes(p)} onClick={()=>setTab(p)}>{p}{!['General','Convocatoria','Equipos'].includes(p)&&<small>Próximamente</small>}</button>)}</nav>
-  {tab==='Convocatoria'?<Convocatoria teams={t}/>:tab==='Equipos'?<Equipos teams={t}/>:<section className="teams-dashboard"><div className="teams-dashboard-principal"><p className="etiqueta">ESTADO ACTUAL</p><h2>Preparación del Teams</h2><p>Este resumen se actualiza automáticamente con lo que ya has completado.</p><div className="teams-flujo">{pasos.map(p=><div key={p.n} className={p.ok?'completado':p.n===actual?'actual':''} onClick={()=>['Convocatoria','Equipos'].includes(p.tab)&&setTab(p.tab)}><span>{p.ok?'✓':p.n}</span><div><b>{p.t}</b><small>{p.s}</small></div></div>)}</div></div><aside className="teams-ficha"><h3>Resumen</h3><dl><div><dt>Formato</dt><dd>{t.modalidad}</dd></div><div><dt>Partidos</dt><dd>{t.numero_partidos}</dd></div><div><dt>Formación</dt><dd>{t.metodo_formacion}</dd></div><div><dt>Jugadores/equipo</dt><dd>{t.jugadores_por_equipo??'—'}</dd></div><div><dt>Reservas/equipo</dt><dd>{t.reservas_por_equipo??0}</dd></div></dl></aside></section>}
+  <nav className="teams-tabs">{pestañas.map(p=><button key={p} className={tab===p?'activo':''} disabled={!['General','Convocatoria','Equipos','Reglas'].includes(p)} onClick={()=>setTab(p)}>{p}{!['General','Convocatoria','Equipos','Reglas'].includes(p)&&<small>Próximamente</small>}</button>)}</nav>
+  {tab==='Convocatoria'?<Convocatoria teams={t}/>:tab==='Equipos'?<Equipos teams={t}/>:tab==='Reglas'?<Reglas teams={t} onCambio={refrescar}/>:<section className="teams-dashboard"><div className="teams-dashboard-principal"><p className="etiqueta">ESTADO ACTUAL</p><h2>Preparación del Teams</h2><p>Este resumen se actualiza automáticamente con lo que ya has completado.</p><div className="teams-flujo">{pasos.map(p=><div key={p.n} className={p.ok?'completado':p.n===actual?'actual':''} onClick={()=>['Convocatoria','Equipos','Reglas'].includes(p.tab)&&setTab(p.tab)}><span>{p.ok?'✓':p.n}</span><div><b>{p.t}</b><small>{p.s}</small></div></div>)}</div></div><aside className="teams-ficha"><h3>Resumen</h3><dl><div><dt>Formato</dt><dd>{t.modalidad}</dd></div><div><dt>Partidos</dt><dd>{t.numero_partidos}</dd></div><div><dt>Formación</dt><dd>{t.metodo_formacion}</dd></div><div><dt>Jugadores/equipo</dt><dd>{t.jugadores_por_equipo??'—'}</dd></div><div><dt>Reservas/equipo</dt><dd>{t.reservas_por_equipo??0}</dd></div></dl></aside></section>}
  </main>
 }
