@@ -102,3 +102,11 @@
 .teams-incidencia-historica-detalle b{color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
 .teams-incidencia-historica-detalle p{margin:4px 0 0;color:#f1f5f9}
 @media(max-width:600px){.teams-incidencia-historica-resumen{align-items:flex-start;flex-wrap:wrap}.teams-ver-incidencia{width:100%}.teams-incidencia-historica-detalle{padding:12px 4px}}
+
+.teams-tarjeta-resumen{align-items:flex-start!important}
+.teams-tarjeta-principal{flex:1;min-width:0}
+.teams-resumen-listado{display:grid;grid-template-columns:1fr 1fr;gap:7px 22px;margin-top:14px;padding-top:12px;border-top:1px solid #26364a;color:#aebed2;font-size:12px}
+.teams-resumen-listado span{line-height:1.45}
+.teams-resumen-listado b{color:#eaf2ff}
+.teams-tarjeta-acciones{display:flex;align-self:center;min-width:170px}
+@media(max-width:700px){.teams-resumen-listado{grid-template-columns:1fr}.teams-tarjeta-resumen{display:block!important}.teams-tarjeta-acciones{margin-top:14px}.teams-tarjeta-acciones .boton{width:100%}}
