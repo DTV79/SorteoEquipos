@@ -137,3 +137,14 @@
 .teams-enfrentamiento span{display:inline-flex;align-items:center}
 .teams-enfrentamiento em{font-style:normal;color:#64748b;font-size:.7em}
 .teams-pareja-titulo b,.teams-sets-editor>b{display:flex;align-items:center}
+
+.teams-marcador-serie{margin:4px 0 18px;padding:17px 20px;border:1px solid #29415a;border-radius:14px;background:#0b121a;text-align:center}
+.teams-marcador-label{display:block;color:#60a5fa;font-size:11px;font-weight:900;letter-spacing:.14em;margin-bottom:10px}
+.teams-marcador-equipos{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;max-width:650px;margin:auto}
+.teams-marcador-equipos>div{display:flex;align-items:center;justify-content:center;font-size:18px;gap:3px}
+.teams-marcador-equipos>strong{font-size:31px;color:#fff;white-space:nowrap}
+.teams-marcador-equipos>strong em{font-style:normal;color:#64748b;padding:0 7px}
+.teams-marcador-serie>small{display:block;margin-top:7px;color:#94a3b8}
+.teams-equipo-dot.grande{width:14px;height:14px}
+.teams-ganador-partido{margin-left:auto;color:#86efac;background:#12351f;border:1px solid #237a42;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900;white-space:nowrap}
+@media(max-width:600px){.teams-marcador-serie{padding:14px 10px}.teams-marcador-equipos{gap:8px}.teams-marcador-equipos>div{font-size:14px}.teams-marcador-equipos>strong{font-size:25px}.teams-ganador-partido{font-size:10px;padding:3px 6px}}
