@@ -110,3 +110,8 @@
 .teams-resumen-listado b{color:#eaf2ff}
 .teams-tarjeta-acciones{display:flex;align-self:center;min-width:170px}
 @media(max-width:700px){.teams-resumen-listado{grid-template-columns:1fr}.teams-tarjeta-resumen{display:block!important}.teams-tarjeta-acciones{margin-top:14px}.teams-tarjeta-acciones .boton{width:100%}}
+
+/* Alinear la acción de cada Teams con la cabecera de la tarjeta */
+.teams-tarjeta-resumen{position:relative}
+.teams-tarjeta-resumen .teams-tarjeta-acciones{align-self:flex-start;margin-top:48px}
+@media(max-width:700px){.teams-tarjeta-resumen .teams-tarjeta-acciones{margin-top:14px}}
