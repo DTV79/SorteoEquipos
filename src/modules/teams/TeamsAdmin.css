@@ -115,3 +115,10 @@
 .teams-tarjeta-resumen{position:relative}
 .teams-tarjeta-resumen .teams-tarjeta-acciones{align-self:flex-start;margin-top:48px}
 @media(max-width:700px){.teams-tarjeta-resumen .teams-tarjeta-acciones{margin-top:14px}}
+
+/* Identificación visual de equipos */
+.teams-letra{right:16px;top:16px;font-size:24px;line-height:1;z-index:0;pointer-events:none;opacity:.65}
+.teams-equipo-box label,.teams-equipo-box input,.teams-equipo-box select{position:relative;z-index:1}
+.teams-color-equipo{display:flex;align-items:center;gap:12px;position:relative;z-index:2}
+.teams-color-equipo input[type="color"]{width:58px;height:38px;padding:3px;cursor:pointer;border-radius:9px}
+.teams-color-punto{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 3px rgba(255,255,255,.05)}
