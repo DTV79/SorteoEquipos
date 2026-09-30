@@ -88,3 +88,9 @@ export async function marcarReglasRevisadasTeams(teamId, revisadas = true) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_marcar_reglas_revisadas', { p_team_id: teamId, p_revisadas: revisadas })
   if (error) throw error
 }
+
+export async function iniciarTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_iniciar', { p_team_id: teamId })
+  if (error) throw error
+  return data
+}
