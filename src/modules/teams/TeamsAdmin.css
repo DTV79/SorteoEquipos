@@ -122,3 +122,12 @@
 .teams-color-equipo{display:flex;align-items:center;gap:12px;position:relative;z-index:2}
 .teams-color-equipo input[type="color"]{width:58px;height:38px;padding:3px;cursor:pointer;border-radius:9px}
 .teams-color-punto{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 3px rgba(255,255,255,.05)}
+
+.teams-draft-tablero{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 20px}
+.teams-draft-tablero>div{background:#0b121a;border:1px solid #26364a;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:7px}
+.teams-draft-tablero h4{margin:0 0 5px;color:#fff}
+.teams-draft-tablero span{padding:8px 10px;border-radius:8px;background:#101d2b;color:#dcecff;font-weight:700}
+.teams-draft-disponibles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}
+.teams-draft-disponibles button{border:1px solid #34506d;background:#111c29;color:#fff;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer}
+.teams-draft-disponibles button:hover{border-color:#22c55e;background:#123020}
+@media(max-width:600px){.teams-draft-tablero{grid-template-columns:1fr}.teams-draft-disponibles button{flex:1 1 45%}}
