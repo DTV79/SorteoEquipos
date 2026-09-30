@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './TeamsAdmin.css'
 import CrearTeams from './components/CrearTeams'
+import GestionTeams from './components/GestionTeams'
 import { listarTeams } from './teamsApi'
 
 export default function TeamsAdmin({ onVolver }) {
@@ -8,6 +9,7 @@ export default function TeamsAdmin({ onVolver }) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [pantalla, setPantalla] = useState('inicio')
+  const [teamsActivo, setTeamsActivo] = useState(null)
 
   async function cargar() {
     setCargando(true); setError('')
@@ -17,6 +19,7 @@ export default function TeamsAdmin({ onVolver }) {
   useEffect(() => { void cargar() }, [])
 
   if (pantalla === 'crear') return <CrearTeams onCancelar={() => setPantalla('inicio')} onCreado={async () => { setPantalla('inicio'); await cargar() }} />
+  if (pantalla === 'gestionar' && teamsActivo) return <GestionTeams teams={teamsActivo} onVolver={() => { setTeamsActivo(null); setPantalla('inicio') }} />
 
   return <main className="teams-admin">
     <header className="teams-cabecera">
@@ -26,7 +29,7 @@ export default function TeamsAdmin({ onVolver }) {
     </header>
     {error && <p className="teams-error">{error}</p>}
     <section className="teams-listado">
-      {cargando ? <div className="teams-vacio">Cargando Teams…</div> : lista.length === 0 ? <div className="teams-vacio"><strong>Todavía no hay ningún Teams</strong><span>Crea la primera edición para preparar convocatoria, equipos y reglas.</span></div> : lista.map(t => <article className="teams-tarjeta" key={t.id}><div><span className={'teams-estado estado-' + t.estado}>{t.estado.replaceAll('_', ' ')}</span><h2>{t.nombre}</h2><p>{t.metodo_formacion} · {t.modalidad} · {t.numero_partidos} partidos</p></div><button className="boton boton-secundario" disabled>Gestionar</button></article>)}
+      {cargando ? <div className="teams-vacio">Cargando Teams…</div> : lista.length === 0 ? <div className="teams-vacio"><strong>Todavía no hay ningún Teams</strong><span>Crea la primera edición para preparar convocatoria, equipos y reglas.</span></div> : lista.map(t => <article className="teams-tarjeta" key={t.id}><div><span className={'teams-estado estado-' + t.estado}>{t.estado.replaceAll('_', ' ')}</span><h2>{t.nombre}</h2><p>{t.metodo_formacion} · {t.modalidad} · {t.numero_partidos} partidos</p></div><button className="boton boton-secundario" onClick={() => { setTeamsActivo(t); setPantalla('gestionar') }}>Gestionar</button></article>)}
     </section>
   </main>
 }
