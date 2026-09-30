@@ -55,11 +55,17 @@ export async function guardarConvocatoriaTeams(teamId, estados) {
   if (error) throw error
   return data
 }
-export async function configurarEquiposTeams(teamId, nombreA, capitanA, nombreB, capitanB) {
+export async function configurarEquiposTeams(teamId, nombreA, capitanA, nombreB, capitanB, colorA, colorB) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_configurar_equipos', {
     p_team_id: teamId, p_nombre_a: nombreA, p_capitan_a: capitanA,
     p_nombre_b: nombreB, p_capitan_b: capitanB,
   })
+  if (!error) {
+    const { error: colorError } = await supabaseCampeonato.from('teams_equipos').update({ color: colorA }).eq('team_id', teamId).eq('lado', 'A')
+    if (colorError) throw colorError
+    const { error: colorErrorB } = await supabaseCampeonato.from('teams_equipos').update({ color: colorB }).eq('team_id', teamId).eq('lado', 'B')
+    if (colorErrorB) throw colorErrorB
+  }
   if (error) throw error
 }
 
