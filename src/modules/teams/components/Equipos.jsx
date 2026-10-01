@@ -190,7 +190,11 @@ export default function Equipos({ teams }) {
   }
 
   async function guardarDraft() {
-    const as = {...asignaciones,[ca]:'A',[cb]:'B'}
+    const idsElegibles = new Set(elegibles.map(j => j.id_jugador))
+    const as = Object.fromEntries(
+      Object.entries({...asignaciones,[ca]:'A',[cb]:'B'})
+        .filter(([id]) => idsElegibles.has(id))
+    )
     const totalA = Object.values(as).filter(x => x === 'A').length
     const totalB = Object.values(as).filter(x => x === 'B').length
 
@@ -582,8 +586,8 @@ export default function Equipos({ teams }) {
               </p>
             </div>
             <span>
-              {Object.values(asignaciones).filter(x=>x==='A').length} / {objetivoPorEquipo || '—'} ·{' '}
-              {Object.values(asignaciones).filter(x=>x==='B').length} / {objetivoPorEquipo || '—'}
+              {elegibles.filter(j=>asignaciones[j.id_jugador]==='A').length} / {objetivoPorEquipo || '—'} ·{' '}
+              {elegibles.filter(j=>asignaciones[j.id_jugador]==='B').length} / {objetivoPorEquipo || '—'}
             </span>
           </div>
 
