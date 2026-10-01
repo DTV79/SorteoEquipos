@@ -175,6 +175,12 @@ export async function estadoAccesosTeams() {
   return data ?? []
 }
 
+export async function solicitudesAltaTeams() {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_solicitudes_alta')
+  if (error) throw error
+  return data ?? []
+}
+
 export async function generarCodigoAltaTeams(idJugador) {
   const { data, error } = await supabaseCampeonato.rpc('admin_teams_generar_codigo_alta', {
     p_id_jugador: idJugador,
