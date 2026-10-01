@@ -5,6 +5,7 @@ import {
   generarCodigoAltaTeams,
   guardarConvocatoriaTeams,
   obtenerDetalleTeams,
+  solicitudesAltaTeams,
 } from '../teamsApi'
 
 const OPCIONES = [
@@ -13,11 +14,24 @@ const OPCIONES = [
   ['pendiente', 'Todavía no sé'],
 ]
 
+function fechaHora(valor) {
+  if (!valor) return ''
+  const d = new Date(valor)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function Convocatoria({ teams }) {
   const [jugadores, setJugadores] = useState([])
   const [estados, setEstados] = useState({})
   const [origenes, setOrigenes] = useState({})
   const [accesos, setAccesos] = useState({})
+  const [solicitudes, setSolicitudes] = useState([])
   const [codigos, setCodigos] = useState({})
   const [buscar, setBuscar] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -26,13 +40,28 @@ export default function Convocatoria({ teams }) {
   const [guardado, setGuardado] = useState(false)
 
   useEffect(() => {
+    let vivo = true
+    let intervalo
+
+    async function cargarSolicitudes() {
+      try {
+        const data = await solicitudesAltaTeams()
+        if (vivo) setSolicitudes(data ?? [])
+      } catch {
+        // El resto de la convocatoria debe seguir funcionando aunque falle el aviso.
+      }
+    }
+
     ;(async () => {
       try {
-        const [cat, det, accesosData] = await Promise.all([
+        const [cat, det, accesosData, solicitudesData] = await Promise.all([
           catalogoJugadoresTeams(),
           obtenerDetalleTeams(teams.id),
           estadoAccesosTeams(),
+          solicitudesAltaTeams(),
         ])
+
+        if (!vivo) return
 
         setJugadores(cat.filter(j => j.activo))
 
@@ -51,12 +80,20 @@ export default function Convocatoria({ teams }) {
           mapaAccesos[acceso.id_jugador] = acceso
         }
         setAccesos(mapaAccesos)
+        setSolicitudes(solicitudesData ?? [])
+
+        intervalo = window.setInterval(cargarSolicitudes, 15000)
       } catch (e) {
-        setMensaje('Error: ' + e.message)
+        if (vivo) setMensaje('Error: ' + e.message)
       } finally {
-        setCargando(false)
+        if (vivo) setCargando(false)
       }
     })()
+
+    return () => {
+      vivo = false
+      if (intervalo) window.clearInterval(intervalo)
+    }
   }, [teams.id])
 
   const filtrados = useMemo(() => {
@@ -109,10 +146,31 @@ export default function Convocatoria({ teams }) {
           codigo_expira_at: data.expira_at,
         },
       }))
+      setSolicitudes(s => s.map(item =>
+        item.id_jugador === j.id_jugador
+          ? { ...item, codigo_pendiente: true, codigo_expira_at: data.expira_at }
+          : item
+      ))
       setMensaje(
-        (data.tipo === 'restablecimiento' ? 'Acceso restablecido. ' : 'Código de alta generado. ') +
+        (data.tipo === 'restablecimiento' ? 'Acceso restablecido. ' : 'Código de acceso generado. ') +
         'Envía el código a ' + nombre + '.'
       )
+    } catch (e) {
+      setMensaje('Error: ' + e.message)
+    }
+  }
+
+  async function generarCodigoSolicitud(solicitud) {
+    setMensaje('')
+    try {
+      const data = await generarCodigoAltaTeams(solicitud.id_jugador)
+      setCodigos(c => ({ ...c, [solicitud.id_jugador]: data.codigo }))
+      setSolicitudes(s => s.map(item =>
+        item.id_jugador === solicitud.id_jugador
+          ? { ...item, codigo_pendiente: true, codigo_expira_at: data.expira_at }
+          : item
+      ))
+      setMensaje('Código generado para ' + solicitud.alias + '.')
     } catch (e) {
       setMensaje('Error: ' + e.message)
     }
@@ -149,6 +207,63 @@ export default function Convocatoria({ teams }) {
 
   return (
     <section className="teams-convocatoria">
+      {solicitudes.length > 0 && (
+        <section className="teams-solicitudes-alta">
+          <div className="teams-solicitudes-cab">
+            <div>
+              <p className="etiqueta">MI ZONA</p>
+              <h3>Solicitudes de acceso</h3>
+              <p>
+                Estos jugadores ya han elegido su PIN y están esperando el código
+                de acceso del administrador.
+              </p>
+            </div>
+            <strong>{solicitudes.length}</strong>
+          </div>
+
+          <div className="teams-solicitudes-lista">
+            {solicitudes.map(s => {
+              const codigo = codigos[s.id_jugador]
+              return (
+                <article className="teams-solicitud-alta" key={s.id_jugador}>
+                  <div>
+                    <b>{s.alias}</b>
+                    <span>{s.nombre_oficial}</span>
+                    <small>Solicitado: {fechaHora(s.solicitado_at)}</small>
+                  </div>
+
+                  <div className="teams-solicitud-acciones">
+                    {codigo ? (
+                      <div className="teams-codigo-solicitud">
+                        <strong>{codigo}</strong>
+                        <button type="button" onClick={() => copiarCodigo(codigo)}>
+                          Copiar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="boton boton-principal"
+                        onClick={() => generarCodigoSolicitud(s)}
+                      >
+                        {s.codigo_pendiente ? 'Generar un código nuevo' : 'Generar código'}
+                      </button>
+                    )}
+                    <small>
+                      {codigo
+                        ? 'Código de un solo uso · 48 h'
+                        : s.codigo_pendiente
+                          ? 'Ya existe un código pendiente, pero por seguridad no se vuelve a mostrar.'
+                          : 'El jugador está esperando tu código.'}
+                    </small>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="teams-seccion-cab">
         <div>
           <p className="etiqueta">CONVOCATORIA</p>
@@ -251,7 +366,7 @@ export default function Convocatoria({ teams }) {
                       className="teams-pin-btn"
                       onClick={() => generarCodigo(j)}
                     >
-                      {acceso.acceso_creado ? '🔁 Restablecer acceso' : '🔐 Código de alta'}
+                      {acceso.acceso_creado ? '🔁 Restablecer acceso' : '🔐 Código manual'}
                     </button>
                   </div>
                 </div>
