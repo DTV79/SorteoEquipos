@@ -4,6 +4,7 @@ import {
   configurarEquiposTeams,
   guardarDraftTeams,
   guardarFormacionManualTeams,
+  guardarPreasignacionesTeams,
   obtenerDetalleTeams,
   preasignacionesTeams,
   reabrirPlantillasTeams,
@@ -106,7 +107,7 @@ export default function Equipos({ teams }) {
   }
 
   function asignar(id,lado) {
-    if (cerradas || metodo === 'predeterminado') return
+    if (cerradas) return
     setAsignaciones(x => ({...x,[id]:lado}))
     setPlantillaGuardada(false)
     setMensaje('')
@@ -260,6 +261,22 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
+      if (metodo === 'predeterminado') {
+        const equipos = detalle?.equipos || []
+        const equipoA = equipos.find(e => e.lado === 'A')
+        const equipoB = equipos.find(e => e.lado === 'B')
+
+        await guardarPreasignacionesTeams(
+          teams.id,
+          Object.entries(as)
+            .filter(([,lado]) => lado)
+            .map(([id_jugador,lado]) => ({
+              id_jugador,
+              equipo_id: lado === 'A' ? equipoA?.id : equipoB?.id,
+            }))
+        )
+      }
+
       await guardarFormacionManualTeams(
         teams.id,
         Object.entries(as)
@@ -585,8 +602,8 @@ export default function Equipos({ teams }) {
             <div>
               <h3>Equipos predeterminados</h3>
               <p>
-                La pertenencia a cada equipo viene de la convocatoria. Aquí solo
-                eliges los capitanes y confirmas las plantillas.
+                La asignación puede venir de la convocatoria, pero el administrador
+                siempre puede corregir o completar los equipos antes de cerrarlos.
               </p>
             </div>
             <span>
@@ -597,16 +614,31 @@ export default function Equipos({ teams }) {
 
           <div className="teams-reparto-lista">
             {elegibles.map(j => {
-              const lado = asignaciones[j.id_jugador] || ''
+              const id = j.id_jugador
+              const lado = asignaciones[id] || ''
+              const esCapA = id === ca
+              const esCapB = id === cb
+
               return (
-                <div className="teams-reparto-jugador" key={j.id_jugador}>
+                <div className="teams-reparto-jugador" key={id}>
                   <b>{j.alias || j.nombre}</b>
-                  <div className="teams-predeterminado-lado">
-                    {lado === 'A'
-                      ? <span className="lado-a">{a}</span>
-                      : lado === 'B'
-                        ? <span className="lado-b">{b}</span>
-                        : <span className="sin-lado">Sin equipo</span>}
+                  <div>
+                    <button
+                      type="button"
+                      className={lado === 'A' ? 'activo' : ''}
+                      disabled={cerradas || esCapB}
+                      onClick={() => !esCapA && asignar(id, lado === 'A' ? '' : 'A')}
+                    >
+                      {a}{esCapA ? ' · Capitán' : ''}
+                    </button>
+                    <button
+                      type="button"
+                      className={lado === 'B' ? 'activo' : ''}
+                      disabled={cerradas || esCapA}
+                      onClick={() => !esCapB && asignar(id, lado === 'B' ? '' : 'B')}
+                    >
+                      {b}{esCapB ? ' · Capitán' : ''}
+                    </button>
                   </div>
                 </div>
               )
