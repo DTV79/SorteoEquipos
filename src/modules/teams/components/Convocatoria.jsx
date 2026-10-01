@@ -4,7 +4,9 @@ import {
   estadoAccesosTeams,
   generarCodigoAltaTeams,
   guardarConvocatoriaTeams,
+  guardarPreasignacionesTeams,
   obtenerDetalleTeams,
+  preasignacionesTeams,
   solicitudesAltaTeams,
 } from '../teamsApi'
 
@@ -33,12 +35,31 @@ export default function Convocatoria({ teams }) {
   const [accesos, setAccesos] = useState({})
   const [solicitudes, setSolicitudes] = useState([])
   const [codigos, setCodigos] = useState({})
+  const [equipos, setEquipos] = useState([])
+  const [preasignaciones, setPreasignaciones] = useState({})
+  const [preOrigenes, setPreOrigenes] = useState({})
   const [buscar, setBuscar] = useState('')
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [guardado, setGuardado] = useState(false)
   const [sucio, setSucio] = useState(false)
+
+  const metodo = teams?.metodo_formacion || 'manual'
+  const modoPredeterminado =
+    teams?.configuracion?.asignacion_predeterminada || 'admin'
+  const usaPredeterminados = metodo === 'predeterminado'
+
+  function aplicarPreasignaciones(lista = []) {
+    const mapa = {}
+    const origenMapa = {}
+    for (const item of lista) {
+      mapa[item.id_jugador] = item.equipo_id
+      origenMapa[item.id_jugador] = item.origen
+    }
+    setPreasignaciones(mapa)
+    setPreOrigenes(origenMapa)
+  }
 
   useEffect(() => {
     let vivo = true
@@ -55,16 +76,24 @@ export default function Convocatoria({ teams }) {
 
     ;(async () => {
       try {
-        const [cat, det, accesosData, solicitudesData] = await Promise.all([
+        const tareas = [
           catalogoJugadoresTeams(),
           obtenerDetalleTeams(teams.id),
           estadoAccesosTeams(),
           solicitudesAltaTeams(),
-        ])
+        ]
+
+        if (usaPredeterminados) {
+          tareas.push(preasignacionesTeams(teams.id))
+        }
+
+        const [cat, det, accesosData, solicitudesData, preData = []] =
+          await Promise.all(tareas)
 
         if (!vivo) return
 
         setJugadores(cat.filter(j => j.activo))
+        setEquipos((det?.equipos || []).slice().sort((a,b) => String(a.lado).localeCompare(String(b.lado))))
 
         const es = {}
         const os = {}
@@ -72,10 +101,15 @@ export default function Convocatoria({ teams }) {
           es[e.id_jugador] = e.estado
           os[e.id_jugador] = e.origen
         }
+
         setEstados(es)
         setOrigenes(os)
         setGuardado((det?.elegibles ?? []).length > 0)
         setSucio(false)
+
+        if (usaPredeterminados) {
+          aplicarPreasignaciones(preData)
+        }
 
         const mapaAccesos = {}
         for (const acceso of accesosData ?? []) {
@@ -96,7 +130,7 @@ export default function Convocatoria({ teams }) {
       vivo = false
       if (intervalo) window.clearInterval(intervalo)
     }
-  }, [teams.id])
+  }, [teams.id, usaPredeterminados])
 
   useEffect(() => {
     if (sucio) return undefined
@@ -105,7 +139,10 @@ export default function Convocatoria({ teams }) {
 
     async function refrescarRespuestasWeb() {
       try {
-        const det = await obtenerDetalleTeams(teams.id)
+        const tareas = [obtenerDetalleTeams(teams.id)]
+        if (usaPredeterminados) tareas.push(preasignacionesTeams(teams.id))
+
+        const [det, preData = []] = await Promise.all(tareas)
         if (!activo) return
 
         const es = {}
@@ -117,7 +154,12 @@ export default function Convocatoria({ teams }) {
 
         setEstados(es)
         setOrigenes(os)
+        setEquipos((det?.equipos || []).slice().sort((a,b) => String(a.lado).localeCompare(String(b.lado))))
         setGuardado((det?.elegibles ?? []).length > 0)
+
+        if (usaPredeterminados) {
+          aplicarPreasignaciones(preData)
+        }
       } catch {
         // La actualización en segundo plano no debe bloquear la pantalla.
       }
@@ -138,7 +180,7 @@ export default function Convocatoria({ teams }) {
       document.removeEventListener('visibilitychange', alVolver)
       window.removeEventListener('focus', refrescarRespuestasWeb)
     }
-  }, [teams.id, sucio])
+  }, [teams.id, sucio, usaPredeterminados])
 
   const filtrados = useMemo(() => {
     const q = buscar.trim().toLowerCase()
@@ -156,12 +198,23 @@ export default function Convocatoria({ teams }) {
     (Number(teams.jugadores_por_equipo) || 0) * 2 +
     (Number(teams.reservas_por_equipo) || 0) * 2
 
+  const equipoA = equipos.find(e => e.lado === 'A')
+  const equipoB = equipos.find(e => e.lado === 'B')
+
   function cambiar(id, estado) {
     setGuardado(false)
     setSucio(true)
     setMensaje('')
     setEstados(s => ({ ...s, [id]: estado }))
     setOrigenes(s => ({ ...s, [id]: 'admin' }))
+  }
+
+  function cambiarEquipo(id, equipoId) {
+    setGuardado(false)
+    setSucio(true)
+    setMensaje('')
+    setPreasignaciones(s => ({ ...s, [id]: equipoId }))
+    setPreOrigenes(s => ({ ...s, [id]: 'admin' }))
   }
 
   async function generarCodigo(j) {
@@ -231,15 +284,44 @@ export default function Convocatoria({ teams }) {
   }
 
   async function guardar() {
+    if (usaPredeterminados && modoPredeterminado === 'admin') {
+      const sinEquipo = jugadores.filter(j =>
+        estados[j.id_jugador] === 'elegible' &&
+        !preasignaciones[j.id_jugador]
+      )
+
+      if (sinEquipo.length) {
+        setMensaje(
+          'Error: Hay jugadores apuntados sin equipo asignado: ' +
+          sinEquipo.slice(0,4).map(j => j.alias || j.nombre_oficial).join(', ') +
+          (sinEquipo.length > 4 ? '…' : '')
+        )
+        return
+      }
+    }
+
     setGuardando(true)
     setMensaje('')
+
     try {
+      if (usaPredeterminados) {
+        const asignaciones = jugadores
+          .filter(j => preasignaciones[j.id_jugador])
+          .map(j => ({
+            id_jugador: j.id_jugador,
+            equipo_id: preasignaciones[j.id_jugador],
+          }))
+
+        await guardarPreasignacionesTeams(teams.id, asignaciones)
+      }
+
       const datos = jugadores
         .filter(j => estados[j.id_jugador])
         .map(j => ({
           id_jugador: j.id_jugador,
           estado: estados[j.id_jugador],
         }))
+
       await guardarConvocatoriaTeams(teams.id, datos)
       setMensaje('Convocatoria guardada correctamente.')
       setGuardado(true)
@@ -318,13 +400,37 @@ export default function Convocatoria({ teams }) {
             El jugador puede responder desde Mi Zona. El administrador también puede
             registrar respuestas recibidas por WhatsApp u otros medios.
           </p>
+          {usaPredeterminados && (
+            <p className="teams-convocatoria-modo">
+              <b>Equipos predeterminados:</b>{' '}
+              {modoPredeterminado === 'admin'
+                ? 'el administrador asigna el equipo antes o durante la convocatoria.'
+                : 'cada jugador puede elegir su equipo al apuntarse; el administrador puede corregirlo.'}
+            </p>
+          )}
         </div>
+
         <div className={'teams-contador ' + (plazas && totalElegibles < plazas ? 'faltan' : '')}>
           <strong>{totalElegibles}</strong>
           <span>{plazas ? 'apuntados · ' + plazas + ' plazas previstas' : 'apuntados'}</span>
           {pendientes > 0 && <small>{pendientes} pendientes</small>}
         </div>
       </div>
+
+      {usaPredeterminados && (
+        <div className="teams-equipos-convocatoria-resumen">
+          <span>
+            <i style={{backgroundColor: equipoA?.color || '#22c55e'}} />
+            {equipoA?.nombre || 'Equipo A'}:
+            <b>{Object.values(preasignaciones).filter(id => id === equipoA?.id).length}</b>
+          </span>
+          <span>
+            <i style={{backgroundColor: equipoB?.color || '#3b82f6'}} />
+            {equipoB?.nombre || 'Equipo B'}:
+            <b>{Object.values(preasignaciones).filter(id => id === equipoB?.id).length}</b>
+          </span>
+        </div>
+      )}
 
       <div className="teams-convocatoria-tools">
         <input
@@ -357,6 +463,8 @@ export default function Convocatoria({ teams }) {
             const estado = estados[j.id_jugador] || ''
             const acceso = accesos[j.id_jugador] || {}
             const codigo = codigos[j.id_jugador]
+            const equipoId = preasignaciones[j.id_jugador] || ''
+            const origenEquipo = preOrigenes[j.id_jugador]
 
             return (
               <article
@@ -374,6 +482,32 @@ export default function Convocatoria({ teams }) {
                     )}
                   </span>
                 </div>
+
+                {usaPredeterminados && (
+                  <div className="teams-equipo-convocatoria">
+                    <label>
+                      Equipo
+                      <select
+                        value={equipoId}
+                        onChange={e => cambiarEquipo(j.id_jugador,e.target.value)}
+                      >
+                        <option value="">Sin asignar</option>
+                        {equipos.map(e => (
+                          <option key={e.id} value={e.id}>
+                            {e.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {equipoId && (
+                      <small>
+                        {origenEquipo === 'web'
+                          ? 'Elegido por el jugador'
+                          : 'Asignado por administrador'}
+                      </small>
+                    )}
+                  </div>
+                )}
 
                 <div className="teams-estado-opciones">
                   {OPCIONES.map(([v, t]) => (
@@ -448,6 +582,7 @@ export default function Convocatoria({ teams }) {
               ? (totalElegibles - plazas) + ' jugadores podrán quedar sin seleccionar o como reservas generales.'
               : ' '}
         </span>
+
         <button
           type="button"
           className="boton boton-principal"
