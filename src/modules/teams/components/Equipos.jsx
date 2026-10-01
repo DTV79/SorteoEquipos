@@ -232,7 +232,11 @@ export default function Equipos({ teams }) {
       return setMensaje('Error: Guarda primero los capitanes.')
     }
 
-    const as = {...asignaciones,[ca]:'A',[cb]:'B'}
+    const idsElegibles = new Set(elegibles.map(j => j.id_jugador))
+    const as = Object.fromEntries(
+      Object.entries({...asignaciones,[ca]:'A',[cb]:'B'})
+        .filter(([id]) => idsElegibles.has(id))
+    )
     const totalA = Object.values(as).filter(x => x === 'A').length
     const totalB = Object.values(as).filter(x => x === 'B').length
 
