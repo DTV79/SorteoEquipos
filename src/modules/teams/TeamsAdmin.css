@@ -197,3 +197,189 @@
 .teams-codigo-solicitud strong{font-size:20px;letter-spacing:.12em;color:#fde68a}
 .teams-codigo-solicitud button{border:0;border-radius:8px;background:#1d4ed8;color:#fff;padding:6px 9px;font-weight:800;cursor:pointer}
 @media(max-width:650px){.teams-solicitud-alta{align-items:flex-start;flex-direction:column}.teams-solicitud-acciones{justify-items:start;text-align:left}}
+
+.teams-label-info{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+
+.teams-info{
+  position:relative;
+  display:inline-grid;
+  place-items:center;
+  width:16px;
+  height:16px;
+  border:1px solid #42617b;
+  border-radius:50%;
+  background:#102434;
+  color:#93c5fd;
+  font-size:10px;
+  font-weight:900;
+  font-style:normal;
+  line-height:1;
+  cursor:help;
+  vertical-align:middle;
+  outline:none;
+}
+
+.teams-info-popover{
+  position:absolute;
+  z-index:80;
+  top:22px;
+  left:50%;
+  width:280px;
+  max-width:min(280px,calc(100vw - 36px));
+  padding:10px 11px;
+  border:1px solid #38536a;
+  border-radius:10px;
+  background:#0a1722;
+  color:#d7e4ee;
+  box-shadow:0 14px 35px rgba(0,0,0,.38);
+  font-size:10px;
+  font-weight:600;
+  line-height:1.45;
+  text-align:left;
+  transform:translateX(-50%);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+
+.teams-info:hover .teams-info-popover,
+.teams-info:focus .teams-info-popover,
+.teams-info:focus-within .teams-info-popover{
+  opacity:1;
+  visibility:visible;
+}
+
+.teams-ayuda-contextual{
+  display:grid;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid #29475b;
+  border-radius:10px;
+  background:#0e1d29;
+}
+
+.teams-ayuda-contextual b{
+  color:#93c5fd;
+  font-size:11px;
+}
+
+.teams-ayuda-contextual span{
+  color:#aebfcd;
+  font-size:10px;
+  line-height:1.45;
+}
+
+.teams-ayuda-contextual.compacta{
+  padding:9px 10px;
+}
+
+.teams-regla-bloque h3{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+.teams-convocatoria-modo{
+  margin-top:8px!important;
+  color:#c7d7e2!important;
+}
+
+.teams-equipos-convocatoria-resumen{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 14px;
+}
+
+.teams-equipos-convocatoria-resumen span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 10px;
+  border:1px solid #29475b;
+  border-radius:999px;
+  background:#0d1d29;
+  color:#c7d7e2;
+  font-size:10px;
+}
+
+.teams-equipos-convocatoria-resumen i{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+}
+
+.teams-equipo-convocatoria{
+  display:grid;
+  gap:3px;
+  min-width:170px;
+}
+
+.teams-equipo-convocatoria label{
+  display:grid;
+  gap:4px;
+  color:#8fa7ba;
+  font-size:9px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+.teams-equipo-convocatoria select{
+  min-height:34px;
+  border:1px solid #315066;
+  border-radius:8px;
+  background:#0b1823;
+  color:#eef6ff;
+  font-size:10px;
+  text-transform:none;
+}
+
+.teams-equipo-convocatoria small{
+  color:#7dd3fc;
+  font-size:8px;
+}
+
+.teams-predeterminado-lado span{
+  display:inline-flex;
+  align-items:center;
+  min-height:30px;
+  padding:6px 9px;
+  border-radius:8px;
+  font-size:10px;
+  font-weight:800;
+}
+
+.teams-predeterminado-lado .lado-a{
+  background:rgba(34,197,94,.1);
+  color:#86efac;
+}
+
+.teams-predeterminado-lado .lado-b{
+  background:rgba(59,130,246,.11);
+  color:#93c5fd;
+}
+
+.teams-predeterminado-lado .sin-lado{
+  background:rgba(248,113,113,.08);
+  color:#fca5a5;
+}
+
+.teams-sorteo-formacion{
+  display:grid;
+  gap:14px;
+}
+
+@media(max-width:650px){
+  .teams-info-popover{
+    left:0;
+    transform:none;
+  }
+
+  .teams-equipo-convocatoria{
+    width:100%;
+  }
+}
