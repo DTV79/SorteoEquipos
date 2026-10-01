@@ -244,8 +244,6 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
-      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
-
       if (metodo === 'predeterminado') {
         const equipos = detalle?.equipos || []
         const equipoA = equipos.find(e => e.lado === 'A')
@@ -261,6 +259,8 @@ export default function Equipos({ teams }) {
             }))
         )
       }
+
+      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
 
       await guardarFormacionManualTeams(
         teams.id,
