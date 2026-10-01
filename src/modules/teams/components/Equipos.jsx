@@ -102,6 +102,7 @@ export default function Equipos({ teams }) {
   function editar(campo,valor) {
     if (cerradas) return
     setGuardado(false)
+    setPlantillaGuardada(false)
     setMensaje('')
     campo(valor)
   }
@@ -111,30 +112,6 @@ export default function Equipos({ teams }) {
     setAsignaciones(x => ({...x,[id]:lado}))
     setPlantillaGuardada(false)
     setMensaje('')
-  }
-
-  async function guardar() {
-    if (!ca || !cb) {
-      return setMensaje('Error: Debes elegir los dos capitanes.')
-    }
-
-    if (ca === cb) {
-      return setMensaje('Error: Los capitanes deben ser jugadores distintos.')
-    }
-
-    setGuardando(true)
-    setMensaje('')
-
-    try {
-      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
-      setMensaje('Equipos y capitanes guardados correctamente.')
-      setGuardado(true)
-      await cargar()
-    } catch (e) {
-      setMensaje('Error: ' + e.message)
-    } finally {
-      setGuardando(false)
-    }
   }
 
   async function cerrar() {
@@ -211,6 +188,7 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
+      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
       await guardarDraftTeams(
         teams.id,
         Object.entries(as)
@@ -218,8 +196,9 @@ export default function Equipos({ teams }) {
           .map(([id_jugador,lado]) => ({id_jugador,lado}))
       )
       setAsignaciones(as)
+      setGuardado(true)
       setPlantillaGuardada(true)
-      setMensaje('Draft guardado correctamente.')
+      setMensaje('Equipos y draft guardados correctamente.')
       await cargar()
     } catch (e) {
       setMensaje('Error: ' + e.message)
@@ -230,7 +209,11 @@ export default function Equipos({ teams }) {
 
   async function guardarPlantilla() {
     if (!ca || !cb) {
-      return setMensaje('Error: Guarda primero los capitanes.')
+      return setMensaje('Error: Debes elegir los dos capitanes.')
+    }
+
+    if (ca === cb) {
+      return setMensaje('Error: Los capitanes deben ser jugadores distintos.')
     }
 
     const idsElegibles = new Set(elegibles.map(j => j.id_jugador))
@@ -261,6 +244,8 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
+      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
+
       if (metodo === 'predeterminado') {
         const equipos = detalle?.equipos || []
         const equipoA = equipos.find(e => e.lado === 'A')
@@ -289,11 +274,8 @@ export default function Equipos({ teams }) {
       )
       setAsignaciones(as)
       setPlantillaGuardada(true)
-      setMensaje(
-        metodo === 'predeterminado'
-          ? 'Plantillas predeterminadas guardadas correctamente.'
-          : 'Plantillas guardadas correctamente.'
-      )
+      setGuardado(true)
+      setMensaje('Equipos guardados correctamente.')
       await cargar()
     } catch (e) {
       setMensaje('Error: ' + e.message)
@@ -307,8 +289,8 @@ export default function Equipos({ teams }) {
       return setMensaje('Error: Guarda primero los dos capitanes.')
     }
 
-    if (!guardado) {
-      return setMensaje('Error: Guarda primero los equipos y capitanes.')
+    if (ca === cb) {
+      return setMensaje('Error: Los capitanes deben ser jugadores distintos.')
     }
 
     const esperado = objetivoPorEquipo * 2
@@ -332,10 +314,12 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
+      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
       await sortearFormacionTeams(teams.id)
       await cargar()
+      setGuardado(true)
       setPlantillaGuardada(true)
-      setMensaje('Sorteo realizado y plantillas guardadas.')
+      setMensaje('Equipos sorteados y guardados correctamente.')
     } catch (e) {
       setMensaje('Error: ' + e.message)
     } finally {
@@ -529,7 +513,7 @@ export default function Equipos({ teams }) {
               }
               onClick={guardarDraft}
             >
-              {guardando ? 'Guardando…' : plantillaGuardada ? 'Draft guardado ✓' : 'Guardar draft'}
+              {guardando ? 'Guardando…' : plantillaGuardada ? 'Equipos guardados ✓' : 'Guardar equipos'}
             </button>
           </div>
         </div>
@@ -590,7 +574,7 @@ export default function Equipos({ teams }) {
               disabled={guardando || plantillaGuardada || cerradas}
               onClick={guardarPlantilla}
             >
-              {guardando ? 'Guardando…' : plantillaGuardada ? 'Plantillas guardadas ✓' : 'Guardar plantillas'}
+              {guardando ? 'Guardando…' : plantillaGuardada ? 'Equipos guardados ✓' : 'Guardar equipos'}
             </button>
           </div>
         </div>
@@ -689,7 +673,7 @@ export default function Equipos({ teams }) {
             type="button"
             className="boton boton-principal"
             onClick={sortear}
-            disabled={guardando || cerradas || !guardado}
+            disabled={guardando || cerradas}
           >
             🎲 {plantillaGuardada ? 'Repetir sorteo' : 'Sortear equipos'}
           </button>
@@ -702,26 +686,13 @@ export default function Equipos({ teams }) {
         </p>
       )}
 
-      {!cerradas && !guardado && (
-        <footer className="teams-convocatoria-acciones">
-          <button
-            type="button"
-            className="boton boton-principal"
-            onClick={guardar}
-            disabled={guardando || !detalle}
-          >
-            {guardando ? 'Guardando…' : 'Guardar equipos y capitanes'}
-          </button>
-        </footer>
-      )}
-
       <div className={'teams-cierre ' + (cerradas ? 'cerrado' : '')}>
         <div>
           <b>{cerradas ? '🔒 Plantillas cerradas' : 'Cerrar plantillas'}</b>
           <span>
             {cerradas
-              ? 'La composición queda bloqueada hasta que un administrador la reabra.'
-              : 'Cuando el reparto sea definitivo, ciérralo para pasar a la preparación de los partidos.'}
+              ? 'La composición queda bloqueada. Si detectas un error, puedes reabrirla y corregirla.'
+              : 'Puedes guardar y corregir los equipos tantas veces como necesites. Ciérralos solo cuando sean definitivos.'}
           </span>
         </div>
 
