@@ -180,3 +180,20 @@
 .teams-codigo-alta>button{border:0;border-radius:8px;background:#1d4ed8;color:#fff;padding:6px 9px;font-weight:800;cursor:pointer}
 .teams-codigo-alta>small{color:#94a3b8;font-size:9px;text-align:right}
 @media(max-width:620px){.teams-acceso-jugador{justify-content:flex-start}.teams-codigo-alta{grid-template-columns:1fr auto}.teams-codigo-alta>small{grid-column:1/-1;text-align:left}}
+
+.teams-solicitudes-alta{margin:0 0 22px;padding:16px;border:1px solid #92400e;border-radius:14px;background:#2a1b0d}
+.teams-solicitudes-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.teams-solicitudes-cab h3{margin:4px 0 5px;font-size:21px}
+.teams-solicitudes-cab p{margin:0;color:#d6b98f;font-size:12px}
+.teams-solicitudes-cab>strong{display:grid;place-items:center;min-width:34px;height:34px;border-radius:50%;background:#f59e0b;color:#1f1302;font-size:16px}
+.teams-solicitudes-lista{display:grid;gap:9px;margin-top:14px}
+.teams-solicitud-alta{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px;border:1px solid #78350f;border-radius:11px;background:#17120c}
+.teams-solicitud-alta>div:first-child{display:grid;gap:2px}
+.teams-solicitud-alta b{font-size:14px}
+.teams-solicitud-alta span{color:#cbd5e1;font-size:11px}
+.teams-solicitud-alta small{color:#9ca3af;font-size:9px}
+.teams-solicitud-acciones{display:grid;justify-items:end;gap:5px;text-align:right}
+.teams-codigo-solicitud{display:flex;align-items:center;gap:8px}
+.teams-codigo-solicitud strong{font-size:20px;letter-spacing:.12em;color:#fde68a}
+.teams-codigo-solicitud button{border:0;border-radius:8px;background:#1d4ed8;color:#fff;padding:6px 9px;font-weight:800;cursor:pointer}
+@media(max-width:650px){.teams-solicitud-alta{align-items:flex-start;flex-direction:column}.teams-solicitud-acciones{justify-items:start;text-align:left}}
