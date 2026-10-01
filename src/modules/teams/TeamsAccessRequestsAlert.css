@@ -1,0 +1,85 @@
+.teams-access-alert {
+  position: relative;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 14px 52px 14px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #92400e;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2a1b0d, #15100b 68%);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  transition: transform .18s ease, border-color .18s ease;
+}
+
+.teams-access-alert:hover {
+  transform: translateY(-2px);
+  border-color: #f59e0b;
+}
+
+.teams-access-alert-icono {
+  font-size: 24px;
+}
+
+.teams-access-alert-texto {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.teams-access-alert-texto strong {
+  color: #fde68a;
+  font-size: 14px;
+}
+
+.teams-access-alert-texto small {
+  overflow: hidden;
+  color: #d6b98f;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-access-alert-accion {
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.teams-access-alert-contador {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 3px solid #080d12;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+@media (max-width: 620px) {
+  .teams-access-alert {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding-right: 16px;
+  }
+
+  .teams-access-alert-accion {
+    grid-column: 2;
+  }
+
+  .teams-access-alert-contador {
+    right: 8px;
+  }
+}
