@@ -28,6 +28,17 @@ export async function crearTeams(form) {
     p_config: config,
   })
   if (errorConfig) throw errorConfig
+
+  if (form.metodo_formacion === 'predeterminado') {
+    await guardarEquiposBaseTeams(
+      id,
+      form.nombre_equipo_a || 'Equipo A',
+      form.nombre_equipo_b || 'Equipo B',
+      form.color_equipo_a || null,
+      form.color_equipo_b || null
+    )
+  }
+
   return id
 }
 
@@ -51,6 +62,34 @@ export async function guardarConvocatoriaTeams(teamId, estados) {
   const { data, error } = await supabaseCampeonato.rpc('admin_teams_guardar_convocatoria', {
     p_team_id: teamId,
     p_estados: estados,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function guardarEquiposBaseTeams(teamId, nombreA, nombreB, colorA = null, colorB = null) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_guardar_equipos_base', {
+    p_team_id: teamId,
+    p_nombre_a: nombreA,
+    p_nombre_b: nombreB,
+    p_color_a: colorA,
+    p_color_b: colorB,
+  })
+  if (error) throw error
+}
+
+export async function preasignacionesTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_preasignaciones', {
+    p_team_id: teamId,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function guardarPreasignacionesTeams(teamId, asignaciones) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_guardar_preasignaciones', {
+    p_team_id: teamId,
+    p_asignaciones: asignaciones,
   })
   if (error) throw error
   return data
@@ -93,6 +132,16 @@ export async function reabrirPlantillasTeams(teamId) {
 export async function guardarReglasTeams(teamId, config) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_guardar_configuracion', { p_team_id: teamId, p_config: config })
   if (error) throw error
+
+  if (config.metodo_formacion === 'predeterminado') {
+    await guardarEquiposBaseTeams(
+      teamId,
+      config.nombre_equipo_a || 'Equipo A',
+      config.nombre_equipo_b || 'Equipo B',
+      config.color_equipo_a || null,
+      config.color_equipo_b || null
+    )
+  }
 }
 export async function marcarReglasRevisadasTeams(teamId, revisadas = true) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_marcar_reglas_revisadas', { p_team_id: teamId, p_revisadas: revisadas })
