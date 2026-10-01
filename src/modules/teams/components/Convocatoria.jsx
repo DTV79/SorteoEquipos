@@ -38,6 +38,7 @@ export default function Convocatoria({ teams }) {
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [guardado, setGuardado] = useState(false)
+  const [sucio, setSucio] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -74,6 +75,7 @@ export default function Convocatoria({ teams }) {
         setEstados(es)
         setOrigenes(os)
         setGuardado((det?.elegibles ?? []).length > 0)
+        setSucio(false)
 
         const mapaAccesos = {}
         for (const acceso of accesosData ?? []) {
@@ -96,6 +98,48 @@ export default function Convocatoria({ teams }) {
     }
   }, [teams.id])
 
+  useEffect(() => {
+    if (sucio) return undefined
+
+    let activo = true
+
+    async function refrescarRespuestasWeb() {
+      try {
+        const det = await obtenerDetalleTeams(teams.id)
+        if (!activo) return
+
+        const es = {}
+        const os = {}
+        for (const e of det?.elegibles ?? []) {
+          es[e.id_jugador] = e.estado
+          os[e.id_jugador] = e.origen
+        }
+
+        setEstados(es)
+        setOrigenes(os)
+        setGuardado((det?.elegibles ?? []).length > 0)
+      } catch {
+        // La actualización en segundo plano no debe bloquear la pantalla.
+      }
+    }
+
+    const intervalo = window.setInterval(refrescarRespuestasWeb, 15000)
+
+    const alVolver = () => {
+      if (!document.hidden) refrescarRespuestasWeb()
+    }
+
+    document.addEventListener('visibilitychange', alVolver)
+    window.addEventListener('focus', refrescarRespuestasWeb)
+
+    return () => {
+      activo = false
+      window.clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('focus', refrescarRespuestasWeb)
+    }
+  }, [teams.id, sucio])
+
   const filtrados = useMemo(() => {
     const q = buscar.trim().toLowerCase()
     return !q
@@ -114,6 +158,7 @@ export default function Convocatoria({ teams }) {
 
   function cambiar(id, estado) {
     setGuardado(false)
+    setSucio(true)
     setMensaje('')
     setEstados(s => ({ ...s, [id]: estado }))
     setOrigenes(s => ({ ...s, [id]: 'admin' }))
@@ -198,6 +243,7 @@ export default function Convocatoria({ teams }) {
       await guardarConvocatoriaTeams(teams.id, datos)
       setMensaje('Convocatoria guardada correctamente.')
       setGuardado(true)
+      setSucio(false)
     } catch (e) {
       setMensaje('Error: ' + e.message)
     } finally {
@@ -295,6 +341,7 @@ export default function Convocatoria({ teams }) {
             jugadores.forEach(j => { n[j.id_jugador] = 'elegible' })
             setEstados(n)
             setGuardado(false)
+            setSucio(true)
             setMensaje('')
           }}
         >
