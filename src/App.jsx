@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import { supabaseCampeonato } from './lib/supabaseCampeonato'
 import CampeonatoAdmin from './CampeonatoAdmin'
 import TeamsAdmin from './modules/teams'
+import TeamsAccessRequestsAlert from './modules/teams/TeamsAccessRequestsAlert'
 
 /*
 ============================================================
@@ -12988,6 +12989,12 @@ if (
           <p className="descripcion">
             Elige qué parte quieres gestionar.
           </p>
+
+          {accesoCampeonato.disponible && (
+            <TeamsAccessRequestsAlert
+              onAbrirTeams={() => setPantalla('teams')}
+            />
+          )}
 
           <div className="modulos-principales">
             <button
