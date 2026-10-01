@@ -169,6 +169,16 @@ export async function eliminarTeams(teamId,nombre) {
  const { error } = await supabaseCampeonato.rpc('admin_teams_eliminar',{p_team_id:teamId,p_nombre_confirmacion:nombre}); if(error) throw error
 }
 
-export async function establecerPinJugadorTeams(idJugador,pin) {
- const { error } = await supabaseCampeonato.rpc('admin_teams_establecer_pin',{p_id_jugador:idJugador,p_pin:pin}); if(error) throw error
+export async function estadoAccesosTeams() {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_estado_accesos')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function generarCodigoAltaTeams(idJugador) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_generar_codigo_alta', {
+    p_id_jugador: idJugador,
+  })
+  if (error) throw error
+  return data
 }
