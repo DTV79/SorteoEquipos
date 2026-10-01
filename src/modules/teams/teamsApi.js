@@ -119,6 +119,14 @@ export async function guardarDraftTeams(teamId, asignaciones) {
   return data
 }
 
+export async function sortearFormacionTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_sortear_formacion', {
+    p_team_id: teamId,
+  })
+  if (error) throw error
+  return data
+}
+
 
 export async function cerrarPlantillasTeams(teamId) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_cerrar_plantillas', { p_team_id: teamId })
