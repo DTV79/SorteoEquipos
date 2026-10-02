@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import {
+  aplicarVotacionCapitanesTeams,
   cerrarPlantillasTeams,
   configurarEquiposTeams,
   guardarDraftTeams,
+  guardarEquiposBaseTeams,
   guardarFormacionManualTeams,
   guardarPreasignacionesTeams,
   obtenerDetalleTeams,
   preasignacionesTeams,
   reabrirPlantillasTeams,
+  sortearCapitanesTeams,
   sortearFormacionTeams,
+  votacionCapitanesTeams,
 } from '../teamsApi'
 
 const METODOS = {
@@ -32,20 +36,38 @@ export default function Equipos({ teams }) {
   const [asignaciones,setAsignaciones] = useState({})
   const [plantillaGuardada,setPlantillaGuardada] = useState(false)
   const [cerradas,setCerradas] = useState(false)
+  const [votacion,setVotacion] = useState({ equipos: [] })
 
   const metodo = detalle?.teams?.metodo_formacion || teams.metodo_formacion || 'manual'
   const objetivoPorEquipo = Number(
     detalle?.teams?.jugadores_por_equipo || teams.jugadores_por_equipo || 0
   )
+  const modoCapitanes =
+    detalle?.teams?.configuracion?.modo_designacion_capitanes ||
+    teams?.configuracion?.modo_designacion_capitanes ||
+    'administrador'
+  const capitanManual = ['administrador','predefinidos'].includes(modoCapitanes)
 
   async function cargar() {
-    const tareas = [obtenerDetalleTeams(teams.id)]
-    if ((teams.metodo_formacion || metodo) === 'predeterminado') {
-      tareas.push(preasignacionesTeams(teams.id))
+    const d = await obtenerDetalleTeams(teams.id)
+    let pre = []
+    let votos = { equipos: [] }
+
+    if ((d.teams?.metodo_formacion || teams.metodo_formacion) === 'predeterminado') {
+      pre = await preasignacionesTeams(teams.id)
     }
 
-    const [d, pre = []] = await Promise.all(tareas)
+    const modo =
+      d.teams?.configuracion?.modo_designacion_capitanes ||
+      teams?.configuracion?.modo_designacion_capitanes ||
+      'administrador'
+
+    if (modo === 'eleccion_equipo') {
+      votos = await votacionCapitanesTeams(teams.id)
+    }
+
     setDetalle(d)
+    setVotacion(votos)
 
     const ea = (d.equipos || []).find(x => x.lado === 'A')
     const eb = (d.equipos || []).find(x => x.lado === 'B')
@@ -208,18 +230,21 @@ export default function Equipos({ teams }) {
   }
 
   async function guardarPlantilla() {
-    if (!ca || !cb) {
+    if (capitanManual && (!ca || !cb)) {
       return setMensaje('Error: Debes elegir los dos capitanes.')
     }
 
-    if (ca === cb) {
+    if (ca && cb && ca === cb) {
       return setMensaje('Error: Los capitanes deben ser jugadores distintos.')
     }
 
     const idsElegibles = new Set(elegibles.map(j => j.id_jugador))
+    const base = {...asignaciones}
+    if (ca) base[ca] = 'A'
+    if (cb) base[cb] = 'B'
+
     const as = Object.fromEntries(
-      Object.entries({...asignaciones,[ca]:'A',[cb]:'B'})
-        .filter(([id]) => idsElegibles.has(id))
+      Object.entries(base).filter(([id]) => idsElegibles.has(id))
     )
     const totalA = Object.values(as).filter(x => x === 'A').length
     const totalB = Object.values(as).filter(x => x === 'B').length
@@ -229,14 +254,8 @@ export default function Equipos({ teams }) {
         'Error: Debe haber exactamente ' +
         objetivoPorEquipo +
         ' jugadores en cada equipo. Ahora hay ' +
-        totalA +
-        ' en ' +
-        a +
-        ' y ' +
-        totalB +
-        ' en ' +
-        b +
-        '.'
+        totalA + ' en ' + a + ' y ' +
+        totalB + ' en ' + b + '.'
       )
     }
 
@@ -251,31 +270,38 @@ export default function Equipos({ teams }) {
 
         await guardarPreasignacionesTeams(
           teams.id,
-          Object.entries(as)
-            .filter(([,lado]) => lado)
-            .map(([id_jugador,lado]) => ({
-              id_jugador,
-              equipo_id: lado === 'A' ? equipoA?.id : equipoB?.id,
-            }))
+          Object.entries(as).map(([id_jugador,lado]) => ({
+            id_jugador,
+            equipo_id: lado === 'A' ? equipoA?.id : equipoB?.id,
+          }))
         )
       }
 
-      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
+      await guardarEquiposBaseTeams(teams.id,a,b,colorA,colorB)
 
       await guardarFormacionManualTeams(
         teams.id,
-        Object.entries(as)
-          .filter(([,lado]) => lado)
-          .map(([id_jugador,lado]) => ({
-            id_jugador,
-            lado,
-            es_reserva:false,
-          }))
+        Object.entries(as).map(([id_jugador,lado]) => ({
+          id_jugador,
+          lado,
+          es_reserva:false,
+        }))
       )
+
+      if ((capitanManual || (ca && cb)) && ca && cb) {
+        await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
+      } else if (modoCapitanes === 'sorteo') {
+        await sortearCapitanesTeams(teams.id)
+      }
+
       setAsignaciones(as)
       setPlantillaGuardada(true)
       setGuardado(true)
-      setMensaje('Equipos guardados correctamente.')
+      setMensaje(
+        modoCapitanes === 'eleccion_equipo'
+          ? 'Equipos guardados. Ya puede comenzar la votación de capitanes en Mi Zona.'
+          : 'Equipos guardados correctamente.'
+      )
       await cargar()
     } catch (e) {
       setMensaje('Error: ' + e.message)
@@ -285,11 +311,11 @@ export default function Equipos({ teams }) {
   }
 
   async function sortear() {
-    if (!ca || !cb) {
-      return setMensaje('Error: Guarda primero los dos capitanes.')
+    if (capitanManual && (!ca || !cb)) {
+      return setMensaje('Error: Debes elegir los dos capitanes.')
     }
 
-    if (ca === cb) {
+    if (ca && cb && ca === cb) {
       return setMensaje('Error: Los capitanes deben ser jugadores distintos.')
     }
 
@@ -297,16 +323,13 @@ export default function Equipos({ teams }) {
     if (elegibles.length !== esperado) {
       return setMensaje(
         'Error: Para sortear hacen falta exactamente ' +
-        esperado +
-        ' jugadores apuntados. Ahora hay ' +
-        elegibles.length +
-        '.'
+        esperado + ' jugadores apuntados. Ahora hay ' +
+        elegibles.length + '.'
       )
     }
 
     const ok = window.confirm(
-      'Se sortearán los jugadores entre ' + a + ' y ' + b +
-      ', manteniendo a cada capitán en su equipo. ¿Continuar?'
+      'Se sortearán los jugadores entre ' + a + ' y ' + b + '. ¿Continuar?'
     )
     if (!ok) return
 
@@ -314,12 +337,58 @@ export default function Equipos({ teams }) {
     setMensaje('')
 
     try {
-      await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
+      await guardarEquiposBaseTeams(teams.id,a,b,colorA,colorB)
+
+      if (capitanManual && ca && cb) {
+        await configurarEquiposTeams(teams.id,a,ca,b,cb,colorA,colorB)
+      }
+
       await sortearFormacionTeams(teams.id)
+
+      if (modoCapitanes === 'sorteo') {
+        await sortearCapitanesTeams(teams.id)
+      }
+
       await cargar()
       setGuardado(true)
       setPlantillaGuardada(true)
-      setMensaje('Equipos sorteados y guardados correctamente.')
+      setMensaje(
+        modoCapitanes === 'eleccion_equipo'
+          ? 'Equipos sorteados. Ya puede comenzar la votación de capitanes en Mi Zona.'
+          : 'Equipos sorteados y guardados correctamente.'
+      )
+    } catch (e) {
+      setMensaje('Error: ' + e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function volverASortearCapitanes() {
+    setGuardando(true)
+    setMensaje('')
+    try {
+      await sortearCapitanesTeams(teams.id)
+      await cargar()
+      setMensaje('Capitanes sorteados correctamente.')
+    } catch (e) {
+      setMensaje('Error: ' + e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function aplicarVotacion() {
+    setGuardando(true)
+    setMensaje('')
+    try {
+      await aplicarVotacionCapitanesTeams(
+        teams.id,
+        ca || null,
+        cb || null
+      )
+      await cargar()
+      setMensaje('Capitanes asignados según la votación.')
     } catch (e) {
       setMensaje('Error: ' + e.message)
     } finally {
@@ -357,7 +426,7 @@ export default function Equipos({ teams }) {
         <div>
           <p className="etiqueta">FORMACIÓN</p>
           <h2>Equipos y capitanes</h2>
-          <p>Los capitanes deben estar entre los jugadores apuntados en la convocatoria.</p>
+          <p>Configura los equipos y aplica el sistema de designación de capitanes elegido en las reglas.</p>
         </div>
       </div>
 
@@ -435,6 +504,15 @@ export default function Equipos({ teams }) {
 
       <div className="teams-formacion-info">
         <b>Método de formación:</b> {METODOS[metodo] || metodo}
+      </div>
+
+      <div className="teams-formacion-info">
+        <b>Capitanes:</b> {{
+          administrador:'Los elige el administrador',
+          predefinidos:'Definidos de antemano',
+          eleccion_equipo:'Los elige cada equipo',
+          sorteo:'Sorteo entre los jugadores'
+        }[modoCapitanes] || modoCapitanes}
       </div>
 
       {metodo === 'draft' && ca && cb && (
@@ -519,12 +597,12 @@ export default function Equipos({ teams }) {
         </div>
       )}
 
-      {metodo === 'manual' && ca && cb && (
+      {metodo === 'manual' && (
         <div className="teams-reparto">
           <div className="teams-reparto-cab">
             <div>
               <h3>Reparto manual</h3>
-              <p>Asigna cada jugador a uno de los dos equipos. Los capitanes quedan fijados automáticamente.</p>
+              <p>Asigna cada jugador a uno de los dos equipos. La designación de capitanes se resolverá según la regla configurada.</p>
             </div>
             <span>
               {asignadosA.size} / {objetivoPorEquipo || '—'} · {asignadosB.size} / {objetivoPorEquipo || '—'}
@@ -656,7 +734,7 @@ export default function Equipos({ teams }) {
         </div>
       )}
 
-      {metodo === 'sorteo' && ca && cb && (
+      {metodo === 'sorteo' && (
         <div className="teams-reparto teams-sorteo-formacion">
           <div className="teams-reparto-cab">
             <div>
@@ -680,6 +758,77 @@ export default function Equipos({ teams }) {
         </div>
       )}
 
+      {modoCapitanes === 'sorteo' && plantillaGuardada && !cerradas && (
+        <div className="teams-capitanes-panel">
+          <div>
+            <b>🎲 Capitanes por sorteo</b>
+            <span>
+              {ca && cb
+                ? 'Ya hay capitanes asignados. Puedes repetir el sorteo antes de cerrar las plantillas.'
+                : 'Al guardar los equipos se sorteará un capitán dentro de cada equipo.'}
+            </span>
+          </div>
+          {ca && cb && (
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={volverASortearCapitanes}
+              disabled={guardando}
+            >
+              Volver a sortear capitanes
+            </button>
+          )}
+        </div>
+      )}
+
+      {modoCapitanes === 'eleccion_equipo' && plantillaGuardada && !cerradas && (
+        <div className="teams-capitanes-votacion">
+          <div className="teams-reparto-cab">
+            <div>
+              <h3>Elección de capitanes</h3>
+              <p>Los jugadores votan desde Mi Zona. Los resultados son visibles para el administrador.</p>
+            </div>
+            <button
+              type="button"
+              className="boton boton-secundario"
+              onClick={cargar}
+              disabled={guardando}
+            >
+              Actualizar votos
+            </button>
+          </div>
+
+          <div className="teams-votacion-grid">
+            {(votacion?.equipos || []).map(eq => (
+              <article key={eq.equipo_id}>
+                <h4>{eq.nombre}</h4>
+                <small>{eq.votos_emitidos} de {eq.votantes} votos emitidos</small>
+                <div>
+                  {(eq.resultados || []).map(r => (
+                    <span key={r.id_jugador}>
+                      <b>{r.nombre}</b>
+                      <strong>{r.votos}</strong>
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="teams-reparto-acciones">
+            <span>Si hay empate, selecciona arriba los capitanes que correspondan y aplica el resultado.</span>
+            <button
+              type="button"
+              className="boton boton-principal"
+              onClick={aplicarVotacion}
+              disabled={guardando}
+            >
+              Aplicar resultado de la votación
+            </button>
+          </div>
+        </div>
+      )}
+
       {mensaje && (
         <p className={mensaje.startsWith('Error:') ? 'teams-error' : 'teams-ok'}>
           {mensaje}
@@ -692,7 +841,9 @@ export default function Equipos({ teams }) {
           <span>
             {cerradas
               ? 'La composición queda bloqueada. Si detectas un error, puedes reabrirla y corregirla.'
-              : 'Puedes guardar y corregir los equipos tantas veces como necesites. Ciérralos solo cuando sean definitivos.'}
+              : !ca || !cb
+                ? 'Los equipos están formados, pero todavía faltan los dos capitanes.'
+                : 'Puedes guardar y corregir los equipos tantas veces como necesites. Ciérralos solo cuando sean definitivos.'}
           </span>
         </div>
 
@@ -712,7 +863,7 @@ export default function Equipos({ teams }) {
               type="button"
               className="boton boton-principal"
               onClick={cerrar}
-              disabled={guardando || !plantillaGuardada}
+              disabled={guardando || !plantillaGuardada || !ca || !cb}
             >
               Cerrar plantillas
             </button>
