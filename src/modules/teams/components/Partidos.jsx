@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { confirmarHorarioTeams, eliminarProgramacionTeams, guardarAlineacionTeams, modificarProgramacionTeams, obtenerDetalleTeams, proponerHorarioTeams, revelarAlineacionesTeams, actualizarPistaTeams, confirmarResultadoTeams, guardarResultadoTeams, impugnarResultadoTeams } from '../teamsApi'
-function CampoFecha({value,onChange}){const ref=useRef(null);function abrir(){const el=ref.current;if(!el)return;try{el.showPicker?.()}catch{} el.focus()}return <div className="teams-fecha-control"><input ref={ref} type="datetime-local" value={value} onChange={onChange}/><button type="button" className="teams-calendario-btn" aria-label="Abrir calendario" title="Abrir calendario" onClick={abrir}>▣</button></div>}
+import CampoFecha from './partidos/CampoFecha'
 export default function Partidos({teams,onCambio}){
  const [d,setD]=useState(null),[sel,setSel]=useState({}),[agenda,setAgenda]=useState({}),[mensaje,setMensaje]=useState(''),[guardando,setGuardando]=useState(false),[impugnando,setImpugnando]=useState(null)
  async function cargar(){try{setD(await obtenerDetalleTeams(teams.id))}catch(e){setMensaje('Error: '+e.message)}}
