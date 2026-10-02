@@ -44,7 +44,13 @@ export default function Reglas({ teams, onCambio }) {
           color_equipo_a: ea?.color || t.configuracion?.color_equipo_a || '#22c55e',
           color_equipo_b: eb?.color || t.configuracion?.color_equipo_b || '#3b82f6',
           asignacion_predeterminada:
-            t.configuracion?.asignacion_predeterminada || 'admin'
+            t.configuracion?.asignacion_predeterminada || 'admin',
+          modo_designacion_capitanes:
+            t.configuracion?.modo_designacion_capitanes || 'administrador',
+          modo_inicio_teams:
+            t.configuracion?.modo_inicio_teams || 'administrador',
+          inicio_programado_at:
+            t.configuracion?.inicio_programado_at || ''
         })
 
         setRevisadas(Boolean(t.reglas_revisadas))
@@ -88,6 +94,20 @@ export default function Reglas({ teams, onCambio }) {
       (!String(f.nombre_equipo_a || '').trim() || !String(f.nombre_equipo_b || '').trim())
     ) {
       return 'Escribe el nombre de los dos equipos predeterminados.'
+    }
+
+    if (
+      f.metodo_formacion === 'draft' &&
+      ['eleccion_equipo','sorteo'].includes(f.modo_designacion_capitanes)
+    ) {
+      return 'En un Draft los capitanes deben estar definidos antes de formar los equipos. Usa Administrador o Definidos de antemano.'
+    }
+
+    if (
+      f.modo_inicio_teams === 'programado' &&
+      !String(f.inicio_programado_at || '').trim()
+    ) {
+      return 'Indica la fecha y hora del inicio programado.'
     }
 
     return p > max
@@ -172,6 +192,22 @@ export default function Reglas({ teams, onCambio }) {
           <div className="teams-ayuda-contextual compacta">
             <span>{FORMACION_INFO[f.metodo_formacion]}</span>
           </div>
+
+          <label>
+            <span className="teams-label-info">
+              Designación de capitanes
+              <Info texto="Administrador: los eliges tú. Definidos de antemano: se fijan expresamente antes de comenzar. Elección del equipo: cada jugador vota desde Mi Zona y, si hay empate, decide el administrador. Sorteo: el sistema elige un capitán al azar dentro de cada equipo." />
+            </span>
+            <select
+              value={f.modo_designacion_capitanes || 'administrador'}
+              onChange={e=>set('modo_designacion_capitanes',e.target.value)}
+            >
+              <option value="administrador">Los elige el administrador</option>
+              <option value="predefinidos">Definidos de antemano</option>
+              <option value="eleccion_equipo" disabled={f.metodo_formacion === 'draft'}>Los elige cada equipo</option>
+              <option value="sorteo" disabled={f.metodo_formacion === 'draft'}>Sorteo entre los jugadores del equipo</option>
+            </select>
+          </label>
 
           {f.metodo_formacion === 'draft' && (
             <label>
@@ -350,6 +386,29 @@ export default function Reglas({ teams, onCambio }) {
               <option value="administrador">Decide administrador</option>
             </select>
           </label>
+
+          <label>
+            <span className="teams-label-info">
+              Inicio del Teams
+              <Info texto="Administrador: tú das la salida. Capitanes preparados: cada capitán confirma desde Mi Zona y al hacerlo ambos se crea automáticamente el Partido 1. Programado: el sistema inicia el Teams en la fecha y hora indicadas, siempre que plantillas y reglas estén listas." />
+            </span>
+            <select value={f.modo_inicio_teams || 'administrador'} onChange={e=>set('modo_inicio_teams',e.target.value)}>
+              <option value="administrador">Lo inicia el administrador</option>
+              <option value="capitanes">Cuando ambos capitanes estén preparados</option>
+              <option value="programado">Inicio programado</option>
+            </select>
+          </label>
+
+          {f.modo_inicio_teams === 'programado' && (
+            <label>
+              Fecha y hora de inicio
+              <input
+                type="datetime-local"
+                value={String(f.inicio_programado_at || '').slice(0,16)}
+                onChange={e=>set('inicio_programado_at',e.target.value)}
+              />
+            </label>
+          )}
         </div>
       </div>
 
