@@ -5,21 +5,9 @@ import {
   obtenerDetalleTeams
 } from '../teamsApi'
 
-function Info({ texto }) {
-  return (
-    <span className="teams-info" tabIndex="0" aria-label={texto}>
-      i
-      <span className="teams-info-popover">{texto}</span>
-    </span>
-  )
-}
-
-const FORMACION_INFO = {
-  manual: 'Todos se apuntan a una bolsa común. Después el administrador reparte los jugadores entre los dos equipos.',
-  draft: 'Todos se apuntan a una bolsa común. Se eligen dos capitanes y estos seleccionan jugadores según el tipo de draft.',
-  sorteo: 'Todos se apuntan a una bolsa común y los equipos se forman mediante sorteo.',
-  predeterminado: 'Los equipos existen antes de la convocatoria. Cada jugador queda vinculado a uno de los dos lados.'
-}
+import Info from './shared/Info'
+import { FORMACION_INFO } from './reglas/config'
+import { errorViabilidadReglas } from './reglas/validacion'
 
 export default function Reglas({ teams, onCambio }) {
   const [f,setF] = useState(null)
@@ -77,56 +65,8 @@ export default function Reglas({ teams, onCambio }) {
     setMensaje('')
   }
 
-  function errorViabilidad() {
-    const j = Number(f.jugadores_por_equipo) || 0
-    const p = Number(f.numero_partidos) || 0
-
-    if (j < 2) return 'Cada equipo necesita al menos 2 jugadores.'
-
-    let max = Infinity
-
-    if (f.repetir_jugadores === 'no') {
-      max = Math.floor(j / 2)
-    }
-
-    if (f.repetir_jugadores === 'maximo') {
-      const x = Number(f.max_partidos_jugador) || 0
-      if (!x) return 'Indica el máximo de partidos por jugador.'
-      max = Math.floor(j * x / 2)
-    }
-
-    if (!f.repetir_pareja) {
-      max = Math.min(max,j*(j-1)/2)
-    }
-
-    if (
-      f.metodo_formacion === 'predeterminado' &&
-      (!String(f.nombre_equipo_a || '').trim() || !String(f.nombre_equipo_b || '').trim())
-    ) {
-      return 'Escribe el nombre de los dos equipos predeterminados.'
-    }
-
-    if (
-      f.metodo_formacion === 'draft' &&
-      ['eleccion_equipo','sorteo'].includes(f.modo_designacion_capitanes)
-    ) {
-      return 'En un Draft los capitanes deben estar definidos antes de formar los equipos. Usa Administrador o Definidos de antemano.'
-    }
-
-    if (
-      f.modo_inicio_teams === 'programado' &&
-      !String(f.inicio_programado_at || '').trim()
-    ) {
-      return 'Indica la fecha y hora del inicio programado.'
-    }
-
-    return p > max
-      ? 'Con estas reglas solo son posibles ' + max + ' partidos por equipo y hay ' + p + ' configurados. Modifica el número de partidos o las reglas de participación.'
-      : ''
-  }
-
   async function guardar() {
-    const ev = errorViabilidad()
+    const ev = errorViabilidadReglas(f)
     if (ev) return setMensaje('Error: ' + ev)
 
     setGuardando(true)
@@ -145,7 +85,7 @@ export default function Reglas({ teams, onCambio }) {
   }
 
   async function revisar() {
-    const ev = errorViabilidad()
+    const ev = errorViabilidadReglas(f)
     if (ev) return setMensaje('Error: ' + ev)
     if (!guardado) return setMensaje('Error: Guarda primero los cambios.')
 
