@@ -15,12 +15,7 @@ import {
   votacionCapitanesTeams,
 } from '../teamsApi'
 
-const METODOS = {
-  manual: 'Manual',
-  draft: 'Draft de capitanes',
-  sorteo: 'Sorteo',
-  predeterminado: 'Equipos predeterminados',
-}
+import { METODOS } from './equipos/config'
 
 export default function Equipos({ teams }) {
   const [detalle,setDetalle] = useState(null)
