@@ -62,7 +62,17 @@ export default function CrearTeams({ onCancelar, onCreado }) {
   const [error,setError] = useState('')
   const [guardando,setGuardando] = useState(false)
 
-  const set = (k,v) => setForm(a => ({...a,[k]:v}))
+  const set = (k,v) => setForm(a => {
+    const siguiente = {...a,[k]:v}
+    if (
+      k === 'metodo_formacion' &&
+      v === 'draft' &&
+      ['eleccion_equipo','sorteo'].includes(a.modo_designacion_capitanes)
+    ) {
+      siguiente.modo_designacion_capitanes = 'administrador'
+    }
+    return siguiente
+  })
 
   const viabilidad = useMemo(() => {
     const j = Number(form.jugadores_por_equipo) || 0
