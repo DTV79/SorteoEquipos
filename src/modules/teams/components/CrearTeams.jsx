@@ -34,7 +34,10 @@ const inicial = {
   publicar_at:'',
   plazo_acordar_dias:3,
   plazo_jugar_dias:7,
-  tratamiento_no_finalizado:'reanudar'
+  tratamiento_no_finalizado:'reanudar',
+  modo_designacion_capitanes:'administrador',
+  modo_inicio_teams:'administrador',
+  inicio_programado_at:''
 }
 
 function Info({ texto }) {
@@ -116,6 +119,20 @@ export default function CrearTeams({ onCancelar, onCreado }) {
       (!form.nombre_equipo_a.trim() || !form.nombre_equipo_b.trim())
     ) {
       return setError('Escribe el nombre de los dos equipos predeterminados.')
+    }
+
+    if (
+      form.metodo_formacion === 'draft' &&
+      ['eleccion_equipo','sorteo'].includes(form.modo_designacion_capitanes)
+    ) {
+      return setError('En un Draft los capitanes deben estar definidos antes de formar los equipos.')
+    }
+
+    if (
+      form.modo_inicio_teams === 'programado' &&
+      !form.inicio_programado_at
+    ) {
+      return setError('Indica la fecha y hora del inicio programado.')
     }
 
     setGuardando(true)
@@ -245,6 +262,22 @@ export default function CrearTeams({ onCancelar, onCreado }) {
               <b>{resumen.formacion}</b>
               <span>{FORMACION_INFO[form.metodo_formacion]}</span>
             </div>
+
+            <label>
+              <span className="teams-label-info">
+                Designación de capitanes
+                <Info texto="Administrador: los eliges tú. Definidos de antemano: quedan fijados expresamente antes de empezar. Elección del equipo: los jugadores votan desde Mi Zona y el administrador resuelve un posible empate. Sorteo: el sistema elige un capitán al azar dentro de cada equipo." />
+              </span>
+              <select
+                value={form.modo_designacion_capitanes}
+                onChange={e=>set('modo_designacion_capitanes',e.target.value)}
+              >
+                <option value="administrador">Los elige el administrador</option>
+                <option value="predefinidos">Definidos de antemano</option>
+                <option value="eleccion_equipo" disabled={form.metodo_formacion === 'draft'}>Los elige cada equipo</option>
+                <option value="sorteo" disabled={form.metodo_formacion === 'draft'}>Sorteo entre los jugadores del equipo</option>
+              </select>
+            </label>
 
             <div className="teams-grid">
               <label>
@@ -430,6 +463,25 @@ export default function CrearTeams({ onCancelar, onCreado }) {
                 <option value="administrador">Decide administrador</option>
               </select>
             </label>
+
+            <label>
+              <span className="teams-label-info">
+                Inicio del Teams
+                <Info texto="Administrador: tú das la salida. Capitanes preparados: cada capitán confirma desde Mi Zona y al hacerlo ambos se crea el Partido 1. Programado: el sistema lo inicia a la fecha y hora indicadas si todo está preparado." />
+              </span>
+              <select value={form.modo_inicio_teams} onChange={e=>set('modo_inicio_teams',e.target.value)}>
+                <option value="administrador">Lo inicia el administrador</option>
+                <option value="capitanes">Cuando ambos capitanes estén preparados</option>
+                <option value="programado">Inicio programado</option>
+              </select>
+            </label>
+
+            {form.modo_inicio_teams === 'programado' && (
+              <label>
+                Fecha y hora de inicio
+                <input type="datetime-local" value={form.inicio_programado_at} onChange={e=>set('inicio_programado_at',e.target.value)}/>
+              </label>
+            )}
           </div>
         )}
 
@@ -451,6 +503,17 @@ export default function CrearTeams({ onCancelar, onCreado }) {
                 }
               </p>
             )}
+            <p><b>Capitanes:</b> {{
+              administrador:'Los elige el administrador',
+              predefinidos:'Definidos de antemano',
+              eleccion_equipo:'Elección de cada equipo',
+              sorteo:'Sorteo'
+            }[form.modo_designacion_capitanes]}</p>
+            <p><b>Inicio:</b> {{
+              administrador:'Administrador',
+              capitanes:'Ambos capitanes preparados',
+              programado:'Programado'
+            }[form.modo_inicio_teams]}{form.modo_inicio_teams==='programado' && form.inicio_programado_at ? ' · '+form.inicio_programado_at.replace('T',' ') : ''}</p>
             <p><b>Plantillas:</b> {form.jugadores_por_equipo} jugadores · {form.reservas_por_equipo} reservas/equipo</p>
             <p><b>Parejas:</b> {form.sistema_eleccion_parejas} · plazo {form.plazo_presentar_horas} h</p>
             <p><b>Computa:</b> Estadísticas {form.computa_estadisticas?'Sí':'No'} · Ranking {form.computa_ranking?'Sí':'No'} · ISP {form.computa_isp?'Sí':'No'}</p>
