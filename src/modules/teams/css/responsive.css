@@ -1,0 +1,45 @@
+/* Ajuste responsive global del módulo Teams */
+@media(max-width:600px){
+ .teams-admin{padding:16px 12px 28px;overflow-x:hidden}
+ .teams-gestion-cab,.teams-dashboard,.teams-tabs,.teams-convocatoria,.teams-listado,.teams-asistente,.teams-error{width:100%;max-width:100%;box-sizing:border-box}
+ .teams-gestion-titulo h1,.teams-cabecera h1{font-size:38px}
+ .teams-tabs{margin-top:18px;gap:6px}
+ .teams-tabs button{padding:10px 12px}
+ .teams-convocatoria{padding:14px;margin-top:12px;border-radius:14px}
+ .teams-seccion-cab h2{font-size:23px}
+ .teams-contador{min-width:0}
+ .teams-partido-card,.teams-resultado,.teams-confirmar-resultado,.teams-resultado-oficial,.teams-resultado-impugnado{max-width:100%;box-sizing:border-box}
+ .teams-programado,.teams-programacion-confirmada{max-width:100%;box-sizing:border-box}
+ .teams-programado-botones{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%}
+ .teams-programado-botones .boton{width:100%!important;min-width:0!important}
+ .teams-pista-opcional{width:100%;box-sizing:border-box;grid-template-columns:1fr!important}
+ .teams-pista-opcional input,.teams-pista-opcional .boton{width:100%;min-width:0;box-sizing:border-box}
+ .teams-editar-programacion{width:100%;box-sizing:border-box}
+ .teams-editar-programacion>div{grid-template-columns:1fr!important}
+ .teams-editar-programacion .boton{width:100%}
+ .teams-equipos-partido{grid-template-columns:1fr!important}
+ .teams-resultado{margin-left:0;margin-right:0;padding:13px}
+ .teams-sets-editor{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr)}
+ .teams-tiebreak{grid-template-columns:1fr 54px auto 54px}
+ .teams-tiebreak input{width:54px}
+ .teams-confirmar-resultado,.teams-resultado-oficial,.teams-resultado-impugnado{margin-left:0;margin-right:0}
+ .teams-incidencia-acciones .boton,.teams-confirmacion-acciones .boton{width:100%}
+}
+
+.teams-incidencia-historica{display:block!important}
+.teams-incidencia-historica-resumen{display:flex;align-items:center;gap:14px;width:100%}
+.teams-incidencia-historica-resumen>div{flex:1}
+.teams-ver-incidencia{padding:7px 12px!important;font-size:12px!important}
+.teams-incidencia-historica-detalle{margin-top:12px;padding:13px 15px;border-top:1px solid #26364a;display:grid;gap:10px}
+.teams-incidencia-historica-detalle b{color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.teams-incidencia-historica-detalle p{margin:4px 0 0;color:#f1f5f9}
+@media(max-width:600px){.teams-incidencia-historica-resumen{align-items:flex-start;flex-wrap:wrap}.teams-ver-incidencia{width:100%}.teams-incidencia-historica-detalle{padding:12px 4px}}
+
+.teams-tarjeta-resumen{align-items:flex-start!important}
+.teams-tarjeta-principal{flex:1;min-width:0}
+.teams-resumen-listado{display:grid;grid-template-columns:1fr 1fr;gap:7px 22px;margin-top:14px;padding-top:12px;border-top:1px solid #26364a;color:#aebed2;font-size:12px}
+.teams-resumen-listado span{line-height:1.45}
+.teams-resumen-listado b{color:#eaf2ff}
+.teams-tarjeta-acciones{display:flex;align-self:center;min-width:170px}
+@media(max-width:700px){.teams-resumen-listado{grid-template-columns:1fr}.teams-tarjeta-resumen{display:block!important}.teams-tarjeta-acciones{margin-top:14px}.teams-tarjeta-acciones .boton{width:100%}}
+
