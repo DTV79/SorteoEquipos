@@ -410,13 +410,15 @@ export default function Equipos({ teams }) {
       .map(([id]) => id),
   ].filter(Boolean))
 
+  const hayReparto = Object.values(asignaciones).some(Boolean)
+
   const candidatosA =
-    metodo === 'predeterminado'
+    metodo !== 'draft' && hayReparto
       ? elegibles.filter(x => asignaciones[x.id_jugador] === 'A' && x.id_jugador !== cb)
       : elegibles.filter(x => x.id_jugador !== cb)
 
   const candidatosB =
-    metodo === 'predeterminado'
+    metodo !== 'draft' && hayReparto
       ? elegibles.filter(x => asignaciones[x.id_jugador] === 'B' && x.id_jugador !== ca)
       : elegibles.filter(x => x.id_jugador !== ca)
 
@@ -453,7 +455,7 @@ export default function Equipos({ teams }) {
           </label>
 
           <label>
-            Capitán
+            {capitanManual ? 'Capitán' : 'Capitán · corrección administrativa'}
             <select value={ca} onChange={e=>editar(setCa,e.target.value)}>
               <option value="">Seleccionar capitán…</option>
               {candidatosA.map(x => (
@@ -489,7 +491,7 @@ export default function Equipos({ teams }) {
           </label>
 
           <label>
-            Capitán
+            {capitanManual ? 'Capitán' : 'Capitán · corrección administrativa'}
             <select value={cb} onChange={e=>editar(setCb,e.target.value)}>
               <option value="">Seleccionar capitán…</option>
               {candidatosB.map(x => (
