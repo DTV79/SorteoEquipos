@@ -16,6 +16,12 @@ import {
 } from '../teamsApi'
 
 import { METODOS } from './equipos/config'
+import PanelDraft from './equipos/PanelDraft'
+import PanelManual from './equipos/PanelManual'
+import PanelPredeterminado from './equipos/PanelPredeterminado'
+import PanelSorteo from './equipos/PanelSorteo'
+import PanelCapitanesSorteo from './equipos/PanelCapitanesSorteo'
+import PanelCapitanesVotacion from './equipos/PanelCapitanesVotacion'
 
 export default function Equipos({ teams }) {
   const [detalle,setDetalle] = useState(null)
@@ -513,317 +519,85 @@ export default function Equipos({ teams }) {
       </div>
 
       {metodo === 'draft' && ca && cb && (
-        <div className="teams-reparto">
-          <div className="teams-reparto-cab">
-            <div>
-              <h3>Draft de jugadores</h3>
-              <p>Elige los jugadores por turnos. Los capitanes ya están incluidos en sus equipos.</p>
-            </div>
-            <span>Turno: <b>{turnoDraft() === 'A' ? a : b}</b></span>
-          </div>
-
-          <div className="teams-draft-tablero">
-            <div>
-              <h4>{a}</h4>
-              {[ca,...Object.entries(asignaciones).filter(([,x])=>x==='A').map(([id])=>id)]
-                .filter((x,i,v)=>x&&v.indexOf(x)===i)
-                .map(id => {
-                  const j=elegibles.find(x=>x.id_jugador===id)
-                  return <span key={id}>{j?.alias||j?.nombre||id}{id===ca?' · Capitán':''}</span>
-                })}
-            </div>
-
-            <div>
-              <h4>{b}</h4>
-              {[cb,...Object.entries(asignaciones).filter(([,x])=>x==='B').map(([id])=>id)]
-                .filter((x,i,v)=>x&&v.indexOf(x)===i)
-                .map(id => {
-                  const j=elegibles.find(x=>x.id_jugador===id)
-                  return <span key={id}>{j?.alias||j?.nombre||id}{id===cb?' · Capitán':''}</span>
-                })}
-            </div>
-          </div>
-
-          <h4>Jugadores disponibles</h4>
-          <div className="teams-draft-disponibles">
-            {elegibles
-              .filter(j =>
-                j.id_jugador !== ca &&
-                j.id_jugador !== cb &&
-                !asignaciones[j.id_jugador]
-              )
-              .map(j => (
-                <button
-                  type="button"
-                  key={j.id_jugador}
-                  disabled={cerradas}
-                  onClick={()=>elegirDraft(j.id_jugador)}
-                >
-                  {j.alias || j.nombre}
-                </button>
-              ))}
-          </div>
-
-          <div className="teams-reparto-acciones">
-            <span>
-              {elegibles.filter(j =>
-                j.id_jugador !== ca &&
-                j.id_jugador !== cb &&
-                !asignaciones[j.id_jugador]
-              ).length} por elegir
-            </span>
-
-            <button
-              type="button"
-              className="boton boton-principal"
-              disabled={
-                guardando ||
-                plantillaGuardada ||
-                cerradas ||
-                elegibles.filter(j =>
-                  j.id_jugador !== ca &&
-                  j.id_jugador !== cb &&
-                  !asignaciones[j.id_jugador]
-                ).length > 0
-              }
-              onClick={guardarDraft}
-            >
-              {guardando ? 'Guardando…' : plantillaGuardada ? 'Equipos guardados ✓' : 'Guardar equipos'}
-            </button>
-          </div>
-        </div>
+        <PanelDraft
+          a={a}
+          b={b}
+          ca={ca}
+          cb={cb}
+          asignaciones={asignaciones}
+          elegibles={elegibles}
+          cerradas={cerradas}
+          elegirDraft={elegirDraft}
+          turnoDraft={turnoDraft}
+          guardando={guardando}
+          plantillaGuardada={plantillaGuardada}
+          guardarDraft={guardarDraft}
+        />
       )}
 
       {metodo === 'manual' && (
-        <div className="teams-reparto">
-          <div className="teams-reparto-cab">
-            <div>
-              <h3>Reparto manual</h3>
-              <p>Asigna cada jugador a uno de los dos equipos. La designación de capitanes se resolverá según la regla configurada.</p>
-            </div>
-            <span>
-              {asignadosA.size} / {objetivoPorEquipo || '—'} · {asignadosB.size} / {objetivoPorEquipo || '—'}
-            </span>
-          </div>
-
-          <div className="teams-reparto-lista">
-            {elegibles.map(j => {
-              const id = j.id_jugador
-              const esA = id === ca
-              const esB = id === cb
-              const lado = esA ? 'A' : esB ? 'B' : asignaciones[id] || ''
-
-              return (
-                <div className="teams-reparto-jugador" key={id}>
-                  <b>{j.alias || j.nombre}</b>
-                  <div>
-                    <button
-                      type="button"
-                      className={lado === 'A' ? 'activo' : ''}
-                      disabled={esB || cerradas}
-                      onClick={()=>!esA&&asignar(id,lado==='A'?'':'A')}
-                    >
-                      {a}{esA ? ' · Capitán' : ''}
-                    </button>
-                    <button
-                      type="button"
-                      className={lado === 'B' ? 'activo' : ''}
-                      disabled={esA || cerradas}
-                      onClick={()=>!esB&&asignar(id,lado==='B'?'':'B')}
-                    >
-                      {b}{esB ? ' · Capitán' : ''}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="teams-reparto-acciones">
-            <span>
-              {elegibles.length - asignadosA.size - asignadosB.size} sin asignar
-            </span>
-            <button
-              type="button"
-              className="boton boton-principal"
-              disabled={guardando || plantillaGuardada || cerradas}
-              onClick={guardarPlantilla}
-            >
-              {guardando ? 'Guardando…' : plantillaGuardada ? 'Equipos guardados ✓' : 'Guardar equipos'}
-            </button>
-          </div>
-        </div>
+        <PanelManual
+          a={a}
+          b={b}
+          ca={ca}
+          cb={cb}
+          asignaciones={asignaciones}
+          elegibles={elegibles}
+          cerradas={cerradas}
+          asignar={asignar}
+          asignadosA={asignadosA}
+          asignadosB={asignadosB}
+          objetivoPorEquipo={objetivoPorEquipo}
+          guardando={guardando}
+          plantillaGuardada={plantillaGuardada}
+          guardarPlantilla={guardarPlantilla}
+        />
       )}
 
       {metodo === 'predeterminado' && (
-        <div className="teams-reparto">
-          <div className="teams-reparto-cab">
-            <div>
-              <h3>Equipos predeterminados</h3>
-              <p>
-                La asignación puede venir de la convocatoria, pero el administrador
-                siempre puede corregir o completar los equipos antes de cerrarlos.
-              </p>
-            </div>
-            <span>
-              {elegibles.filter(j=>asignaciones[j.id_jugador]==='A').length} / {objetivoPorEquipo || '—'} ·{' '}
-              {elegibles.filter(j=>asignaciones[j.id_jugador]==='B').length} / {objetivoPorEquipo || '—'}
-            </span>
-          </div>
-
-          <div className="teams-reparto-lista">
-            {elegibles.map(j => {
-              const id = j.id_jugador
-              const lado = asignaciones[id] || ''
-              const esCapA = id === ca
-              const esCapB = id === cb
-
-              return (
-                <div className="teams-reparto-jugador" key={id}>
-                  <b>{j.alias || j.nombre}</b>
-                  <div>
-                    <button
-                      type="button"
-                      className={lado === 'A' ? 'activo' : ''}
-                      disabled={cerradas || esCapB}
-                      onClick={() => !esCapA && asignar(id, lado === 'A' ? '' : 'A')}
-                    >
-                      {a}{esCapA ? ' · Capitán' : ''}
-                    </button>
-                    <button
-                      type="button"
-                      className={lado === 'B' ? 'activo' : ''}
-                      disabled={cerradas || esCapA}
-                      onClick={() => !esCapB && asignar(id, lado === 'B' ? '' : 'B')}
-                    >
-                      {b}{esCapB ? ' · Capitán' : ''}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="teams-reparto-acciones">
-            <span>
-              {elegibles.filter(j=>!asignaciones[j.id_jugador]).length} sin equipo
-            </span>
-            <button
-              type="button"
-              className="boton boton-principal"
-              disabled={
-                guardando ||
-                plantillaGuardada ||
-                cerradas ||
-                !ca ||
-                !cb ||
-                elegibles.some(j=>!asignaciones[j.id_jugador])
-              }
-              onClick={guardarPlantilla}
-            >
-              {guardando
-                ? 'Guardando…'
-                : plantillaGuardada
-                  ? 'Plantillas guardadas ✓'
-                  : 'Confirmar plantillas'}
-            </button>
-          </div>
-        </div>
+        <PanelPredeterminado
+          a={a}
+          b={b}
+          ca={ca}
+          cb={cb}
+          asignaciones={asignaciones}
+          elegibles={elegibles}
+          cerradas={cerradas}
+          asignar={asignar}
+          objetivoPorEquipo={objetivoPorEquipo}
+          guardando={guardando}
+          plantillaGuardada={plantillaGuardada}
+          guardarPlantilla={guardarPlantilla}
+        />
       )}
 
       {metodo === 'sorteo' && (
-        <div className="teams-reparto teams-sorteo-formacion">
-          <div className="teams-reparto-cab">
-            <div>
-              <h3>Sorteo de equipos</h3>
-              <p>
-                Se mantendrá a cada capitán en su lado y el resto de los jugadores
-                apuntados se repartirán aleatoriamente.
-              </p>
-            </div>
-            <span>{elegibles.length} / {objetivoPorEquipo * 2 || '—'} jugadores</span>
-          </div>
-
-          <button
-            type="button"
-            className="boton boton-principal"
-            onClick={sortear}
-            disabled={guardando || cerradas}
-          >
-            🎲 {plantillaGuardada ? 'Repetir sorteo' : 'Sortear equipos'}
-          </button>
-        </div>
+        <PanelSorteo
+          elegibles={elegibles}
+          objetivoPorEquipo={objetivoPorEquipo}
+          sortear={sortear}
+          guardando={guardando}
+          cerradas={cerradas}
+          plantillaGuardada={plantillaGuardada}
+        />
       )}
 
       {modoCapitanes === 'sorteo' && plantillaGuardada && !cerradas && (
-        <div className="teams-capitanes-panel">
-          <div>
-            <b>🎲 Capitanes por sorteo</b>
-            <span>
-              {ca && cb
-                ? 'Ya hay capitanes asignados. Puedes repetir el sorteo antes de cerrar las plantillas.'
-                : 'Al guardar los equipos se sorteará un capitán dentro de cada equipo.'}
-            </span>
-          </div>
-          {ca && cb && (
-            <button
-              type="button"
-              className="boton boton-secundario"
-              onClick={volverASortearCapitanes}
-              disabled={guardando}
-            >
-              Volver a sortear capitanes
-            </button>
-          )}
-        </div>
+        <PanelCapitanesSorteo
+          ca={ca}
+          cb={cb}
+          guardando={guardando}
+          volverASortearCapitanes={volverASortearCapitanes}
+        />
       )}
 
       {modoCapitanes === 'eleccion_equipo' && plantillaGuardada && !cerradas && (
-        <div className="teams-capitanes-votacion">
-          <div className="teams-reparto-cab">
-            <div>
-              <h3>Elección de capitanes</h3>
-              <p>Los jugadores votan desde Mi Zona. Los resultados son visibles para el administrador.</p>
-            </div>
-            <button
-              type="button"
-              className="boton boton-secundario"
-              onClick={cargar}
-              disabled={guardando}
-            >
-              Actualizar votos
-            </button>
-          </div>
-
-          <div className="teams-votacion-grid">
-            {(votacion?.equipos || []).map(eq => (
-              <article key={eq.equipo_id}>
-                <h4>{eq.nombre}</h4>
-                <small>{eq.votos_emitidos} de {eq.votantes} votos emitidos</small>
-                <div>
-                  {(eq.resultados || []).map(r => (
-                    <span key={r.id_jugador}>
-                      <b>{r.nombre}</b>
-                      <strong>{r.votos}</strong>
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="teams-reparto-acciones">
-            <span>Si hay empate, selecciona arriba los capitanes que correspondan y aplica el resultado.</span>
-            <button
-              type="button"
-              className="boton boton-principal"
-              onClick={aplicarVotacion}
-              disabled={guardando}
-            >
-              Aplicar resultado de la votación
-            </button>
-          </div>
-        </div>
+        <PanelCapitanesVotacion
+          votacion={votacion}
+          cargar={cargar}
+          guardando={guardando}
+          aplicarVotacion={aplicarVotacion}
+        />
       )}
 
       {mensaje && (
