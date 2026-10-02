@@ -77,7 +77,7 @@ export default function Partidos({teams,onCambio}){
  return <section className="teams-convocatoria"><div className="teams-seccion-cab"><div><p className="etiqueta">PARTIDOS</p><h2>Partidos del Teams</h2><p>Gestiona las parejas, fecha y avance de cada enfrentamiento.</p></div><div className="teams-contador"><strong>{partidos.length}</strong><span>partidos creados</span></div></div>
  {mensaje&&<p className={mensaje.startsWith('Error:')?'teams-error':'teams-ok'}>{mensaje}</p>}
  {eq.length>=2&&<div className="teams-marcador-serie"><span className="teams-marcador-label">MARCADOR DEL TEAMS</span><div className="teams-marcador-equipos"><div><i className="teams-equipo-dot grande" style={{backgroundColor:eq[0]?.color||'#64748b'}}></i><b>{eq[0]?.nombre}</b></div><strong>{marcadorA} <em>–</em> {marcadorB}</strong><div><i className="teams-equipo-dot grande" style={{backgroundColor:eq[1]?.color||'#64748b'}}></i><b>{eq[1]?.nombre}</b></div></div><small>{oficiales.length} jugados · {pendientes} pendientes</small><div className="teams-resumen-serie"><div className="teams-resumen-head"><span></span><b>{eq[0]?.nombre}</b><b>{eq[1]?.nombre}</b></div><div><span>🏆 Partidos ganados</span><strong>{victoriasA}</strong><strong>{victoriasB}</strong></div><div><span>🎾 Sets ganados</span><strong>{ra.sets}</strong><strong>{rb.sets}</strong></div><div><span>🔢 Juegos / puntos</span><strong>{ra.puntos}</strong><strong>{rb.puntos}</strong></div><div><span>🔥 Tie-breaks ganados</span><strong>{ra.tb}</strong><strong>{rb.tb}</strong></div><div><span>💥 Victorias limpias</span><strong>{ra.limpias}</strong><strong>{rb.limpias}</strong></div><div><span>👥 Jugadores utilizados</span><strong>{ra.usados}/{ra.total}</strong><strong>{rb.usados}/{rb.total}</strong></div></div></div>}
- <div className="teams-part{partidos.map(p => (
+ <div className="teams-partidos-lista">{partidos.map(p => (
   <PartidoAdminCard
     key={p.id}
     p={p}
@@ -107,5 +107,5 @@ export default function Partidos({teams,onCambio}){
     impugnar={impugnar}
     incidenciaPartido={incidenciaPartido}
   />
-))}</article>)}</div></section>
+))}</div></section>
 }
