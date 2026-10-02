@@ -271,3 +271,18 @@ export async function generarCodigoAltaTeams(idJugador) {
   if (error) throw error
   return data
 }
+
+
+export async function establecerPinTeams(idJugador, pin) {
+  const { error } = await supabaseCampeonato.rpc('admin_teams_establecer_pin', {
+    p_id_jugador: idJugador,
+    p_pin: pin,
+  })
+  if (error) throw error
+}
+
+export async function activarAccesosPruebaTeams(jugadores, pin) {
+  for (const jugador of jugadores) {
+    await establecerPinTeams(jugador.id_jugador, pin)
+  }
+}
