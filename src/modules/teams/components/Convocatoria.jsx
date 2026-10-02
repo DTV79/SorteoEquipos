@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  activarAccesosPruebaTeams,
   catalogoJugadoresTeams,
   estadoAccesosTeams,
   generarCodigoAltaTeams,
@@ -41,6 +42,7 @@ export default function Convocatoria({ teams }) {
   const [buscar, setBuscar] = useState('')
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
+  const [activandoPruebas, setActivandoPruebas] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [guardado, setGuardado] = useState(false)
   const [sucio, setSucio] = useState(false)
@@ -215,6 +217,40 @@ export default function Convocatoria({ teams }) {
     setMensaje('')
     setPreasignaciones(s => ({ ...s, [id]: equipoId }))
     setPreOrigenes(s => ({ ...s, [id]: 'admin' }))
+  }
+
+  async function activarTodosPrueba() {
+    const activos = jugadores.filter(j => j.activo)
+    const ok = window.confirm(
+      'Se activará Mi Zona para los ' + activos.length +
+      ' jugadores activos con el PIN temporal 0609. ' +
+      'Los PIN actuales también se sustituirán. ¿Continuar?'
+    )
+    if (!ok) return
+
+    setActivandoPruebas(true)
+    setMensaje('')
+
+    try {
+      await activarAccesosPruebaTeams(activos, '0609')
+
+      const accesosData = await estadoAccesosTeams()
+      const mapaAccesos = {}
+      for (const acceso of accesosData ?? []) {
+        mapaAccesos[acceso.id_jugador] = acceso
+      }
+      setAccesos(mapaAccesos)
+
+      setMensaje(
+        'Accesos de prueba activados para ' +
+        activos.length +
+        ' jugadores. PIN temporal: 0609.'
+      )
+    } catch (e) {
+      setMensaje('Error: ' + e.message)
+    } finally {
+      setActivandoPruebas(false)
+    }
   }
 
   async function generarCodigo(j) {
@@ -452,6 +488,17 @@ export default function Convocatoria({ teams }) {
           }}
         >
           Todos: Me apunto
+        </button>
+        <button
+          className="boton boton-secundario teams-pin-pruebas"
+          type="button"
+          disabled={activandoPruebas || cargando}
+          onClick={activarTodosPrueba}
+          title="Solo para pruebas: activa Mi Zona para todos los jugadores activos con PIN 0609"
+        >
+          {activandoPruebas
+            ? 'Activando accesos…'
+            : '🧪 Accesos de prueba · PIN 0609'}
         </button>
       </div>
 
