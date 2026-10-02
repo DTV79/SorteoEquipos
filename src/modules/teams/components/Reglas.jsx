@@ -61,7 +61,17 @@ export default function Reglas({ teams, onCambio }) {
   }, [teams.id])
 
   function set(k,v) {
-    setF(x => ({...x,[k]:v}))
+    setF(x => {
+      const siguiente = {...x,[k]:v}
+      if (
+        k === 'metodo_formacion' &&
+        v === 'draft' &&
+        ['eleccion_equipo','sorteo'].includes(x.modo_designacion_capitanes)
+      ) {
+        siguiente.modo_designacion_capitanes = 'administrador'
+      }
+      return siguiente
+    })
     setGuardado(false)
     setRevisadas(false)
     setMensaje('')
