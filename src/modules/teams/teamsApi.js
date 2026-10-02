@@ -127,6 +127,32 @@ export async function sortearFormacionTeams(teamId) {
   return data
 }
 
+export async function sortearCapitanesTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_sortear_capitanes', {
+    p_team_id: teamId,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function votacionCapitanesTeams(teamId) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_votacion_capitanes', {
+    p_team_id: teamId,
+  })
+  if (error) throw error
+  return data ?? { equipos: [] }
+}
+
+export async function aplicarVotacionCapitanesTeams(teamId, capitanA = null, capitanB = null) {
+  const { data, error } = await supabaseCampeonato.rpc('admin_teams_aplicar_votacion_capitanes', {
+    p_team_id: teamId,
+    p_capitan_a: capitanA || null,
+    p_capitan_b: capitanB || null,
+  })
+  if (error) throw error
+  return data
+}
+
 
 export async function cerrarPlantillasTeams(teamId) {
   const { error } = await supabaseCampeonato.rpc('admin_teams_cerrar_plantillas', { p_team_id: teamId })
