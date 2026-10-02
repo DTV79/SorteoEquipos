@@ -133,17 +133,29 @@ export default function CrearTeams({ onCancelar, onCreado }) {
           ))}
         </div>
 
-        <PasoGeneral form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 0 && (
+          <PasoGeneral form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
-        <PasoFormacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 1 && (
+          <PasoFormacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
-        <PasoParticipacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 2 && (
+          <PasoParticipacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
-        <PasoParejas form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 3 && (
+          <PasoParejas form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
-        <PasoPublicacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 4 && (
+          <PasoPublicacion form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
-        <PasoRevision form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        {paso === 5 && (
+          <PasoRevision form={form} set={set} resumen={resumen} viabilidad={viabilidad} />
+        )}
 
         <footer className="teams-acciones">
           {paso > 0
